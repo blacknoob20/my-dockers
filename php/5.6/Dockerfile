@@ -2,8 +2,7 @@ FROM alpine:latest as OCI_INSTANT_CLIENT
 
 RUN mkdir -p /opt/oracle/client/11.2/network/admin
 
-COPY ./oracle_client/instantclient-basic-linux.x64-11.2.0.4.0.zip /opt/oracle/client/
-COPY ./oracle_client/instantclient-sdk-linux.x64-11.2.0.4.0.zip /opt/oracle/client/
+COPY ./oracle_client/* /opt/oracle/client/
 
 ENV ORACLE_HOME=/opt/oracle/client/11.2
 ENV LD_LIBRARY_PATH="$ORACLE_HOME:$LD_LIBRARY_PATH"
@@ -18,6 +17,10 @@ RUN \
  mv /opt/oracle/client/instantclient_11_2/sdk/ $ORACLE_HOME/ &&\
  rm -R -f /opt/oracle/client/instantclient_11_2/ &&\
  rm -f /opt/oracle/client/instantclient-sdk-linux.x64-11.2.0.4.0.zip &&\
+ unzip /opt/oracle/client/instantclient-sqlplus-linux.x64-11.2.0.4.0.zip -d /opt/oracle/client &&\
+ mv /opt/oracle/client/instantclient_11_2/* $ORACLE_HOME/ &&\
+ rm -R -f /opt/oracle/client/instantclient_11_2/ &&\
+ rm -f /opt/oracle/client/instantclient-sqlplus-linux.x64-11.2.0.4.0.zip &&\
  ln -s $ORACLE_HOME/libclntsh.so.11.1 $ORACLE_HOME/libclntsh.so &&\
  ln -s $ORACLE_HOME/libocci.so.11.1 $ORACLE_HOME/libocci.so
 
