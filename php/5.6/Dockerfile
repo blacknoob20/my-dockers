@@ -36,6 +36,7 @@ LABEL glibc="Instalación glibc libaio libnsl libzip-dev zip"
 RUN apk update &&\
  apk add --no-cache\
  libaio\
+ libnsl\
  libzip-dev\
  zip\
  libxml2-dev &&\
@@ -43,21 +44,14 @@ RUN apk update &&\
  curl -LOJ https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.33-r0/glibc-2.33-r0.apk &&\
  apk add --allow-untrusted glibc-2.33-r0.apk &&\
  rm -f glibc-2.33-r0.apk &&\
- ln -s /lib/libc.musl-x86_64.so.1 $ORACLE_HOME/libc.musl-x86_64.so.1 &&\
- ln -s /lib/libkeyutils.so.1 $ORACLE_HOME/libkeyutils.so.1 &&\
- ln -s /lib/libcom_err.so.2 $ORACLE_HOME/libcom_err.so.2 &&\
- ln -s /usr/lib/libgssapi_krb5.so.2 $ORACLE_HOME/libgssapi_krb5.so.2 &&\
- ln -s /usr/lib/libk5crypto.so.3 $ORACLE_HOME/libk5crypto.so.3 &&\
- ln -s /usr/lib/libkrb5support.so.0 $ORACLE_HOME/libkrb5support.so.0 &&\
- ln -s /usr/lib/libkrb5.so.3 $ORACLE_HOME/libkrb5.so.3 &&\
- ln -s /usr/lib/libintl.so.8 $ORACLE_HOME/libintl.so.8 &&\
- ln -s /usr/lib/libtirpc.so.3 $ORACLE_HOME/libtirpc.so.3 &&\
  ln -s /usr/lib/libaio.so.1.0.1 $ORACLE_HOME/libaio.so.1 &&\
- ln -s /usr/glibc-compat/lib/libnsl.so.1 $ORACLE_HOME/libnsl.so.1
+ ln -s /usr/lib/libnsl.so.2.0.0 $ORACLE_HOME/libnsl.so.1
 
 # Instalar la libreria OCI8
 LABEL oci8="Instalación PHP 5.6 ext OCI8"
 RUN \
  docker-php-ext-configure oci8 --with-oci8=instantclient,$ORACLE_HOME &&\
- docker-php-ext-install -j$(nproc) oci8 zip soap &&\
- docker-php-ext-enable oci8 zip soap
+ docker-php-ext-install -j$(nproc) oci8 zip soap calendar &&\
+ docker-php-ext-enable oci8 zip soap calendar
+
+COPY ./ini/* $PHP_INI_DIR/conf.d/
