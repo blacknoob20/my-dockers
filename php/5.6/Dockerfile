@@ -15,10 +15,6 @@ RUN \
  mv /opt/oracle/client/instantclient_11_2/sdk/ $ORACLE_HOME/ &&\
  rm -R -f /opt/oracle/client/instantclient_11_2/ &&\
  rm -f /opt/oracle/client/instantclient-sdk-linux.x64-11.2.0.4.0.zip &&\
- unzip /opt/oracle/client/instantclient-sqlplus-linux.x64-11.2.0.4.0.zip -d /opt/oracle/client &&\
- mv /opt/oracle/client/instantclient_11_2/* $ORACLE_HOME/ &&\
- rm -R -f /opt/oracle/client/instantclient_11_2/ &&\
- rm -f /opt/oracle/client/instantclient-sqlplus-linux.x64-11.2.0.4.0.zip &&\
  ln -s $ORACLE_HOME/libclntsh.so.11.1 $ORACLE_HOME/libclntsh.so &&\
  ln -s $ORACLE_HOME/libocci.so.11.1 $ORACLE_HOME/libocci.so
 
@@ -26,7 +22,6 @@ FROM php:5.6-fpm-alpine
 
 COPY --from=OCI_INSTANT_CLIENT /opt/oracle/client/ /opt/oracle/client/
 
-#Instalar glibc para que funcione el InstantClient 11g
 ENV ORACLE_HOME=/opt/oracle/client/11.2
 ENV LD_LIBRARY_PATH=$ORACLE_HOME
 ENV PATH="$ORACLE_HOME:$PATH"
