@@ -50,3 +50,5 @@ RUN \
  docker-php-ext-enable oci8 zip soap calendar
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
+# Cambiar nombre php.ini-development a php.ini
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
