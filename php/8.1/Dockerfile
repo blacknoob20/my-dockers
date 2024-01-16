@@ -35,14 +35,15 @@ RUN apk update &&\
  libzip-dev\
  zip\
  libxml2-dev\
- libpng-dev &&\
+ libpng-dev\
+ openldap-dev &&\
  ln -s /usr/lib/libnsl.so.3.0.0 $ORACLE_HOME/libnsl.so.1
 
 LABEL oci8="Instalación PHP 8.1 ext OCI8"
 RUN \
  docker-php-ext-configure oci8 --with-oci8=instantclient,$ORACLE_HOME &&\
- docker-php-ext-install -j$(nproc) oci8 zip soap calendar gd &&\
- docker-php-ext-enable oci8 zip soap calendar gd
+ docker-php-ext-install -j$(nproc) oci8 zip soap calendar gd ldap &&\
+ docker-php-ext-enable oci8 zip soap calendar gd ldap
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
 # Cambiar nombre php.ini-development a php.ini
