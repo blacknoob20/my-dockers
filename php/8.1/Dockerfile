@@ -43,8 +43,8 @@ LABEL oci8="Instalación PHP 8.1 ext OCI8"
 RUN \
  docker-php-ext-configure oci8 --with-oci8=instantclient,$ORACLE_HOME &&\
  docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,$ORACLE_HOME &&\
- docker-php-ext-install -j$(nproc) oci8 zip soap calendar gd ldap pdo_oci &&\
- docker-php-ext-enable oci8 zip soap calendar gd ldap pdo_oci
+ docker-php-ext-install -j$(nproc) oci8 zip soap calendar gd ldap pdo_oci pdo_mysql &&\
+ docker-php-ext-enable oci8 zip soap calendar gd ldap pdo_oci pdo_mysql
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
 # Cambiar nombre php.ini-development a php.ini
