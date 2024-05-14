@@ -1,4 +1,4 @@
-FROM alpine:latest as OCI_INSTANT_CLIENT
+FROM php:8.1-fpm-alpine as OCI_INSTANT_CLIENT
 
 RUN mkdir -p /opt/oracle/client/11.2/network/admin
 
@@ -18,9 +18,14 @@ RUN \
  ln -s $ORACLE_HOME/libclntsh.so.11.1 $ORACLE_HOME/libclntsh.so &&\
  ln -s $ORACLE_HOME/libocci.so.11.1 $ORACLE_HOME/libocci.so
 
+RUN apk update && apk add postgresql-dev --no-cache &&\
+ docker-php-ext-configure pdo_pgsql &&\
+ docker-php-ext-install pdo_pgsql
+
 FROM php:8.1-fpm-alpine
 
 COPY --from=OCI_INSTANT_CLIENT /opt/oracle/client/ /opt/oracle/client/
+COPY --from=OCI_INSTANT_CLIENT /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 
 ENV ORACLE_HOME=/opt/oracle/client/11.2
 ENV LD_LIBRARY_PATH=$ORACLE_HOME
@@ -30,6 +35,7 @@ LABEL glibc="Instalación glibc libaio libnsl libzip-dev zip"
 
 RUN apk update &&\
  apk add --no-cache\
+ libpq\
  libaio\
  libnsl\
  libzip-dev\
@@ -44,7 +50,7 @@ RUN \
  docker-php-ext-configure oci8 --with-oci8=instantclient,$ORACLE_HOME &&\
  docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,$ORACLE_HOME &&\
  docker-php-ext-install -j$(nproc) oci8 zip soap calendar gd ldap pdo_oci pdo_mysql &&\
- docker-php-ext-enable oci8 zip soap calendar gd ldap pdo_oci pdo_mysql
+ docker-php-ext-enable oci8 zip soap calendar gd ldap pdo_oci pdo_mysql pdo_pgsql
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
 # Cambiar nombre php.ini-development a php.ini
