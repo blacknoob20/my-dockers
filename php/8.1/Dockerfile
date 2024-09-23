@@ -1,7 +1,7 @@
-FROM php:8.1-fpm-alpine as OCI_INSTANT_CLIENT
+FROM php:8.1-fpm-alpine as oci_instant_client
 
-RUN mkdir -p /opt/oracle/client/minify
-RUN mkdir -p /opt/oracle/client/11.2/network/admin
+RUN mkdir -p /opt/oracle/client/minify &&\
+  mkdir -p /opt/oracle/client/11.2/network/admin
 
 COPY ./oracle_client/* /opt/oracle/client/
 
@@ -58,8 +58,8 @@ RUN \
 
 FROM php:8.1-fpm-alpine
 
-COPY --from=OCI_INSTANT_CLIENT /opt/oracle/client/minify/ /opt/oracle/client/11.2/
-COPY --from=OCI_INSTANT_CLIENT /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=oci_instant_client /opt/oracle/client/minify/ /opt/oracle/client/11.2/
+COPY --from=oci_instant_client /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 
 ENV ORACLE_HOME=/opt/oracle/client/11.2
 ENV LD_LIBRARY_PATH=$ORACLE_HOME
@@ -78,9 +78,12 @@ RUN apk update &&\
 RUN docker-php-ext-enable zip soap calendar gd ldap oci8 pdo_oci pdo_mysql pdo_pgsql opcache xdebug &&\
   echo "opcache.enable=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "opcache.enable_cli=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
+  echo "xdebug.idekey=VSCODE" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.mode=develop,debug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.client_host=host.docker.internal" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.client_port = 9000" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.client_port=9003" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.log=/tmp/xdebug/xdebug.log" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.log_level=7" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.start_with_request=yes" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
