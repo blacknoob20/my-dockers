@@ -76,6 +76,9 @@ RUN docker-php-ext-enable zip soap calendar gd ldap oci8 pdo_oci pdo_mysql pdo_p
 RUN \
   echo "opcache.enable=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "opcache.enable_cli=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
+  echo "opcache.memory_consumption=128" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
+  echo "opcache.max_accelerated_files=10000" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
+  echo "opcache.revalidate_freq=0" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "xdebug.idekey=VSCODE" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.mode=debug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.client_host=172.17.0.1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
