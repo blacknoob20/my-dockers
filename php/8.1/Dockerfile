@@ -81,7 +81,7 @@ RUN \
   echo "opcache.revalidate_freq=0" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "xdebug.idekey=VSCODE" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.mode=debug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.client_host=172.17.0.1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.client_host=0.0.0.0" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.client_port=9003" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.log=/tmp/xdebug/xdebug.log" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.log_level=7" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
