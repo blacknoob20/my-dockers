@@ -17,10 +17,10 @@ services:
       - sonarqube_extensions:/opt/sonarqube/extensions
       - sonarqube_logs:/opt/sonarqube/logs
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000" ]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9000" ]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
     networks:
       - net
 
