@@ -82,14 +82,15 @@ RUN \
   echo "opcache.memory_consumption=128" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "opcache.max_accelerated_files=10000" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
   echo "opcache.revalidate_freq=0" >> "$PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini" &&\
+  echo "zend_extension=xdebug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.idekey=VSCODE" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.mode=debug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.client_host=host.docker.internal" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.client_host=\${XDEBUG_CLIENT_HOST}" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.client_port=9003" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.log=/tmp/xdebug/xdebug.log" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.log_level=7" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
   echo "xdebug.start_with_request=yes" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
-  echo "xdebug.discover_client_host=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
+  echo "xdebug.discover_client_host=0" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.log=/tmp/xdebug/xdebug.log" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini" &&\
+  echo "xdebug.log_level=7" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
 
 COPY ./ini/* $PHP_INI_DIR/conf.d/
 # Cambiar nombre php.ini-development a php.ini
