@@ -1,0 +1,54 @@
+FROM apachesuperset.docker.scarf.sh/apache/superset:${TAG:-latest-dev} AS oracle_client
+
+USER root
+
+# Instalar dependencias necesarias
+RUN apt update && apt install -y \
+  libaio1 \
+  unzip \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Crear carpetas para Oracle Instant Client
+RUN mkdir -p /opt/oracle/client/11.2/network/admin
+
+# Copiar los ZIPs del Instant Client (necesitarás tener estos archivos en ./oracle_client/)
+COPY ./oracle_client/instantclient-basic-linux.x64-11.2.0.4.0.zip /opt/oracle/client/
+COPY ./oracle_client/instantclient-sdk-linux.x64-11.2.0.4.0.zip /opt/oracle/client/
+
+ENV ORACLE_HOME=/opt/oracle/client/11.2
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH="$ORACLE_HOME:$PATH"
+
+# Descomprimir Instant Client y SDK
+RUN unzip /opt/oracle/client/instantclient-basic-linux.x64-11.2.0.4.0.zip -d /opt/oracle/client && \
+  unzip /opt/oracle/client/instantclient-sdk-linux.x64-11.2.0.4.0.zip -d /opt/oracle/client && \
+  mv /opt/oracle/client/instantclient_11_2/* $ORACLE_HOME/ && \
+  rm -rf /opt/oracle/client/instantclient_11_2 && \
+  rm -f /opt/oracle/client/instantclient-basic-linux.x64-11.2.0.4.0.zip /opt/oracle/client/instantclient-sdk-linux.x64-11.2.0.4.0.zip && \
+  ln -sf $ORACLE_HOME/libclntsh.so.11.1 $ORACLE_HOME/libclntsh.so && \
+  ln -sf $ORACLE_HOME/libocci.so.11.1 $ORACLE_HOME/libocci.so
+
+# Instalar cx_Oracle
+RUN pip install cx_Oracle
+
+FROM apachesuperset.docker.scarf.sh/apache/superset:${TAG:-latest-dev}
+
+USER root
+
+# Instalar dependencias runtime necesarias
+RUN apt update && apt install -y \
+  libaio1 \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copiar Oracle Instant Client de la etapa anterior
+COPY --from=oracle_client /opt/oracle/client/11.2/ /opt/oracle/client/11.2/
+
+ENV ORACLE_HOME=/opt/oracle/client/11.2
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH="$ORACLE_HOME:$PATH"
+
+# Instalar cx_Oracle
+RUN pip install --no-cache-dir cx_Oracle
+
+USER superset
