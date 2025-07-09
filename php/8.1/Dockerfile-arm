@@ -1,0 +1,96 @@
+FROM php:8.1-fpm-alpine AS oci_instant_client
+
+# Instalar dependencias necesarias para compilación y Oracle Instant Client
+RUN apk update && apk add --no-cache \
+  autoconf \
+  automake \
+  gcc \
+  g++ \
+  make \
+  linux-headers \
+  libaio \
+  libnsl \
+  libzip-dev \
+  libxml2-dev \
+  libpng-dev \
+  postgresql-dev \
+  openldap-dev \
+  zip \
+  curl \
+  bash \
+  && ln -sf /usr/lib/libnsl.so.3.0.0 /usr/lib/libnsl.so.1 \
+  && ln -sf /lib/libc.musl-aarch64.so.1 /lib/libc.musl-aarch64.so.2
+
+# Crear carpetas para Oracle Instant Client
+# RUN mkdir -p /opt/oracle/client/19.27/network/admin
+RUN mkdir -p /opt/oracle/client/19.27
+
+# Copiar los ZIPs del Instant Client (asegúrate que estén en ./oracle_client/)
+COPY ./oracle_client/instantclient-basic-linux.arm64-19.27.0.0.0dbru.zip /opt/oracle/client/
+COPY ./oracle_client/instantclient-sdk-linux.arm64-19.27.0.0.0dbru.zip /opt/oracle/client/
+
+ENV ORACLE_HOME=/opt/oracle/client/19.27
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH="$ORACLE_HOME:$PATH"
+
+# Descomprimir Instant Client y SDK, mover archivos y crear enlaces simbólicos
+RUN unzip /opt/oracle/client/instantclient-basic-linux.arm64-19.27.0.0.0dbru.zip -d /opt/oracle/client && \
+  unzip -o /opt/oracle/client/instantclient-sdk-linux.arm64-19.27.0.0.0dbru.zip -d /opt/oracle/client && \
+  mv /opt/oracle/client/instantclient_19_27/* $ORACLE_HOME/ && \
+  rm -rf /opt/oracle/client/instantclient_19_27 && \
+  rm -f /opt/oracle/client/instantclient-basic-linux.arm64-19.27.0.0.0dbru.zip /opt/oracle/client/instantclient-sdk-linux.arm64-19.27.0.0.0dbru.zip && \
+  ln -sf $ORACLE_HOME/libclntsh.so.19.1 $ORACLE_HOME/libclntsh.so
+
+# # Instalar PHP extensions necesarias y Xdebug
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS && \
+  pecl install xdebug && \
+  docker-php-ext-enable xdebug && \
+  docker-php-ext-configure oci8 --with-oci8=instantclient,$ORACLE_HOME && \
+  docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,$ORACLE_HOME && \
+  docker-php-ext-install -j$(nproc) oci8 pdo_oci zip soap calendar gd ldap pdo_mysql pdo_pgsql opcache && \
+  apk del .build-deps
+
+# Etapa final: imagen optimizada
+FROM php:8.1-fpm-alpine
+
+# Copiar Oracle Instant Client y extensiones PHP compiladas
+COPY --from=oci_instant_client /opt/oracle/client/19.27/ /opt/oracle/client/19.27/
+COPY --from=oci_instant_client /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=oci_instant_client /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini /usr/local/etc/php/conf.d/
+
+ENV ORACLE_HOME=/opt/oracle/client/19.27
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH="$ORACLE_HOME:$PATH"
+
+# Instalar dependencias runtime necesarias
+RUN apk update && apk add --no-cache \
+  libzip-dev \
+  libpng-dev \
+  openldap-dev \
+  libnsl \
+  libaio \
+  libpq && \
+  ln -sf /usr/lib/libnsl.so.3.0.0 $ORACLE_HOME/libnsl.so.1
+
+# Habilitar extensiones PHP
+RUN docker-php-ext-enable zip soap calendar gd ldap oci8 pdo_oci pdo_mysql pdo_pgsql opcache xdebug
+
+# Configurar Xdebug con valores fijos para evitar problemas con variables de entorno
+RUN echo "xdebug.mode=debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.client_port=9003" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.discover_client_host=0" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.log=/tmp/xdebug/xdebug.log" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.log_level=7" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+# Crear directorio y archivo de log para Xdebug con permisos adecuados
+RUN mkdir -p /tmp/xdebug && \
+  touch /tmp/xdebug/xdebug.log && \
+  chmod 777 /tmp/xdebug /tmp/xdebug/xdebug.log
+
+# Copiar archivos ini personalizados si los tienes
+COPY ./ini/* $PHP_INI_DIR/conf.d/
+
+# Cambiar php.ini-development a php.ini para usar configuración base
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
