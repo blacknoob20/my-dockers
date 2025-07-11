@@ -6,6 +6,7 @@ RUN apk update && apk add --no-cache \
   automake \
   gcc \
   g++ \
+  gcompat \
   make \
   linux-headers \
   libaio \
@@ -66,6 +67,7 @@ ENV PATH="$ORACLE_HOME:$PATH"
 RUN apk update && apk add --no-cache \
   libzip-dev \
   libpng-dev \
+  gcompat \
   openldap-dev \
   libnsl \
   libaio \
