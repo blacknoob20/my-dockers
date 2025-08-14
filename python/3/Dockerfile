@@ -17,7 +17,8 @@ RUN apk update && apk add --no-cache \
   postgresql-dev \
   openldap-dev
 
-RUN pip install -r /app/requirements-dev.txt
+RUN pip install -r /app/requirements.txt &&\
+  pip install -r /app/requirements-dev.txt
 
 FROM python:3.13-alpine
 

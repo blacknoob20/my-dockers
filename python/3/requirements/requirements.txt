@@ -1,0 +1,22 @@
+# Dependencias principales
+Flask
+Flask-RESTX
+Flask-SQLAlchemy
+Flask-Migrate
+SQLAlchemy
+
+# Base de datos
+oracledb
+psycopg2-binary
+
+# Autenticación y seguridad
+PyJWT
+bcrypt
+
+# Utilidades
+dicttoxml
+python-dotenv
+zeep  # Cliente SOAP
+
+# Despliegue
+gunicorn
