@@ -1,11 +1,10 @@
-flask
-flask-sqlalchemy
-flask-migrate
-python-dotenv
-sqlalchemy
-oracledb
-psycopg2-binary
-gunicorn
-# Testing
+# Desarrollo y pruebas
 pytest==7.3.1
 pytest-cov==4.1.0
+pytest-mock==3.10.0
+coverage==7.2.7
+black==23.7.0
+flake8==6.0.0
+isort==5.12.0
+mypy==1.4.1
+ipython==8.14.0
