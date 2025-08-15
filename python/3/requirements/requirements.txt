@@ -3,6 +3,7 @@ Flask
 Flask-RESTX
 Flask-SQLAlchemy
 Flask-Migrate
+Flask-Talisman  # Seguridad y headers HTTP
 SQLAlchemy
 
 # Base de datos
