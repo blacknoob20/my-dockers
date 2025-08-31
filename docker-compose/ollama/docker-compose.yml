@@ -1,0 +1,29 @@
+services:
+  ollama:
+    image: alpine/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        # inicia el servidor en background
+        ollama serve &
+        # espera a que arranque
+        sleep 3
+        # descarga el modelo si no está
+        ollama list | grep -q "mistral:7b" || ollama pull mistral:7b
+        # mantiene el proceso corriendo en foreground
+        wait -n
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  ollama-data:
