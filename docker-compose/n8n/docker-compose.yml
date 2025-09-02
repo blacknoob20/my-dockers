@@ -1,0 +1,21 @@
+services:
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      # CLICKUP_TOKEN se tomará del archivo .env
+      - CLICKUP_TOKEN=${CLICKUP_TOKEN}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    networks:
+      - net
+
+networks:
+  net:
+    driver: bridge
