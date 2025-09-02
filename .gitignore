@@ -1,2 +1,5 @@
 */oracle_client/
 *.zip
+.DS_Store
+.env
+n8n_data/

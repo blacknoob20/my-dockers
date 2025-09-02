@@ -1,0 +1,154 @@
+{
+  "name": "ClickUp DONE → Telegram + Comments",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 10,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Every 10 min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "workspaceId": "",
+        "spaceId": "",
+        "listId": "AQUI_TU_LIST_ID",
+        "returnAll": true
+      },
+      "id": "2",
+      "name": "ClickUp → List Tasks",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [400, 300],
+      "credentials": {
+        "clickUpApi": "ClickUp Credentials"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"status\"][\"status\"]}}",
+              "operation": "equal",
+              "value2": "done"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF DONE",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getComments",
+        "taskId": "={{$json.id}}"
+      },
+      "id": "5",
+      "name": "ClickUp → Get Comments",
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [800, 300],
+      "credentials": {
+        "clickUpApi": "ClickUp Credentials"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const comments = $json.comments || [];\nconst last3 = comments.slice(-3);\nconst summary = last3.map(c => `💬 ${c.user.username}: ${c.comment_text.replace(/<[^>]*>/g, '')}`).join('\\n');\nreturn [{ json: {\n  message: `✅ Ticket cerrado: ${$json.name} por ${$json.assignees?.[0]?.username || 'Nadie asignado'}\\n\\n🔗 ${$json.url}\\n\\n${summary}`\n}}];"
+      },
+      "id": "6",
+      "name": "Format Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "AQUI_TU_CHAT_ID",
+        "text": "={{$json.message}}"
+      },
+      "id": "4",
+      "name": "Telegram → Notify",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1200, 300],
+      "credentials": {
+        "telegramApi": "Telegram Bot"
+      }
+    }
+  ],
+  "connections": {
+    "Cron Every 10 min": {
+      "main": [
+        [
+          {
+            "node": "ClickUp → List Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp → List Tasks": {
+      "main": [
+        [
+          {
+            "node": "IF DONE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF DONE": {
+      "main": [
+        [
+          {
+            "node": "ClickUp → Get Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp → Get Comments": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram → Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true
+}
