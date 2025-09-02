@@ -1,4 +1,4 @@
-FROM php:8.2-fpm-alpine as OCI_INSTANT_CLIENT
+FROM php:8.2-fpm-alpine AS oci_instant_client
 
 RUN mkdir -p /opt/oracle/client/minify
 RUN mkdir -p /opt/oracle/client/11.2/network/admin
@@ -72,9 +72,9 @@ RUN apk del .build-deps
 
 FROM php:8.2-fpm-alpine
 
-COPY --from=OCI_INSTANT_CLIENT /opt/oracle/client/minify/ /opt/oracle/client/11.2/
-COPY --from=OCI_INSTANT_CLIENT /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
-COPY --from=OCI_INSTANT_CLIENT /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini /usr/local/etc/php/conf.d/
+COPY --from=oci_instant_client /opt/oracle/client/minify/ /opt/oracle/client/11.2/
+COPY --from=oci_instant_client /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=oci_instant_client /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini /usr/local/etc/php/conf.d/
 
 ENV ORACLE_HOME=/opt/oracle/client/11.2
 ENV LD_LIBRARY_PATH=$ORACLE_HOME
