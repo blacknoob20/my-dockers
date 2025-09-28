@@ -19,8 +19,14 @@ services:
     volumes:
       - traefik_data:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - net
 
   n8n:
+    depends_on:
+      - traefik
+      - ollama
+      - postgres
     image: docker.n8n.io/n8nio/n8n
     restart: always
     ports:
@@ -53,7 +59,60 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./local-files:/files
+    networks:
+      - net
+
+  ollama:
+    image: alpine/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      # Optimización para Apple Silicon
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=1
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        # inicia el servidor en background
+        ollama serve &
+        # espera a que arranque
+        sleep 3
+        # descarga el modelo si no está
+        ollama list | grep -q "mistral:7b" || ollama pull mistral:7b
+        # mantiene el proceso corriendo en foreground
+        wait -n
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    platform: linux/arm64/v8
+    networks:
+      - net
+  postgres:
+    image: postgres:15.6-alpine3.19
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - n8n_data:/var/lib/postgresql/data
+    networks:
+      - net
 
 volumes:
   n8n_data:
   traefik_data:
+  ollama-data:
+
+
+networks:
+  net:
+    driver: bridge
