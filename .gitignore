@@ -3,3 +3,4 @@
 .DS_Store
 .env
 n8n_data/
+postgresql_vlm/
