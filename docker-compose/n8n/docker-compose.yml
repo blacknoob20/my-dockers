@@ -70,11 +70,6 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
-    environment:
-      # Optimización para Apple Silicon
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_NUM_PARALLEL=2
-      - OLLAMA_MAX_LOADED_MODELS=1
     entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
@@ -83,7 +78,7 @@ services:
         # espera a que arranque
         sleep 3
         # descarga el modelo si no está
-        ollama list | grep -q "mistral:7b" || ollama pull mistral:7b
+        ollama list | grep -q "llama3.1:latest" || ollama pull llama3.1:latest
         # mantiene el proceso corriendo en foreground
         wait -n
     healthcheck:
@@ -92,7 +87,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    platform: linux/arm64/v8
     networks:
       - net
   postgres:
@@ -103,7 +97,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - n8n_data:/var/lib/postgresql/data
+      - ./postgresql_vlm/var/lib/postgresql/data:/var/lib/postgresql/data
+      - ./pg_scripts:/docker-entrypoint-initdb.d
     networks:
       - net
 
