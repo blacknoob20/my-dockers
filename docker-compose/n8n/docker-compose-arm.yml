@@ -66,10 +66,16 @@ services:
     image: alpine/ollama:latest
     container_name: ollama
     restart: unless-stopped
+    platform: linux/arm64/v8
     ports:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+    environment:
+      # Optimización para Apple Silicon
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=1
     entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
@@ -92,8 +98,6 @@ services:
   postgres:
     image: postgres:15.6-alpine3.19
     restart: always
-    ports:
-      - "5432:5432" # <--- ¡Añade esta línea!
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
