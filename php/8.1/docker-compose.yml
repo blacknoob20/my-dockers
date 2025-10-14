@@ -1,0 +1,30 @@
+services:
+  php:
+    hostname: crguerrero
+    image: blacknoob20/php8.1-fpm-alpine-oci8
+    container_name: sgi2
+    command: "php -S 0.0.0.0:8000"
+    ports:
+      - "83:8000"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - TZ=America/Guayaquil
+      - XDEBUG_CLIENT_HOST=host.docker.internal
+      - NLS_LANG=SPANISH_SPAIN.AL32UTF8
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - net
+  ramdb:
+    image: redis:alpine
+    container_name: redis2
+    command: [ "redis-server", "--maxmemory", "500mb", "--maxmemory-policy", "allkeys-lru" ]
+    volumes:
+      - $PWD/../usr/local/etc/redis/:/usr/local/etc/redis/
+    # ports:
+    #   - "6379:6379"
+    networks:
+      - net
+networks:
+  net:
