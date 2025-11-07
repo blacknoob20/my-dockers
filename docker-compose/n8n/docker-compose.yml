@@ -78,7 +78,8 @@ services:
         # espera a que arranque
         sleep 3
         # descarga el modelo si no está
-        ollama list | grep -q "llama3.1:latest" || ollama pull llama3.1:latest
+        # ollama list | grep -q "llama3.1:latest" || ollama pull llama3.1:latest
+        ollama list | grep -q "mistral:latest" || ollama pull mistral:latest
         # mantiene el proceso corriendo en foreground
         wait -n
     healthcheck:
