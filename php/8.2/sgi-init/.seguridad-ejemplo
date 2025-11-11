@@ -1,0 +1,45 @@
+[DATABASE]
+db_type=oracle
+
+[ORACLE]
+db_host=10.100.2.226
+db_portdes=7000
+db_port=5001
+db_database=ADMIN
+db_user=web
+db_password=Sutherland1926
+db_passworddes=sgp
+db_charset=AL32UTF8
+db_format_timestamp='DD/MM/YYYY HH24:MI:SS'
+APP_FORMAT_DATE='d/m/Y'
+APP_FORMAT_TIMESTAMP='d/m/Y H:i:s'
+
+[MYSQL]
+db_host=10.100.2.226
+db_port=5000
+db_database=sesion_consejo
+db_user=sa
+db_password=Sergei1873
+db_charset=utf8mb4
+db_format_timestamp='%Y-%m-%d %H:%i:%s'
+APP_FORMAT_DATE=Y-m-d
+APP_FORMAT_TIMESTAMP='Y/m/d H:i:s'
+
+[POSTGRESQL]
+db_host=localhost
+db_port=5432
+db_database=mydatabase
+db_user=myuser
+db_password=mypassword
+db_charset=UTF8
+
+[SQLSERVER]
+db_host=localhost
+db_port=1433
+db_database=mydatabase
+db_user=myuser
+db_password=mypassword
+db_charset=UTF-8
+
+[COOKIES]
+app_scripts='./js/general/wizard.js, ./js/gestionInformacion/procesarArchivo.js, ./js/gestionInformacion/encuesta.js, ./js/gestionInformacion/eventos.js'
