@@ -1,6 +1,16 @@
 */oracle_client/
 *.zip
 .DS_Store
+
+# Archivos de configuración con datos sensibles
 .env
+.env-local
+.env-mio*
+.seguridad
+**/.env-mio*
+**/.env-local
+**/.seguridad
+
+# Datos de aplicaciones
 n8n_data/
 postgresql_vlm/
