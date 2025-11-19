@@ -30,7 +30,7 @@ services:
     image: docker.n8n.io/n8nio/n8n
     restart: always
     ports:
-      - "127.0.0.1:5678:5678"
+      - "5678:5678"
     labels:
       - traefik.enable=true
       - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
@@ -91,7 +91,8 @@ services:
     networks:
       - net
   postgres:
-    image: postgres:15.6-alpine3.19
+    # image: postgres:15.6-alpine3.19
+    image: pgvector/pgvector:pg18-trixie
     restart: always
     ports:
       - "5432:5432" # <--- ¡Añade esta línea!
@@ -100,7 +101,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ./postgresql_vlm/var/lib/postgresql/data:/var/lib/postgresql/data
+      # - ./postgresql_vlm/var/lib/postgresql/data:/var/lib/postgresql/data
+      - ./postgresql_vlm/var/lib/postgresql:/var/lib/postgresql
       - ./pg_scripts:/docker-entrypoint-initdb.d
     networks:
       - net
