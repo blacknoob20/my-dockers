@@ -1,0 +1,8 @@
+74.208.171.187.sslip.io {
+  reverse_proxy n8n:5678
+  header {
+    Cross-Origin-Opener-Policy "same-origin"
+    Origin-Agent-Cluster "?1"
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+  }
+}
