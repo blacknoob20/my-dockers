@@ -1,0 +1,63 @@
+# docker-compose para producción (sin traefik ni ollama, sin configuración de subdominio)
+services:
+  n8n:
+    depends_on:
+      - postgres
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    # No publicar el puerto directamente: exponer solo vía proxy
+    # ports:
+    #   - "${N8N_HOST_PORT}:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_RUNNERS_ENABLED=true
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${GENERIC_TIMEZONE}
+      - N8N_PROTOCOL=https
+      - N8N_HOST=74.208.171.187.sslip.io
+      - N8N_PORT=443
+      - WEBHOOK_TUNNEL_URL=https://74.208.171.187.sslip.io
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+    networks:
+      - net
+
+  postgres:
+    image: blacknoob20/pg15vector-alpine
+    restart: always
+    ports:
+      - "${POSTGRES_HOST_PORT}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - ./postgresql_vlm/var/lib/postgresql:/var/lib/postgresql
+      - ./pg_scripts:/docker-entrypoint-initdb.d
+    networks:
+      - net
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - net
+
+volumes:
+  n8n_data:
+  caddy_data:
+  caddy_config:
+
+
+networks:
+  net:
+    driver: bridge
