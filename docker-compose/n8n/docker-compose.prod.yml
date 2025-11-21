@@ -9,14 +9,14 @@ services:
     # ports:
     #   - "${N8N_HOST_PORT}:5678"
     environment:
-      - N8N_PORT=5678
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - N8N_EDITOR_BASE_URL=https://74.208.171.187.sslip.io
+      - N8N_HOST=74.208.171.187.sslip.io
+      - N8N_PROTOCOL=https
+      - N8N_PUBLIC_API_URL=https://74.208.171.187.sslip.io
       - N8N_RUNNERS_ENABLED=true
       - NODE_ENV=production
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
       - TZ=${GENERIC_TIMEZONE}
-      - N8N_PROTOCOL=https
-      - N8N_HOST=74.208.171.187.sslip.io
-      - N8N_PORT=443
       - WEBHOOK_TUNNEL_URL=https://74.208.171.187.sslip.io
     volumes:
       - n8n_data:/home/node/.n8n
