@@ -57,7 +57,7 @@ services:
       - net
 
   postgres:
-    image: pg15-vector
+    image: blacknoob20/pg15vector-alpine-arm
     restart: always
     ports:
       - "5432:5432"
