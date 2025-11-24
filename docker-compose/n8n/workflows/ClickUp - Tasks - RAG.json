@@ -9,11 +9,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1392,
-        -320
+        1360,
+        -352
       ],
       "typeVersion": 1,
-      "id": "ac9c1713-69aa-46fe-8086-38273ea95645",
+      "id": "7b4a1a69-efe2-49dd-a826-c011784809e9",
       "name": "Sticky Note"
     },
     {
@@ -27,10 +27,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        2368,
-        -256
+        2336,
+        -288
       ],
-      "id": "988b3bb1-0f69-4254-80f7-588a2902337e",
+      "id": "bdecd789-bc4e-480e-9284-0ff005b8a87c",
       "name": "AI Agent"
     },
     {
@@ -40,41 +40,12 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
       "position": [
-        2192,
-        -256
+        2160,
+        -288
       ],
-      "id": "9dc44246-c85e-4d1e-aebe-3f2977dea2fe",
+      "id": "ef443e43-e9ef-4485-b81f-70af88fbeb50",
       "name": "When chat message received",
       "webhookId": "6c8d9157-f52b-440b-b7ea-34e281863b1f"
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "team": "3121590",
-        "space": "=3241325",
-        "folder": "=90172621115",
-        "list": "=901703156817",
-        "filters": {
-          "dateUpdatedGt": "={{ (new Date($json.modified_time *1)).toISOString() }}",
-          "includeClosed": true,
-          "orderBy": "updated",
-          "subtasks": true
-        }
-      },
-      "type": "n8n-nodes-base.clickUp",
-      "typeVersion": 1,
-      "position": [
-        -304,
-        -160
-      ],
-      "id": "8899a775-29d3-4e76-9a3d-1587b42d090b",
-      "name": "ClickUp - Todas las tareas",
-      "credentials": {
-        "clickUpApi": {
-          "id": "T0TineeyYXm7rzFF",
-          "name": "ClickUp account"
-        }
-      }
     },
     {
       "parameters": {
@@ -83,109 +54,109 @@
             {
               "id": "d5e2bfba-9603-4b23-a1ad-fe0a8c10239c",
               "name": "id",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.id }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.id }}",
               "type": "string"
             },
             {
               "id": "82f03019-4a64-4694-9ad2-fa0da0290ad8",
               "name": "titulo",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.name }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.name }}",
               "type": "string"
             },
             {
               "id": "32f1222c-5087-4cb2-8fbf-c3f2d8e83e7d",
               "name": "descripcion",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.description }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.description }}",
               "type": "string"
             },
             {
               "id": "baea74c2-08b1-4623-b8ab-145329c6ea53",
               "name": "estado",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.status.status }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.status.status }}",
               "type": "string"
             },
             {
               "id": "86f43dee-172a-4616-8bae-784b936b1223",
               "name": "creador",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.creator.username }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.creator.username }}",
               "type": "string"
             },
             {
               "id": "ed6d35fe-3954-45cf-b942-4ac04287ed57",
               "name": "asignados",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.assignees.map(assignee => assignee.username) }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.assignees.map(assignee => assignee.username).toJsonString() }}",
               "type": "array"
             },
             {
               "id": "36a254dc-b596-43c6-9726-93ba5962b7e4",
               "name": "fecha_creacion",
-              "value": "={{ (new Date($('ClickUp - Todas las tareas').item.json.date_created *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "value": "={{ (new Date($('ClickUp - Listar tareas').item.json.date_created *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
               "type": "string"
             },
             {
               "id": "f42fb5f9-b82b-4e36-9802-3919828a2399",
               "name": "raw_date_created",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_created }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_created }}",
               "type": "string"
             },
             {
               "id": "34e8cc82-888c-47c2-88ea-917ed50f0b2b",
               "name": "fecha_actualizacion",
-              "value": "={{ (new Date($('ClickUp - Todas las tareas').item.json.date_updated *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "value": "={{ (new Date($('ClickUp - Listar tareas').item.json.date_updated *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
               "type": "string"
             },
             {
               "id": "1d9e1024-78e0-4790-871c-707b0470e524",
               "name": "raw_date_updated",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_updated }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_updated }}",
               "type": "string"
             },
             {
               "id": "e914dd36-8f66-4937-9424-589e1cae80d0",
               "name": "fecha_cierre",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_closed && (new Date($('ClickUp - Todas las tareas').item.json.date_closed *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_closed && (new Date($('ClickUp - Listar tareas').item.json.date_closed *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
               "type": "string"
             },
             {
               "id": "76d23ba9-b62d-4fcc-93b0-9c8973f22dd1",
               "name": "raw_date_closed",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_closed }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_closed }}",
               "type": "string"
             },
             {
               "id": "5895a9d3-2ec8-42ee-983b-803c5aceb7eb",
               "name": "fecha_terminado",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_done && (new Date($('ClickUp - Todas las tareas').item.json.date_done *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_done && (new Date($('ClickUp - Listar tareas').item.json.date_done *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
               "type": "string"
             },
             {
               "id": "311b983a-99a2-46ea-b375-8c5b07f370f7",
               "name": "raw_date_done",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.date_done }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.date_done }}",
               "type": "string"
             },
             {
               "id": "1f592ed9-1052-4ede-8356-dae7f79c2908",
               "name": "url",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.url }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.url }}",
               "type": "string"
             },
             {
               "id": "b2277d11-3f58-4c12-b185-e16e55154da7",
               "name": "archivado",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.archived }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.archived }}",
               "type": "boolean"
             },
             {
               "id": "a9110ec1-50fd-4e87-8193-3ce50da53027",
               "name": "custom_fields",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.custom_fields.map(field => `${field.name}: ${Array.isArray(field.value) ? field.value.map(id => Object.fromEntries(field.type_config.options.map(o => [o.id, o.label]))[id]).toJsonString(): field.value || null}`) }}",
+              "value": "={{ $('ClickUp - Listar tareas').item.json.custom_fields.map(field => `${field.name}: ${Array.isArray(field.value) ? field.value.map(id => Object.fromEntries(field.type_config.options.map(o => [o.id, o.label]))[id]).toJsonString(): field.value || null}`) }}",
               "type": "array"
             },
             {
               "id": "649355d3-a11e-4ddf-ab4a-4ff00d76623a",
               "name": "subtareas",
-              "value": "={{ $('ClickUp - Todas las tareas').item.json.subtasks.map(t => ({subtarea_titulo:t.name,subtarea_estado:t.status.status,subtarea_actualizada:t.date_updated, subtarea_creador:t.creator.username,subtarea_url:t.url})) }}",
+              "value": "={{ ($('ClickUp - Listar tareas').item.json.subtasks || []).map(t => ({subtarea_titulo:t.name,subtarea_estado:t.status.status,subtarea_actualizada:t.date_updated, subtarea_creador:t.creator.username,subtarea_url:t.url})).toJsonString() }}",
               "type": "array"
             }
           ]
@@ -195,10 +166,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        224,
-        -144
+        192,
+        -176
       ],
-      "id": "078517ac-526e-4b41-9b6c-3a237187b880",
+      "id": "14faaca5-4f43-4929-9ef3-f27fc1ebf122",
       "name": "ClickUp - Campos Esenciales"
     },
     {
@@ -206,15 +177,15 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2080,
-        192
+        2048,
+        176
       ],
-      "id": "b50455ba-53cd-4cc0-8e5c-0d2522822391",
+      "id": "219561d4-5454-4728-bac1-d246134f12cd",
       "name": "Embeddings Google Gemini",
       "credentials": {
         "googlePalmApi": {
-          "id": "3zriddEonlKYnQaC",
-          "name": "Google Gemini(PaLM) Api account"
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
         }
       }
     },
@@ -226,10 +197,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
       "typeVersion": 1.1,
       "position": [
-        2512,
-        -80
+        2480,
+        -112
       ],
-      "id": "84f40a23-623f-49cc-a760-b7ffd089632e",
+      "id": "f459ae79-9b10-4621-bfdc-417c5b625f73",
       "name": "Answer questions with a vector store"
     },
     {
@@ -239,15 +210,15 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        2432,
-        64
+        2400,
+        48
       ],
-      "id": "89e8f3ad-2287-4c5d-bf8b-038a260cebcf",
+      "id": "d162a9c7-dd95-432b-a6f7-2f1070b05eb1",
       "name": "PGVector Store",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -260,15 +231,15 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        1440,
-        -256
+        1408,
+        -288
       ],
-      "id": "e77b5c99-ffbd-459c-8b39-6aa169b76e05",
+      "id": "106363be-c02e-41d2-9364-db2773cf44b9",
       "name": "Almacenar Tareas ClickUp",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -279,15 +250,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2688,
-        64
+        2656,
+        48
       ],
-      "id": "00fd4892-c737-4500-bc9c-293061b36490",
+      "id": "1549e90d-c8d5-4831-a5ce-9ca73c6cf61b",
       "name": "Gemini Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "3zriddEonlKYnQaC",
-          "name": "Google Gemini(PaLM) Api account"
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
         }
       }
     },
@@ -298,15 +269,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2272,
-        -80
+        2240,
+        -112
       ],
-      "id": "92b7edc4-a78a-4b67-8d20-30298abb0c2c",
+      "id": "f247396b-3cba-4a3a-bf75-f3b936be6eb4",
       "name": "Gemini Chat",
       "credentials": {
         "googlePalmApi": {
-          "id": "3zriddEonlKYnQaC",
-          "name": "Google Gemini(PaLM) Api account"
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
         }
       }
     },
@@ -318,15 +289,15 @@
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        2400,
-        -80
+        2368,
+        -112
       ],
-      "id": "d904df03-80ce-4956-bd7f-b0d9a74f0f19",
+      "id": "4a1feccf-191a-49b8-86e8-e705c8a92a70",
       "name": "Chat Memory",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -339,53 +310,31 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        2144,
-        -320
+        2112,
+        -352
       ],
       "typeVersion": 1,
-      "id": "b8f3e95f-cbdc-4954-becb-bc7ca383f0d6",
+      "id": "96d52515-41ba-4c81-979a-977b89bb5afd",
       "name": "Sticky Note1"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT (EXTRACT(EPOCH FROM COALESCE(MAX(modified_time), TIMESTAMP '2025-11-15 00:00:00')) * 1000) ::bigint AS modified_time\n  FROM ingested_tasks;",
+        "query": "select count(*) as ingested from ingested_tasks\nwhere task_id = '{{ $json.id }}' and modified_time = TIMESTAMP'{{ new Date($('ClickUp - Listar tareas').item.json.date_updated *1).toISOString().replace('T',' ').split('.')[0] }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -480,
-        -160
+        -160,
+        -192
       ],
-      "id": "adac214b-a40b-4f82-a901-56e4b3e791d2",
-      "name": "Obtener la fecha última actualización",
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "select count(*) as ingested from ingested_tasks\nwhere task_id = '{{ $json.id }}' and modified_time = TIMESTAMP'{{ new Date($json.date_updated *1).toISOString().replace('T',' ').split('.')[0] }}'",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -128,
-        -160
-      ],
-      "id": "8f22a724-1025-4aa7-a053-77a81f93f8d1",
+      "id": "b62d19a2-43f2-4fab-84a6-c724a43b94a4",
       "name": "Obtener carga previa",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -416,10 +365,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        32,
-        -160
+        0,
+        -192
       ],
-      "id": "adb6d66c-1434-4330-ad92-cfa0fdb0ce8e",
+      "id": "031a47ba-bbf2-49f9-8e03-92c9c1b8627b",
       "name": "¿Fue previamente cargado?"
     },
     {
@@ -427,10 +376,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        224,
-        -304
+        192,
+        -336
       ],
-      "id": "a5e86908-baac-4f4b-9dd8-3766e642449d",
+      "id": "9d7f6971-af1e-4337-8f09-db4898d1857c",
       "name": "No hacer nada"
     },
     {
@@ -442,16 +391,16 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        720,
-        -80
+        688,
+        -112
       ],
-      "id": "fb3c4b16-8de6-4ec6-a497-e48626b0acb6",
+      "id": "8d803417-b1eb-42e4-8df0-b4ce2b7f5402",
       "name": "Borrar referencias",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -462,26 +411,26 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1008,
-        -128
+        976,
+        -160
       ],
-      "id": "b4315f84-d375-41eb-a393-b92bc1b2bbe2",
+      "id": "6eeeb74f-6cb7-4927-8e27-54a998944c8e",
       "name": "Esperar eliminación"
     },
     {
       "parameters": {
         "content": "## Selección de tareas\n",
         "height": 688,
-        "width": 2032,
+        "width": 2848,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -688,
-        -320
+        -1536,
+        -352
       ],
       "typeVersion": 1,
-      "id": "23d17a91-dd49-420a-bff5-20412f2f8327",
+      "id": "250f2c24-ad00-49bf-a6c7-dc99169fb4ff",
       "name": "Sticky Note2"
     },
     {
@@ -493,15 +442,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1728,
-        -256
+        1696,
+        -288
       ],
-      "id": "b9d744e2-4e5c-4d65-904b-1eedd6897c5f",
+      "id": "6cdf65ed-e627-4fa5-a706-094757658963",
       "name": "Actualizar task_id en vectores",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -510,10 +459,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1888,
-        -256
+        1856,
+        -288
       ],
-      "id": "5a666dd7-ba03-4eb4-855a-291a158a294b",
+      "id": "9c22b39f-911c-4746-990a-f34f261ad588",
       "name": "Terminar proceso"
     },
     {
@@ -521,10 +470,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -640,
-        -160
+        -1456,
+        -272
       ],
-      "id": "9f03d862-9f31-4e8d-9175-11c7b4c9f6ac",
+      "id": "7f12f6ef-a2eb-44c2-aca2-58b305b62308",
       "name": "Iniciar"
     },
     {
@@ -536,10 +485,10 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        1440,
-        112
+        1408,
+        96
       ],
-      "id": "3c972850-947e-4ea1-b78a-0743ea83e0ec",
+      "id": "8c3b6e25-d51b-4042-b98d-24dfc7c46e6b",
       "name": "Recursive Character Text Splitter"
     },
     {
@@ -551,15 +500,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        384,
-        16
+        352,
+        -16
       ],
-      "id": "5ac6b9fd-9631-4372-881c-46e649fa48ad",
+      "id": "cb93872f-3e9d-4a0d-8540-97ff30466cfe",
       "name": "Buscar tabla vectores",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -591,10 +540,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        560,
-        112
+        528,
+        96
       ],
-      "id": "ba864895-67cf-4f0e-8e6e-0f7ca8983e07",
+      "id": "942ee246-3b5f-47d9-a5cd-a25a4b19118d",
       "name": "¿Borrar si existe la tabla?"
     },
     {
@@ -620,10 +569,10 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        1408,
-        -32
+        1376,
+        -64
       ],
-      "id": "44c9e980-6576-4c23-b4b0-20653f6d9543",
+      "id": "80bed57d-e149-4b1f-be3d-0bd05f488a2a",
       "name": "Insertar Tareas"
     },
     {
@@ -713,15 +662,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1200,
-        -128
+        1168,
+        -160
       ],
-      "id": "e3e097f9-3677-4cf5-9dae-ec3b89306c7f",
+      "id": "72720ca7-ae61-4415-bdb3-d4d3f0f31fd3",
       "name": "Llenar ingested tasks",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     },
@@ -734,15 +683,321 @@
       "type": "n8n-nodes-base.postgresTool",
       "typeVersion": 2.6,
       "position": [
-        2768,
-        -80
+        2736,
+        -112
       ],
-      "id": "28c0c1d2-7e26-4781-ba0f-879f62db2db4",
+      "id": "cc9cb0db-83e3-4ab4-a514-0d9a1511dfec",
       "name": "tareas_completadas",
       "credentials": {
         "postgres": {
-          "id": "yesEzMfGhgOZy3to",
-          "name": "Postgres account"
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select \n  (SELECT (EXTRACT(EPOCH FROM COALESCE(MAX(modified_time), TIMESTAMP '2025-11-15 00:00:00')) * 1000) ::bigint FROM ingested_tasks) AS modified_time,\n  (select count(1) from clickup_tasks) as total_clickup_task;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1296,
+        -272
+      ],
+      "id": "c9112da3-ff0e-4560-838f-26ffa6b5c561",
+      "name": "Obtener última actualización",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "clickup_tasks",
+          "mode": "list",
+          "cachedResultName": "clickup_tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "={{ $json.id }}",
+            "data": "={{ $json }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inserted_at",
+              "displayName": "inserted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -368,
+        -288
+      ],
+      "id": "743251c3-49c8-4546-aa7b-9d62c5701140",
+      "name": "Insertar ClickUp Response",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3ae89aaf-0d07-42d5-a688-aa6ba8130209",
+              "leftValue": "={{ $('Obtener última actualización').item.json.total_clickup_task }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        -272
+      ],
+      "id": "185dbc91-f76a-4187-8b07-bd3266e17879",
+      "name": "No hay carga inicial?"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "team": "3121590",
+        "space": "=3241325",
+        "folder": "=90172621115",
+        "list": "=901703156817",
+        "filters": {
+          "dateUpdatedGt": "={{ $json.modified_time }}",
+          "includeClosed": true,
+          "orderBy": "updated",
+          "subtasks": true
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -272
+      ],
+      "id": "9a03d3fc-8821-489d-befd-6a302972c80a",
+      "name": "ClickUp - Listar tareas",
+      "credentials": {
+        "clickUpApi": {
+          "id": "sVwdzQKKDrxlNohA",
+          "name": "ClickUp account - Soporte Guayas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select count(1),id from clickup_tasks where task_id = '{{ $('ClickUp - Listar tareas').item.json.id }}' group by id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -736,
+        -80
+      ],
+      "id": "324b829e-ad61-4f07-a0b5-2604f07315de",
+      "name": "Buscar tarea",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7e448f18-53b0-412e-b661-ff772a7c5d27",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        -80
+      ],
+      "id": "24016d20-8f02-44c8-a3ea-7dbabd18574c",
+      "name": "Existe tarea?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "clickup_tasks",
+          "mode": "list",
+          "cachedResultName": "clickup_tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "='{{ $('ClickUp - Listar tareas').item.json.id }}'",
+            "data": "={{ $('ClickUp - Listar tareas').item.json }}",
+            "inserted_at": "='{{ (new Date()).toISOString() }}'",
+            "id": 0
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "inserted_at",
+              "displayName": "inserted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "3066316a-1718-4d8b-abab-f7f4ba1221c5",
+      "name": "Update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
         }
       }
     }
@@ -754,17 +1009,6 @@
         [
           {
             "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "ClickUp - Todas las tareas": {
-      "main": [
-        [
-          {
-            "node": "Obtener carga previa",
             "type": "main",
             "index": 0
           }
@@ -858,17 +1102,6 @@
         ]
       ]
     },
-    "Obtener la fecha última actualización": {
-      "main": [
-        [
-          {
-            "node": "ClickUp - Todas las tareas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Obtener carga previa": {
       "main": [
         [
@@ -946,7 +1179,7 @@
       "main": [
         [
           {
-            "node": "Obtener la fecha última actualización",
+            "node": "Obtener última actualización",
             "type": "main",
             "index": 0
           }
@@ -1025,17 +1258,108 @@
           }
         ]
       ]
+    },
+    "Obtener última actualización": {
+      "main": [
+        [
+          {
+            "node": "ClickUp - Listar tareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar ClickUp Response": {
+      "main": [
+        [
+          {
+            "node": "Obtener carga previa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No hay carga inicial?": {
+      "main": [
+        [
+          {
+            "node": "Insertar ClickUp Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar tarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp - Listar tareas": {
+      "main": [
+        [
+          {
+            "node": "No hay carga inicial?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar tarea": {
+      "main": [
+        [
+          {
+            "node": "Existe tarea?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe tarea?": {
+      "main": [
+        [
+          {
+            "node": "Update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insertar ClickUp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Obtener carga previa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "fc89573b-f938-4e99-8ff6-788387ef773e",
+  "versionId": "add01d3a-c66c-4688-a311-e6ea35e3b5bb",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "162143d743b8fbc55c88f1444a88fcd319b372a6e99dfd4f20be47340cf1e351"
+    "instanceId": "dfe878e4337a9a6094362e06023e91a757750bd9770a4d56013225bc19da1117"
   },
-  "id": "Rg4pU9RUvA55G4rF",
+  "id": "OXlJKMnY2JPoVJQz",
   "tags": []
 }
