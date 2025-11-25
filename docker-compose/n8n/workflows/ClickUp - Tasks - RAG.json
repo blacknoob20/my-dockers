@@ -9,11 +9,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1360,
-        -352
+        2176,
+        -160
       ],
       "typeVersion": 1,
-      "id": "7b4a1a69-efe2-49dd-a826-c011784809e9",
+      "id": "beecbd29-2c53-46c4-926a-0f68b46c95e3",
       "name": "Sticky Note"
     },
     {
@@ -27,10 +27,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        2336,
-        -288
+        3152,
+        -96
       ],
-      "id": "bdecd789-bc4e-480e-9284-0ff005b8a87c",
+      "id": "251ccd04-ede2-437c-ace6-f80d92c39921",
       "name": "AI Agent"
     },
     {
@@ -40,10 +40,10 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
       "position": [
-        2160,
-        -288
+        2976,
+        -96
       ],
-      "id": "ef443e43-e9ef-4485-b81f-70af88fbeb50",
+      "id": "ad087b63-5dcb-4309-a977-688034a1ed15",
       "name": "When chat message received",
       "webhookId": "6c8d9157-f52b-440b-b7ea-34e281863b1f"
     },
@@ -166,10 +166,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        192,
-        -176
+        1072,
+        -112
       ],
-      "id": "14faaca5-4f43-4929-9ef3-f27fc1ebf122",
+      "id": "79fcc7fc-f87e-4247-a3fc-079d9e6d01f2",
       "name": "ClickUp - Campos Esenciales"
     },
     {
@@ -177,10 +177,10 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2048,
-        176
+        2864,
+        384
       ],
-      "id": "219561d4-5454-4728-bac1-d246134f12cd",
+      "id": "c2d204f1-7e6d-41c6-8013-975c7041b7bc",
       "name": "Embeddings Google Gemini",
       "credentials": {
         "googlePalmApi": {
@@ -197,10 +197,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
       "typeVersion": 1.1,
       "position": [
-        2480,
-        -112
+        3296,
+        96
       ],
-      "id": "f459ae79-9b10-4621-bfdc-417c5b625f73",
+      "id": "10a2728e-4f2c-4e5f-9345-3d22f192ea2f",
       "name": "Answer questions with a vector store"
     },
     {
@@ -210,10 +210,10 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        2400,
-        48
+        3216,
+        256
       ],
-      "id": "d162a9c7-dd95-432b-a6f7-2f1070b05eb1",
+      "id": "6c36e463-b04e-4275-a40b-cd2b1ae0826e",
       "name": "PGVector Store",
       "credentials": {
         "postgres": {
@@ -231,10 +231,10 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        1408,
-        -288
+        2224,
+        -96
       ],
-      "id": "106363be-c02e-41d2-9364-db2773cf44b9",
+      "id": "08def267-3cda-4381-93f9-073392e394d5",
       "name": "Almacenar Tareas ClickUp",
       "credentials": {
         "postgres": {
@@ -250,10 +250,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2656,
-        48
+        3472,
+        256
       ],
-      "id": "1549e90d-c8d5-4831-a5ce-9ca73c6cf61b",
+      "id": "c6b1e2d3-bc1c-4cfb-b0b2-e6b0267adf14",
       "name": "Gemini Model",
       "credentials": {
         "googlePalmApi": {
@@ -269,10 +269,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2240,
-        -112
+        3056,
+        96
       ],
-      "id": "f247396b-3cba-4a3a-bf75-f3b936be6eb4",
+      "id": "57de093d-cbe7-4c59-a05c-139e6b5c5a07",
       "name": "Gemini Chat",
       "credentials": {
         "googlePalmApi": {
@@ -289,10 +289,10 @@
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        2368,
-        -112
+        3184,
+        96
       ],
-      "id": "4a1feccf-191a-49b8-86e8-e705c8a92a70",
+      "id": "fea3de7c-63cf-4a04-8845-7f29ec67412f",
       "name": "Chat Memory",
       "credentials": {
         "postgres": {
@@ -310,11 +310,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        2112,
-        -352
+        2928,
+        -160
       ],
       "typeVersion": 1,
-      "id": "96d52515-41ba-4c81-979a-977b89bb5afd",
+      "id": "71b41019-1b0b-45e2-a55a-16af64aeee04",
       "name": "Sticky Note1"
     },
     {
@@ -326,10 +326,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -160,
-        -192
+        704,
+        -128
       ],
-      "id": "b62d19a2-43f2-4fab-84a6-c724a43b94a4",
+      "id": "cc3cf30d-c148-4f8c-bf1e-d5a96bf70e54",
       "name": "Obtener carga previa",
       "credentials": {
         "postgres": {
@@ -365,10 +365,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        0,
-        -192
+        880,
+        -128
       ],
-      "id": "031a47ba-bbf2-49f9-8e03-92c9c1b8627b",
+      "id": "0083e645-3faa-4f55-942e-118f6444a1db",
       "name": "¿Fue previamente cargado?"
     },
     {
@@ -376,33 +376,11 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        192,
-        -336
+        1072,
+        -256
       ],
-      "id": "9d7f6971-af1e-4337-8f09-db4898d1857c",
+      "id": "d9071669-1219-47b4-baa6-b7af17b08e80",
       "name": "No hacer nada"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "delete from n8n_vectors where task_id= '{{ $('ClickUp - Campos Esenciales').item.json.id }}'",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        688,
-        -112
-      ],
-      "id": "8d803417-b1eb-42e4-8df0-b4ce2b7f5402",
-      "name": "Borrar referencias",
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "wJyvDHVfFHpmngoR",
-          "name": "Postgres account - ClickUp Tasks"
-        }
-      }
     },
     {
       "parameters": {
@@ -411,26 +389,26 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        976,
-        -160
+        1808,
+        -96
       ],
-      "id": "6eeeb74f-6cb7-4927-8e27-54a998944c8e",
+      "id": "ff1fa83a-686f-4801-9bc5-e5ffdffdf2ce",
       "name": "Esperar eliminación"
     },
     {
       "parameters": {
         "content": "## Selección de tareas\n",
-        "height": 688,
-        "width": 2848,
+        "height": 800,
+        "width": 3136,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -1536,
-        -352
+        -1008,
+        -272
       ],
       "typeVersion": 1,
-      "id": "250f2c24-ad00-49bf-a6c7-dc99169fb4ff",
+      "id": "16849678-5a74-4862-81e8-f4476fe63645",
       "name": "Sticky Note2"
     },
     {
@@ -442,10 +420,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1696,
-        -288
+        2512,
+        -96
       ],
-      "id": "6cdf65ed-e627-4fa5-a706-094757658963",
+      "id": "89c87355-9b1a-4241-811f-acd44af14760",
       "name": "Actualizar task_id en vectores",
       "credentials": {
         "postgres": {
@@ -459,10 +437,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1856,
-        -288
+        2672,
+        -96
       ],
-      "id": "9c22b39f-911c-4746-990a-f34f261ad588",
+      "id": "2f9b7349-d246-473d-94cc-0ce9ddc743ce",
       "name": "Terminar proceso"
     },
     {
@@ -470,10 +448,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1456,
-        -272
+        -880,
+        -112
       ],
-      "id": "7f12f6ef-a2eb-44c2-aca2-58b305b62308",
+      "id": "ee4fe795-705f-4261-aabb-9399c1c8be2b",
       "name": "Iniciar"
     },
     {
@@ -485,10 +463,10 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        1408,
-        96
+        2224,
+        304
       ],
-      "id": "8c3b6e25-d51b-4042-b98d-24dfc7c46e6b",
+      "id": "e0f92bda-a31e-407a-b385-10d0f104f8ba",
       "name": "Recursive Character Text Splitter"
     },
     {
@@ -500,10 +478,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        352,
-        -16
+        1232,
+        0
       ],
-      "id": "cb93872f-3e9d-4a0d-8540-97ff30466cfe",
+      "id": "c4d4223f-d09f-44aa-bc89-aba96b4df284",
       "name": "Buscar tabla vectores",
       "credentials": {
         "postgres": {
@@ -540,10 +518,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        528,
-        96
+        1392,
+        160
       ],
-      "id": "942ee246-3b5f-47d9-a5cd-a25a4b19118d",
+      "id": "5bded7c0-4fc3-45c9-ba26-79db528e373b",
       "name": "¿Borrar si existe la tabla?"
     },
     {
@@ -569,10 +547,10 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        1376,
-        -64
+        2192,
+        144
       ],
-      "id": "80bed57d-e149-4b1f-be3d-0bd05f488a2a",
+      "id": "e3c3f9ca-e8fc-4a5a-b661-15eea36184af",
       "name": "Insertar Tareas"
     },
     {
@@ -662,10 +640,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1168,
-        -160
+        1984,
+        -96
       ],
-      "id": "72720ca7-ae61-4415-bdb3-d4d3f0f31fd3",
+      "id": "73aa2025-8360-4a5a-b48f-b4ad2d2ec582",
       "name": "Llenar ingested tasks",
       "credentials": {
         "postgres": {
@@ -683,10 +661,10 @@
       "type": "n8n-nodes-base.postgresTool",
       "typeVersion": 2.6,
       "position": [
-        2736,
-        -112
+        3552,
+        96
       ],
-      "id": "cc9cb0db-83e3-4ab4-a514-0d9a1511dfec",
+      "id": "f63f896f-3ee1-43de-9477-9553f3611666",
       "name": "tareas_completadas",
       "credentials": {
         "postgres": {
@@ -698,16 +676,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "select \n  (SELECT (EXTRACT(EPOCH FROM COALESCE(MAX(modified_time), TIMESTAMP '2025-11-15 00:00:00')) * 1000) ::bigint FROM ingested_tasks) AS modified_time,\n  (select count(1) from clickup_tasks) as total_clickup_task;\n",
+        "query": "select \n  (SELECT (EXTRACT(EPOCH FROM COALESCE(MAX(modified_time), TIMESTAMP '2025-11-20 00:00:00')) * 1000) ::bigint FROM ingested_tasks) AS modified_time,\n  (select count(1) from clickup_tasks) as total_clickup_task;\n",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1296,
-        -272
+        -720,
+        -112
       ],
-      "id": "c9112da3-ff0e-4560-838f-26ffa6b5c561",
+      "id": "611353d1-7558-4ed4-a24e-3e92336f9e7e",
       "name": "Obtener última actualización",
       "alwaysOutputData": true,
       "credentials": {
@@ -733,8 +711,8 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "task_id": "={{ $json.id }}",
-            "data": "={{ $json }}"
+            "task_id": "={{ $('ClickUp - Listar tareas').item.json.id }}",
+            "data": "={{ $('ClickUp - Listar tareas').item.json }}"
           },
           "matchingColumns": [
             "id"
@@ -786,10 +764,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -368,
-        -288
+        512,
+        -128
       ],
-      "id": "743251c3-49c8-4546-aa7b-9d62c5701140",
+      "id": "435a5fd1-caac-4f29-b4cd-b413643ba026",
       "name": "Insertar ClickUp Response",
       "credentials": {
         "postgres": {
@@ -825,10 +803,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -928,
-        -272
+        -352,
+        -112
       ],
-      "id": "185dbc91-f76a-4187-8b07-bd3266e17879",
+      "id": "53834df7-b861-423c-8b62-6923e2de8f93",
       "name": "No hay carga inicial?"
     },
     {
@@ -839,7 +817,7 @@
         "folder": "=90172621115",
         "list": "=901703156817",
         "filters": {
-          "dateUpdatedGt": "={{ $json.modified_time }}",
+          "dateUpdatedGt": "={{ (new Date($json.modified_time *1)).toISOString() }}",
           "includeClosed": true,
           "orderBy": "updated",
           "subtasks": true
@@ -848,10 +826,10 @@
       "type": "n8n-nodes-base.clickUp",
       "typeVersion": 1,
       "position": [
-        -1120,
-        -272
+        -544,
+        -112
       ],
-      "id": "9a03d3fc-8821-489d-befd-6a302972c80a",
+      "id": "a205b435-23e3-4c56-ac71-d87051389876",
       "name": "ClickUp - Listar tareas",
       "credentials": {
         "clickUpApi": {
@@ -863,16 +841,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "select count(1),id from clickup_tasks where task_id = '{{ $('ClickUp - Listar tareas').item.json.id }}' group by id",
+        "query": "select count(1) from clickup_tasks where task_id = '{{ $('ClickUp - Listar tareas').item.json.id }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -736,
-        -80
+        -176,
+        -16
       ],
-      "id": "324b829e-ad61-4f07-a0b5-2604f07315de",
+      "id": "f472aa55-838c-4532-8935-13beffd97e84",
       "name": "Buscar tarea",
       "credentials": {
         "postgres": {
@@ -908,92 +886,62 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -560,
-        -80
+        0,
+        -16
       ],
-      "id": "24016d20-8f02-44c8-a3ea-7dbabd18574c",
-      "name": "Existe tarea?"
+      "id": "7f41df23-1209-4c92-b3ec-ae064363a9b3",
+      "name": "No existe tarea?"
     },
     {
       "parameters": {
-        "operation": "update",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "value": "clickup_tasks",
-          "mode": "list",
-          "cachedResultName": "clickup_tasks"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "task_id": "='{{ $('ClickUp - Listar tareas').item.json.id }}'",
-            "data": "={{ $('ClickUp - Listar tareas').item.json }}",
-            "inserted_at": "='{{ (new Date()).toISOString() }}'",
-            "id": 0
-          },
-          "matchingColumns": [
-            "id"
-          ],
-          "schema": [
-            {
-              "id": "id",
-              "displayName": "id",
-              "required": false,
-              "defaultMatch": true,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "task_id",
-              "displayName": "task_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "data",
-              "displayName": "data",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "object",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "inserted_at",
-              "displayName": "inserted_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "dateTime",
-              "canBeUsedToMatch": true,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
+        "operation": "executeQuery",
+        "query": "delete from clickup_tasks where task_id = '{{ $('ClickUp - Listar tareas').item.json.id }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -368,
-        -96
+        176,
+        64
       ],
-      "id": "3066316a-1718-4d8b-abab-f7f4ba1221c5",
-      "name": "Update rows in a table",
+      "id": "dd7ab29d-4dd7-4361-a7de-4e8755d1cd3c",
+      "name": "Borrar tarea obsoleta",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        352,
+        -16
+      ],
+      "id": "ca74ef9c-5072-4fec-b47f-5b3eab826021",
+      "name": "Esperar todas las tareas"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "delete from n8n_vectors where task_id= '{{ $('ClickUp - Campos Esenciales').item.json.id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        -48
+      ],
+      "id": "992acd7a-cc78-4c5d-b45f-060de6bebe3a",
+      "name": "Borrar ingested",
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "wJyvDHVfFHpmngoR",
@@ -1131,17 +1079,6 @@
         ]
       ]
     },
-    "Borrar referencias": {
-      "main": [
-        [
-          {
-            "node": "Esperar eliminación",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
     "Esperar eliminación": {
       "main": [
         [
@@ -1212,7 +1149,7 @@
       "main": [
         [
           {
-            "node": "Borrar referencias",
+            "node": "Borrar ingested",
             "type": "main",
             "index": 0
           }
@@ -1314,22 +1251,44 @@
       "main": [
         [
           {
-            "node": "Existe tarea?",
+            "node": "No existe tarea?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Existe tarea?": {
+    "No existe tarea?": {
       "main": [
         [
           {
-            "node": "Update rows in a table",
+            "node": "Esperar todas las tareas",
             "type": "main",
             "index": 0
           }
         ],
+        [
+          {
+            "node": "Borrar tarea obsoleta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar tarea obsoleta": {
+      "main": [
+        [
+          {
+            "node": "Esperar todas las tareas",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Esperar todas las tareas": {
+      "main": [
         [
           {
             "node": "Insertar ClickUp Response",
@@ -1339,13 +1298,13 @@
         ]
       ]
     },
-    "Update rows in a table": {
+    "Borrar ingested": {
       "main": [
         [
           {
-            "node": "Obtener carga previa",
+            "node": "Esperar eliminación",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -1355,7 +1314,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "add01d3a-c66c-4688-a311-e6ea35e3b5bb",
+  "versionId": "3f8d3914-32a7-49ab-aed7-06573efd35d2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "dfe878e4337a9a6094362e06023e91a757750bd9770a4d56013225bc19da1117"
