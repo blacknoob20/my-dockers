@@ -1,0 +1,931 @@
+{
+  "name": "ClickUp - Tasks - RAG (Optimizado)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Almacenar tareas\n",
+        "height": 688,
+        "width": 704
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1600,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "beecbd29-2c53-46c4-926a-0f68b46c95e3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Eres un asistente técnico institucional integrado con ClickUp. \nTu conocimiento proviene únicamente de fragmentos en formato JSON entregados desde la tool `buscar_tareas`, que ya filtra las tareas según el estado solicitado. \nNo inventes información ni campos que no estén presentes en el JSON.\n\n## Reglas\n1. Para buscar tareas, usa siempre la tool `buscar_tareas` con el filtro de estado apropiado.\n2. Devuelve máximo 10 tareas por respuesta.\n3. Usa el formato:\n   - Título: <title>\n     - Estado: <status>\n     - Creador: <creator>\n     - Fecha de actualización: <updated_at>\n     - Url: <url>\n4. Si hay más de 10 tareas relevantes, indica: \"Hay más resultados, pide 'siguiente' para continuar\".\n5. Si no hay tareas disponibles, responde: \"No dispongo de información suficiente\".\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2576,
+        -96
+      ],
+      "id": "251ccd04-ede2-437c-ace6-f80d92c39921",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        2400,
+        -96
+      ],
+      "id": "ad087b63-5dcb-4309-a977-688034a1ed15",
+      "name": "When chat message received",
+      "webhookId": "6c8d9157-f52b-440b-b7ea-34e281863b1f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d5e2bfba-9603-4b23-a1ad-fe0a8c10239c",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "82f03019-4a64-4694-9ad2-fa0da0290ad8",
+              "name": "titulo",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "32f1222c-5087-4cb2-8fbf-c3f2d8e83e7d",
+              "name": "descripcion",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "baea74c2-08b1-4623-b8ab-145329c6ea53",
+              "name": "estado",
+              "value": "={{ $json.status.status }}",
+              "type": "string"
+            },
+            {
+              "id": "86f43dee-172a-4616-8bae-784b936b1223",
+              "name": "creador",
+              "value": "={{ $json.creator.username }}",
+              "type": "string"
+            },
+            {
+              "id": "ed6d35fe-3954-45cf-b942-4ac04287ed57",
+              "name": "asignados",
+              "value": "={{ $json.assignees.map(assignee => assignee.username).toJsonString() }}",
+              "type": "array"
+            },
+            {
+              "id": "36a254dc-b596-43c6-9726-93ba5962b7e4",
+              "name": "fecha_creacion",
+              "value": "={{ (new Date($json.date_created *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "type": "string"
+            },
+            {
+              "id": "34e8cc82-888c-47c2-88ea-917ed50f0b2b",
+              "name": "fecha_actualizacion",
+              "value": "={{ (new Date($json.date_updated *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "type": "string"
+            },
+            {
+              "id": "f42fb5f9-b82b-4e36-9802-3919828a2399",
+              "name": "raw_date_updated",
+              "value": "={{ $json.date_updated }}",
+              "type": "string"
+            },
+            {
+              "id": "5895a9d3-2ec8-42ee-983b-803c5aceb7eb",
+              "name": "fecha_terminado",
+              "value": "={{ $json.date_done && (new Date($json.date_done *1)).toLocaleString('es-ES', { timeZone: 'UTC' }) }}",
+              "type": "string"
+            },
+            {
+              "id": "1f592ed9-1052-4ede-8356-dae7f79c2908",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "a9110ec1-50fd-4e87-8193-3ce50da53027",
+              "name": "custom_fields",
+              "value": "={{ $json.custom_fields.map(field => `${field.name}: ${Array.isArray(field.value) ? field.value.map(id => Object.fromEntries(field.type_config.options.map(o => [o.id, o.label]))[id]).toJsonString(): field.value || null}`) }}",
+              "type": "array"
+            },
+            {
+              "id": "649355d3-a11e-4ddf-ab4a-4ff00d76623a",
+              "name": "subtareas",
+              "value": "={{ ($json.subtasks || []).map(t => ({subtarea_titulo:t.name,subtarea_estado:t.status.status,subtarea_actualizada:t.date_updated, subtarea_creador:t.creator.username,subtarea_url:t.url})).toJsonString() }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        -112
+      ],
+      "id": "79fcc7fc-f87e-4247-a3fc-079d9e6d01f2",
+      "name": "ClickUp - Campos Esenciales"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        384
+      ],
+      "id": "c2d204f1-7e6d-41c6-8013-975c7041b7bc",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "=Busca tareas en ClickUp filtrando por estado. Puedes buscar por estado 'complete' (DONE), 'in progress', 'to do', etc.",
+        "topK": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        2720,
+        96
+      ],
+      "id": "10a2728e-4f2c-4e5f-9345-3d22f192ea2f",
+      "name": "buscar_tareas"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        2640,
+        256
+      ],
+      "id": "6c36e463-b04e-4275-a40b-cd2b1ae0826e",
+      "name": "PGVector Store",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "embeddingBatchSize": 250,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1648,
+        -96
+      ],
+      "id": "08def267-3cda-4381-93f9-073392e394d5",
+      "name": "Almacenar Tareas ClickUp",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2896,
+        256
+      ],
+      "id": "c6b1e2d3-bc1c-4cfb-b0b2-e6b0267adf14",
+      "name": "Gemini Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2480,
+        96
+      ],
+      "id": "57de093d-cbe7-4c59-a05c-139e6b5c5a07",
+      "name": "Gemini Chat",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SkZXoDWFFDsbxlrH",
+          "name": "Google Gemini(PaLM) - blacknoob20@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        2608,
+        96
+      ],
+      "id": "fea3de7c-63cf-4a04-8845-7f29ec67412f",
+      "name": "Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Agente ClickUp",
+        "height": 688,
+        "width": 768,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2352,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "71b41019-1b0b-45e2-a55a-16af64aeee04",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Selección de tareas\n",
+        "height": 688,
+        "width": 1856,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -672,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "16849678-5a74-4862-81e8-f4476fe63645",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE n8n_vectors\nSET task_id = '{{ $json.id }}'\nWHERE metadata->>'id' = '{{ $json.metadata.id }}' and task_id is null",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1936,
+        -96
+      ],
+      "id": "89c87355-9b1a-4241-811f-acd44af14760",
+      "name": "Actualizar task_id en vectores",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -112
+      ],
+      "id": "ee4fe795-705f-4261-aabb-9399c1c8be2b",
+      "name": "Iniciar"
+    },
+    {
+      "parameters": {
+        "chunkSize": 1500,
+        "chunkOverlap": 300,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        304
+      ],
+      "id": "e0f92bda-a31e-407a-b385-10d0f104f8ba",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.toJsonString()}}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "id",
+                "value": "={{ $json.id }}"
+              },
+              {
+                "name": "estado",
+                "value": "={{$json.estado}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1616,
+        144
+      ],
+      "id": "e3c3f9ca-e8fc-4a5a-b661-15eea36184af",
+      "name": "Insertar Tareas"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ingested_tasks",
+          "mode": "list",
+          "cachedResultName": "ingested_tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "={{ $json.id }}",
+            "title": "={{ $json.titulo }}",
+            "creator": "={{ $json.creador }}",
+            "task_status": "={{ $json.estado }}",
+            "modified_time": "={{ new Date($json.raw_date_updated *1).toISOString().replace('T',' ').split('.')[0] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creator",
+              "displayName": "creator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "task_status",
+              "displayName": "task_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "modified_time",
+              "displayName": "modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_ingested",
+              "displayName": "last_ingested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1408,
+        -96
+      ],
+      "id": "73aa2025-8360-4a5a-b48f-b4ad2d2ec582",
+      "name": "Llenar ingested tasks",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select \n  (SELECT (EXTRACT(EPOCH FROM COALESCE(MAX(modified_time), TIMESTAMP '2025-11-20 00:00:00')) * 1000) ::bigint FROM ingested_tasks) AS modified_time",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -384,
+        -112
+      ],
+      "id": "611353d1-7558-4ed4-a24e-3e92336f9e7e",
+      "name": "Obtener última actualización",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "clickup_tasks",
+          "mode": "list",
+          "cachedResultName": "clickup_tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "={{ $json.id }}",
+            "data": "={{ $json }}"
+          },
+          "matchingColumns": [
+            "task_id"
+          ],
+          "schema": [
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inserted_at",
+              "displayName": "inserted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        176,
+        -112
+      ],
+      "id": "435a5fd1-caac-4f29-b4cd-b413643ba026",
+      "name": "Upsert ClickUp Response",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "team": "3121590",
+        "space": "=3241325",
+        "folder": "=90172621115",
+        "list": "=901703156817",
+        "filters": {
+          "dateUpdatedGt": "={{ (new Date($json.modified_time *1)).toISOString() }}",
+          "includeClosed": true,
+          "orderBy": "updated",
+          "subtasks": true
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -112
+      ],
+      "id": "a205b435-23e3-4c56-ac71-d87051389876",
+      "name": "ClickUp - Listar tareas",
+      "credentials": {
+        "clickUpApi": {
+          "id": "sVwdzQKKDrxlNohA",
+          "name": "ClickUp account - Soporte Guayas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  ct.task_id, \n  ct.data,\n  COALESCE(it.modified_time, TIMESTAMP '1970-01-01 00:00:00') as last_ingested\nFROM clickup_tasks ct\nLEFT JOIN ingested_tasks it ON ct.task_id = it.task_id\nWHERE \n  TIMESTAMP WITH TIME ZONE 'epoch' + ((ct.data->>'date_updated')::bigint/1000) * interval '1 second' \n  > COALESCE(it.modified_time, TIMESTAMP '1970-01-01 00:00:00')\nORDER BY ct.data->>'date_updated' DESC",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        368,
+        -112
+      ],
+      "id": "new_filter_changed",
+      "name": "Filtrar tareas modificadas",
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM n8n_vectors WHERE task_id = '{{ $json.task_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        832,
+        -112
+      ],
+      "id": "new_delete_vectors",
+      "name": "Borrar vectores antiguos",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "wJyvDHVfFHpmngoR",
+          "name": "Postgres account - ClickUp Tasks"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract_data",
+              "name": "data",
+              "value": "={{ $json.data }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        -112
+      ],
+      "id": "new_extract_data",
+      "name": "Extraer data de tarea"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "flatten",
+              "name": "={{ Object.keys($json.data)[0] }}",
+              "value": "={{ Object.values($json.data)[0] }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1216,
+        -112
+      ],
+      "id": "new_flatten",
+      "name": "Aplanar estructura"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp - Campos Esenciales": {
+      "main": [
+        [
+          {
+            "node": "Llenar ingested tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Almacenar Tareas ClickUp",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_tareas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PGVector Store": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "buscar_tareas",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "buscar_tareas",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Almacenar Tareas ClickUp": {
+      "main": [
+        [
+          {
+            "node": "Actualizar task_id en vectores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iniciar": {
+      "main": [
+        [
+          {
+            "node": "Obtener última actualización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Insertar Tareas",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Tareas": {
+      "ai_document": [
+        [
+          {
+            "node": "Almacenar Tareas ClickUp",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llenar ingested tasks": {
+      "main": [
+        [
+          {
+            "node": "Almacenar Tareas ClickUp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener última actualización": {
+      "main": [
+        [
+          {
+            "node": "ClickUp - Listar tareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert ClickUp Response": {
+      "main": [
+        [
+          {
+            "node": "Filtrar tareas modificadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp - Listar tareas": {
+      "main": [
+        [
+          {
+            "node": "Upsert ClickUp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar tareas modificadas": {
+      "main": [
+        [
+          {
+            "node": "Borrar vectores antiguos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar vectores antiguos": {
+      "main": [
+        [
+          {
+            "node": "Extraer data de tarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer data de tarea": {
+      "main": [
+        [
+          {
+            "node": "Aplanar estructura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplanar estructura": {
+      "main": [
+        [
+          {
+            "node": "ClickUp - Campos Esenciales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dfe878e4337a9a6094362e06023e91a757750bd9770a4d56013225bc19da1117"
+  },
+  "tags": []
+}
