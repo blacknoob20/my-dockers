@@ -13,4 +13,4 @@
 
 # Datos de aplicaciones
 n8n_data/
-postgresql_vlm/
+postgresql_vlm/docker-compose/rtmp/config/facebook.key
