@@ -1,0 +1,12 @@
+services:
+  nginx-rtmp:
+    build: .
+    image: rtmp-server:custom
+    container_name: nginx-rtmp
+    ports:
+      - "1935:1935"
+      - "8081:80"
+    volumes:
+      - ./hls_data:/opt/data/hls
+      - ./config:/opt/config:ro
+    restart: unless-stopped
