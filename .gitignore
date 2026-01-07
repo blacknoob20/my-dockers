@@ -14,3 +14,4 @@
 # Datos de aplicaciones
 n8n_data/
 postgresql_vlm/
+ollama-data/
