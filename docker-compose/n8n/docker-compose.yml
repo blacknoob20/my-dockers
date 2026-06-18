@@ -92,7 +92,7 @@ services:
       - net
   postgres:
     # image: postgres:15.6-alpine3.19
-    image: pgvector/pgvector:pg18-trixie
+    image: blacknoob20/pg15vector-alpine
     restart: always
     ports:
       - "5432:5432" # <--- ¡Añade esta línea!
