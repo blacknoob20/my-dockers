@@ -58,7 +58,7 @@ RUN apk update &&\
   libpng-dev\
   postgresql-dev\
   openldap-dev &&\
-  ln -s /usr/lib/libnsl.so.3.0.0 $ORACLE_HOME/libnsl.so.1
+  ln -s /usr/lib/libnsl.so.2.0.0 $ORACLE_HOME/libnsl.so.1 && ln -s /usr/lib/libnsl.so.2.0.0 /usr/lib/libnsl.so.1
 
 LABEL oci8="Instalación PHP 5.6 ext OCI8"
 
@@ -88,18 +88,18 @@ RUN apk update &&\
   libnsl\
   libaio\
   libpq &&\
-  ln -s /usr/lib/libnsl.so.3.0.0 $ORACLE_HOME/libnsl.so.1
+  ln -s /usr/lib/libnsl.so.2.0.0 $ORACLE_HOME/libnsl.so.1 && ln -s /usr/lib/libnsl.so.2.0.0 /usr/lib/libnsl.so.1
 
 RUN docker-php-ext-enable zip soap calendar gd ldap oci8 pdo_oci pdo_mysql pdo_pgsql opcache xdebug
 
 # Configurar Xdebug con valores fijos para evitar problemas con variables de entorno
-RUN echo "xdebug.mode=debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.client_port=9003" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.discover_client_host=0" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.log=/tmp/xdebug/xdebug.log" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-  echo "xdebug.log_level=7" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "xdebug.remote_enable = 1" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.remote_autostart = 1" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.remote_host = host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.remote_port = 9003" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.remote_handler = dbgp" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.idekey = VSCODE" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+  echo "xdebug.remote_log = /var/log/sgpplus/xdebug.log" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 # Crear directorio y archivo de log para Xdebug con permisos adecuados
 RUN mkdir -p /tmp/xdebug && \
