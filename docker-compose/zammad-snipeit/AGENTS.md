@@ -74,15 +74,20 @@ Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API
 
 ## Volúmenes
 
-| Ruta local                       | Contenedor destino                          | Propósito                          |
+| Named Volume               | Contenedor destino                          | Propósito                          |
+|----------------------------------|---------------------------------------------|------------------------------------|
+| `zammad-search-data`             | `/usr/share/elasticsearch/data`             | Índices Elasticsearch              |
+| `zammad-var-data`                | `/opt/zammad/var`                           | Archivos internos Zammad           |
+
+| Ruta local (bind mount)          | Contenedor destino                          | Propósito                          |
 |----------------------------------|---------------------------------------------|------------------------------------|
 | `./snipe-data/db`                | `/var/lib/mysql` (MariaDB)                  | Datos Snipe-IT                     |
 | `./snipe-data/uploads`           | `/var/www/html/public/uploads`              | Uploads de activos                 |
 | `./zammad-data/db`               | `/var/lib/postgresql/data`                  | Datos Zammad                       |
-| `./zammad-data/search`           | `/usr/share/elasticsearch/data`             | Índices Elasticsearch              |
-| `./zammad-data/zammad-var`       | `/opt/zammad/var`                           | Archivos internos Zammad           |
 | `./n8n-data/db`                  | `/var/lib/postgresql/data`                  | Datos n8n                          |
 | `./n8n-data/home`                | `/home/node/.n8n`                           | Configuración n8n                  |
+
+> **Nota:** Elasticsearch y los internos de Zammad usan named volumes para evitar problemas de permisos (el contenedor ES corre como uid 1000 pero los bind mounts se crean como root).
 
 ---
 
