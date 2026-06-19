@@ -88,7 +88,10 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g" # Ajuste de RAM
     volumes:
-      - ./zammad-data/search:/usr/share/elasticsearch/data
+      # Named volume: el contenedor corre como uid 1000 (elasticsearch) pero
+      # los bind mounts se crean como root → "Permission denied" en node.lock.
+      # Docker gestiona el ownership automáticamente con named volumes.
+      - zammad-search-data:/usr/share/elasticsearch/data
     networks:
       - net
     healthcheck:
@@ -127,7 +130,11 @@ services:
       - ELASTICSEARCH_PORT=9200
       - REDIS_URL=redis://zammad-redis:6379
     volumes:
-      - ./zammad-data/zammad-var:/opt/zammad/var
+      # Named volume: Zammad corre como uid 1000 (zammad) pero los bind mounts
+      # se crean como root → "Permission denied" en zammad.ready.
+      # Un named volume comparte datos entre init, railsserver, scheduler,
+      # websocket y nginx sin conflictos de permisos.
+      - zammad-var-data:/opt/zammad/var
     depends_on:
       zammad-db:
         condition: service_healthy
@@ -152,7 +159,7 @@ services:
       - ELASTICSEARCH_PORT=9200
       - REDIS_URL=redis://zammad-redis:6379
     volumes:
-      - ./zammad-data/zammad-var:/opt/zammad/var
+      - zammad-var-data:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -165,7 +172,7 @@ services:
     command: ["zammad-scheduler"]
     environment: *zammad-env
     volumes:
-      - ./zammad-data/zammad-var:/opt/zammad/var
+      - zammad-var-data:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -178,7 +185,7 @@ services:
     command: ["zammad-websocket"]
     environment: *zammad-env
     volumes:
-      - ./zammad-data/zammad-var:/opt/zammad/var
+      - zammad-var-data:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -193,7 +200,7 @@ services:
       - "8000:8080"
     environment: *zammad-env
     volumes:
-      - ./zammad-data/zammad-var:/opt/zammad/var
+      - zammad-var-data:/opt/zammad/var
     depends_on:
       - zammad-railsserver
       - zammad-scheduler
@@ -237,12 +244,21 @@ services:
       - NODE_ENV=development
       - TZ=America/Guayaquil
     volumes:
-      - ./n8n-data/home:/home/node/.n8n
+      # Named volume: n8n corre como uid 1000 (node) pero el bind mount
+      # se crea como root → "EACCES: permission denied" en config.
+      - n8n-home-data:/home/node/.n8n
     depends_on:
       n8n-db:
         condition: service_healthy
     networks:
       - net
+
+# Named volumes para servicios que corren como uid 1000 y no pueden
+# escribir en bind mounts (creados como root por el host).
+volumes:
+  zammad-search-data:   # Elasticsearch indices
+  zammad-var-data:      # Zammad internal files (shared por init/rails/scheduler/ws/nginx)
+  n8n-home-data:        # n8n config y workflows
 
 networks:
   net:
