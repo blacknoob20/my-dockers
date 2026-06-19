@@ -13,7 +13,14 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      test:
+        [
+          "CMD",
+          "healthcheck.sh",
+          "--su-mysql",
+          "--connect",
+          "--innodb_initialized",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -85,7 +92,11 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'",
+        ]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -105,7 +116,7 @@ services:
   zammad-init:
     image: zammad/zammad:6.2.0-28
     container_name: zammad-init
-    command: [ "zammad-init" ]
+    command: ["zammad-init"]
     environment:
       - POSTGRESQL_HOST=zammad-db
       - POSTGRESQL_PORT=5432
@@ -116,7 +127,7 @@ services:
       - ELASTICSEARCH_PORT=9200
       - REDIS_URL=redis://zammad-redis:6379
     volumes:
-      - zammad-var:/opt/zammad/var
+      - ./zammad-data/zammad-var:/opt/zammad/var
     depends_on:
       zammad-db:
         condition: service_healthy
@@ -141,7 +152,7 @@ services:
       - ELASTICSEARCH_PORT=9200
       - REDIS_URL=redis://zammad-redis:6379
     volumes:
-      - zammad-var:/opt/zammad/var
+      - ./zammad-data/zammad-var:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -154,7 +165,7 @@ services:
     command: ["zammad-scheduler"]
     environment: *zammad-env
     volumes:
-      - zammad-var:/opt/zammad/var
+      - ./zammad-data/zammad-var:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -167,7 +178,7 @@ services:
     command: ["zammad-websocket"]
     environment: *zammad-env
     volumes:
-      - zammad-var:/opt/zammad/var
+      - ./zammad-data/zammad-var:/opt/zammad/var
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -182,7 +193,7 @@ services:
       - "8000:8080"
     environment: *zammad-env
     volumes:
-      - zammad-var:/opt/zammad/var
+      - ./zammad-data/zammad-var:/opt/zammad/var
     depends_on:
       - zammad-railsserver
       - zammad-scheduler
@@ -196,9 +207,48 @@ services:
     networks:
       - net
 
+  # --- INFRAESTRUCTURA AUTOMATIZACIÓN: N8N ---
+  n8n-db:
+    image: postgres:15-alpine
+    container_name: n8n-db
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: n8n_password_123
+      POSTGRES_DB: n8n
+    volumes:
+      - ./n8n-data/db:/var/lib/postgresql/data
+    networks:
+      - net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - N8N_PUBLIC_API_URL=${N8N_PUBLIC_API_URL}
+      - N8N_RUNNERS_ENABLED=true
+      - NODE_ENV=production
+      - TZ=${GENERIC_TIMEZONE}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    volumes:
+      - ./n8n-data/home:/home/node/.n8n
+    depends_on:
+      n8n-db:
+        condition: service_healthy
+    networks:
+      - net
+
 networks:
   net:
     driver: bridge
-
-volumes:
-  zammad-var:
