@@ -232,15 +232,10 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL}
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PROTOCOL=${N8N_PROTOCOL}
-      - N8N_PUBLIC_API_URL=${N8N_PUBLIC_API_URL}
+      - GENERIC_TIMEZONE=America/Guayaquil
       - N8N_RUNNERS_ENABLED=true
-      - NODE_ENV=production
-      - TZ=${GENERIC_TIMEZONE}
-      - WEBHOOK_URL=${WEBHOOK_URL}
+      - NODE_ENV=development
+      - TZ=America/Guayaquil
     volumes:
       - ./n8n-data/home:/home/node/.n8n
     depends_on:
