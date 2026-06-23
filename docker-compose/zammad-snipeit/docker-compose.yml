@@ -1,13 +1,17 @@
+x-hc:
+  &hc-defaults
+  interval: 10s
+  timeout: 5s
+  start_period: 30s
+
+x-zammad-env: &zammad-env
+  env_file: ./envs/zammad-app.env
+
 services:
   # --- INFRAESTRUCTURA GESTIÓN DE ACTIVOS: SNIPE-IT ---
   snipe-db:
     image: mariadb:10.11
-    container_name: snipe-db
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password_laboratorio
-      MYSQL_DATABASE: snipeit
-      MYSQL_USER: snipe_user
-      MYSQL_PASSWORD: snipe_password_123
+    env_file: ./envs/snipe-db.env
     volumes:
       - ./snipe-data/db:/var/lib/mysql
     networks:
@@ -21,32 +25,14 @@ services:
           "--connect",
           "--innodb_initialized",
         ]
-      interval: 10s
-      timeout: 5s
+      <<: *hc-defaults
       retries: 10
-      start_period: 30s
 
   snipe-it:
     image: snipe/snipe-it:latest-alpine
-    container_name: snipe-it
     ports:
       - "8080:80"
-    environment:
-      APP_URL: http://localhost:8080
-      APP_KEY: base64:tN7v6vH6b7Y89KkJjH6gFdSaQwErTyUiOpAsDfGhJkL= # Clave de lab, cámbiala en producción
-      DB_CONNECTION: mysql
-      DB_HOST: snipe-db
-      DB_DATABASE: snipeit
-      DB_USERNAME: snipe_user
-      DB_PASSWORD: snipe_password_123
-      MAIL_MAILER: log
-      MAIL_HOST: ""
-      MAIL_PORT: 587
-      MAIL_USERNAME: ""
-      MAIL_PASSWORD: ""
-      MAIL_ENCRYPTION: ""
-      MAIL_FROM_ADDR: "snipe@lab.local"
-      MAIL_FROM_NAME: "Snipe-IT Lab"
+    env_file: ./envs/snipe-it.env
     volumes:
       - ./snipe-data/uploads:/var/www/html/public/uploads
     depends_on:
@@ -56,37 +42,25 @@ services:
       - net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 10s
-      timeout: 5s
+      <<: *hc-defaults
       retries: 5
-      start_period: 30s
 
   # --- INFRAESTRUCTURA MESA DE AYUDA: ZAMMAD ---
   zammad-db:
     image: postgres:15-alpine
-    container_name: zammad-db
-    environment:
-      POSTGRES_USER: zammad_user
-      POSTGRES_PASSWORD: zammad_password_123
-      POSTGRES_DB: zammad_production
+    env_file: ./envs/zammad-db.env
     volumes:
       - ./zammad-data/db:/var/lib/postgresql/data
     networks:
       - net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zammad_user -d zammad_production"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      <<: *hc-defaults
       retries: 10
-      start_period: 30s
 
   zammad-search:
     image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:8.16.0
-    container_name: zammad-search
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g" # Ajuste de RAM
+    env_file: ./envs/zammad-search.env
     volumes:
       # Named volume: el contenedor corre como uid 1000 (elasticsearch) pero
       # los bind mounts se crean como root → "Permission denied" en node.lock.
@@ -107,7 +81,6 @@ services:
 
   zammad-redis:
     image: redis:7-alpine
-    container_name: zammad-redis
     networks:
       - net
     healthcheck:
@@ -118,17 +91,8 @@ services:
 
   zammad-init:
     image: zammad/zammad:6.2.0-28
-    container_name: zammad-init
     command: ["zammad-init"]
-    environment:
-      - POSTGRESQL_HOST=zammad-db
-      - POSTGRESQL_PORT=5432
-      - POSTGRESQL_USER=zammad_user
-      - POSTGRESQL_PASS=zammad_password_123
-      - POSTGRESQL_DB=zammad_production
-      - ELASTICSEARCH_HOST=zammad-search
-      - ELASTICSEARCH_PORT=9200
-      - REDIS_URL=redis://zammad-redis:6379
+    <<: *zammad-env
     volumes:
       # Named volume: Zammad corre como uid 1000 (zammad) pero los bind mounts
       # se crean como root → "Permission denied" en zammad.ready.
@@ -147,17 +111,8 @@ services:
 
   zammad-railsserver:
     image: zammad/zammad:6.2.0-28
-    container_name: zammad-railsserver
     command: ["zammad-railsserver"]
-    environment: &zammad-env
-      - POSTGRESQL_HOST=zammad-db
-      - POSTGRESQL_PORT=5432
-      - POSTGRESQL_USER=zammad_user
-      - POSTGRESQL_PASS=zammad_password_123
-      - POSTGRESQL_DB=zammad_production
-      - ELASTICSEARCH_HOST=zammad-search
-      - ELASTICSEARCH_PORT=9200
-      - REDIS_URL=redis://zammad-redis:6379
+    <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
     depends_on:
@@ -168,9 +123,8 @@ services:
 
   zammad-scheduler:
     image: zammad/zammad:6.2.0-28
-    container_name: zammad-scheduler
     command: ["zammad-scheduler"]
-    environment: *zammad-env
+    <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
     depends_on:
@@ -181,9 +135,8 @@ services:
 
   zammad-websocket:
     image: zammad/zammad:6.2.0-28
-    container_name: zammad-websocket
     command: ["zammad-websocket"]
-    environment: *zammad-env
+    <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
     depends_on:
@@ -194,11 +147,10 @@ services:
 
   zammad-nginx:
     image: zammad/zammad:6.2.0-28
-    container_name: zammad-app
     command: ["zammad-nginx"]
     ports:
       - "8000:8080"
-    environment: *zammad-env
+    <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
     depends_on:
@@ -207,42 +159,29 @@ services:
       - zammad-websocket
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 10s
-      timeout: 5s
+      <<: *hc-defaults
       retries: 5
-      start_period: 30s
     networks:
       - net
 
   # --- INFRAESTRUCTURA AUTOMATIZACIÓN: N8N ---
   n8n-db:
     image: postgres:15-alpine
-    container_name: n8n-db
-    environment:
-      POSTGRES_USER: n8n_user
-      POSTGRES_PASSWORD: n8n_password_123
-      POSTGRES_DB: n8n
+    env_file: ./envs/n8n-db.env
     volumes:
       - ./n8n-data/db:/var/lib/postgresql/data
     networks:
       - net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      <<: *hc-defaults
       retries: 10
-      start_period: 30s
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
-    container_name: n8n
     ports:
       - "5678:5678"
-    environment:
-      - GENERIC_TIMEZONE=America/Guayaquil
-      - N8N_RUNNERS_ENABLED=true
-      - NODE_ENV=development
-      - TZ=America/Guayaquil
+    env_file: ./envs/n8n.env
     volumes:
       # Named volume: n8n corre como uid 1000 (node) pero el bind mount
       # se crea como root → "EACCES: permission denied" en config.
