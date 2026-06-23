@@ -95,13 +95,19 @@ Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API
 
 > **⚠ No usar en producción.** Estas credenciales son únicamente para el entorno de laboratorio local.
 
-| Servicio   | Usuario / DB         | Contraseña                |
-|------------|----------------------|---------------------------|
-| MariaDB    | `snipe_user`         | `snipe_password_123`      |
-| PostgreSQL (Zammad) | `zammad_user` | `zammad_password_123` |
-| PostgreSQL (n8n) | `n8n_user`     | `n8n_password_123`        |
+Las credenciales y variables de entorno están en archivos **`.env`** por servicio dentro de la carpeta **`envs/`**. El `docker-compose.yml` los referencia con `env_file:`.
 
-El `APP_KEY` de Snipe-IT está hardcodeado en el compose; cámbialo antes de producción.
+| Archivo | Servicio(s) | Contenido |
+|---------|------------|-----------|
+| `envs/snipe-db.env` | `snipe-db` | MariaDB: root password, DB name, user/password |
+| `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection, mail config |
+| `envs/zammad-db.env` | `zammad-db` | PostgreSQL: user/password, DB name |
+| `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
+| `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx` | PostgreSQL, Elasticsearch, Redis connection |
+| `envs/n8n-db.env` | `n8n-db` | PostgreSQL: user/password, DB name |
+| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV |
+
+Cámbialo antes de producción.
 
 ---
 
@@ -112,3 +118,46 @@ El `APP_KEY` de Snipe-IT está hardcodeado en el compose; cámbialo antes de pro
 - n8n depende de que `n8n-db` esté sano.
 - Elasticsearch arranca con `xpack.security.enabled=false` y 1GB de heap (`-Xms1g -Xmx1g`).
 - La zona horaria de n8n está configurada a `America/Guayaquil`.
+
+---
+
+## Integración Tryton (n8n)
+
+### Specs
+
+Los specs de integración están en `.ai/specs/`:
+
+| Archivo | Descripción |
+|---------|-------------|
+| `.ai/specs/tryton-activos.md` | Protocolo JSON-RPC de Tryton, modelo `asset`, flujo n8n para extraer activos |
+
+### Servidor Tryton (producción)
+
+| Campo | Valor |
+|-------|-------|
+| URL | `https://financieroprueba.guayas.gob.ec` |
+| Base de datos | `dbegob2bak` |
+| Rate limit | Agresivo (429) — usar con precaución |
+
+### Servidor Tryton (local/lab)
+
+| Campo | Valor |
+|-------|-------|
+| URL | `http://192.168.56.102:8000` |
+| Base de datos | `dbegoblocal` |
+| Modelo | `asset` (~19,339 registros) |
+
+### Protocolo JSON-RPC
+
+```
+Content-Type: application/json
+POST /<database>/
+Authorization: Session <base64(user:uid:session)>
+```
+
+### Scripts
+
+```bash
+# Listar activos desde Tryton
+./scripts/tryton-listar-activos.sh
+```
