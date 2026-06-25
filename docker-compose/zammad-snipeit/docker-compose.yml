@@ -1,5 +1,4 @@
-x-hc:
-  &hc-defaults
+x-hc: &hc-defaults
   interval: 10s
   timeout: 5s
   start_period: 30s
@@ -54,7 +53,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U zammad_user -d zammad_production"]
       <<: *hc-defaults
       retries: 10
 
@@ -89,16 +88,26 @@ services:
       timeout: 5s
       retries: 5
 
+  zammad-memcached:
+    image: memcached:1.6.42-alpine
+    command: memcached -m 256M
+    restart: always
+    networks:
+      - net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "11211"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
   zammad-init:
-    image: zammad/zammad:6.2.0-28
+    image: ghcr.io/zammad/zammad:7.1.1-0000
     command: ["zammad-init"]
     <<: *zammad-env
     volumes:
-      # Named volume: Zammad corre como uid 1000 (zammad) pero los bind mounts
-      # se crean como root → "Permission denied" en zammad.ready.
-      # Un named volume comparte datos entre init, railsserver, scheduler,
-      # websocket y nginx sin conflictos de permisos.
       - zammad-var-data:/opt/zammad/var
+      - zammad-storage:/opt/zammad/storage
     depends_on:
       zammad-db:
         condition: service_healthy
@@ -106,15 +115,18 @@ services:
         condition: service_healthy
       zammad-redis:
         condition: service_healthy
+      zammad-memcached:
+        condition: service_healthy
     networks:
       - net
 
   zammad-railsserver:
-    image: zammad/zammad:6.2.0-28
+    image: ghcr.io/zammad/zammad:7.1.1-0000
     command: ["zammad-railsserver"]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
+      - zammad-storage:/opt/zammad/storage
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -122,11 +134,12 @@ services:
       - net
 
   zammad-scheduler:
-    image: zammad/zammad:6.2.0-28
+    image: ghcr.io/zammad/zammad:7.1.1-0000
     command: ["zammad-scheduler"]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
+      - zammad-storage:/opt/zammad/storage
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -134,11 +147,12 @@ services:
       - net
 
   zammad-websocket:
-    image: zammad/zammad:6.2.0-28
+    image: ghcr.io/zammad/zammad:7.1.1-0000
     command: ["zammad-websocket"]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
+      - zammad-storage:/opt/zammad/storage
     depends_on:
       zammad-init:
         condition: service_completed_successfully
@@ -146,13 +160,14 @@ services:
       - net
 
   zammad-nginx:
-    image: zammad/zammad:6.2.0-28
+    image: ghcr.io/zammad/zammad:7.1.1-0000
     command: ["zammad-nginx"]
     ports:
       - "8000:8080"
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
+      - zammad-storage:/opt/zammad/storage
     depends_on:
       - zammad-railsserver
       - zammad-scheduler
@@ -161,6 +176,20 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       <<: *hc-defaults
       retries: 5
+    networks:
+      - net
+
+  zammad-backup:
+    image: ghcr.io/zammad/zammad:7.1.1-0000
+    command: ["zammad-backup"]
+    <<: *zammad-env
+    user: "0:0"
+    volumes:
+      - zammad-backup:/var/tmp/zammad
+      - zammad-storage:/opt/zammad/storage
+    depends_on:
+      zammad-db:
+        condition: service_healthy
     networks:
       - net
 
@@ -173,7 +202,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n"]
       <<: *hc-defaults
       retries: 10
 
@@ -195,9 +224,11 @@ services:
 # Named volumes para servicios que corren como uid 1000 y no pueden
 # escribir en bind mounts (creados como root por el host).
 volumes:
-  zammad-search-data:   # Elasticsearch indices
-  zammad-var-data:      # Zammad internal files (shared por init/rails/scheduler/ws/nginx)
-  n8n-home-data:        # n8n config y workflows
+  zammad-search-data: # Elasticsearch indices
+  zammad-var-data: # Zammad internal files (shared por init/rails/scheduler/ws/nginx)
+  zammad-storage: # Archivos adjuntos de tickets
+  zammad-backup: # Backups de DB y storage
+  n8n-home-data: # n8n config y workflows
 
 networks:
   net:
