@@ -1,0 +1,538 @@
+{
+  "name": "Tryton login",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.56.102:8000/dbegoblocal/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id\": 0,\n  \"method\": \"common.db.login\",\n  \"params\": [\n    \"svc_n8n\",\n    {\"password\": \"12345678\", \"device_cookie\": null},\n    \"es\"\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        576,
+        448
+      ],
+      "id": "a8a3cf0e-0000-43de-b2e8-32042a037c4a",
+      "name": "Tryton login",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 1. Obtener los datos estáticos del flujo\nconst staticData = $getWorkflowStaticData('global');\n\nif(!staticData.tryton) return {some_session:false};\n\nreturn {some_session: true,...staticData.tryton};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        432
+      ],
+      "id": "1a7163ab-3abc-4609-8120-f0dbb700ea31",
+      "name": "Read session"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ccca5ff6-986f-4663-9827-8e8d04109f3c",
+              "leftValue": "={{ $json.some_session }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        432
+      ],
+      "id": "1855e122-15e1-4fde-a9c2-f647494ce48d",
+      "name": "Some session?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.56.102:8000/dbegoblocal/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"id\": 0,\n    \"method\": \"model.res.user.get_preferences\",\n    \"params\": [\n        false,\n        {}\n    ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        336
+      ],
+      "id": "556ee5e1-ec9e-4450-9233-58bc550ba40b",
+      "name": "Testing session",
+      "alwaysOutputData": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        320
+      ],
+      "id": "0f939c85-87a2-4616-94d5-916a9f18313d",
+      "name": "Finish"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d70e53e1-1fe8-44cd-8922-270f8358cf10",
+              "leftValue": "={{ ($json.error || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1584,
+        608
+      ],
+      "id": "ba8978e2-ad1a-47f3-93c3-fead3748003d",
+      "name": "Try again?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c9501cf7-e3d2-4511-9c02-d15271584d41",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        336
+      ],
+      "id": "4bcd57f8-b20d-49a1-8a44-20d385cca2e5",
+      "name": "Is working?",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "reguerre@espol.edu.ec",
+        "subject": "Tryton Unavalible",
+        "message": "Endpoint caído después de 3 intentos. Revisar servicio Tryton.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        592
+      ],
+      "id": "1e8749b0-2b6c-47b4-86ad-bdd01134b57e",
+      "name": "Send a message",
+      "webhookId": "4eee51b1-ad7d-4240-8008-2f19c75fd50c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2x645kn2DVrgWaqU",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de811469-6cd2-401a-a52e-0410643cd9f0",
+              "leftValue": "={{ $json.shouldStop }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        544
+      ],
+      "id": "acc210ed-d97f-4540-adc3-ddc6fe3978bf",
+      "name": "Is not alive?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac532d96-9b08-4392-8ff3-c499e8f6202e",
+              "name": "authorization",
+              "value": "={{ $('Read session').item.json.authorization ||  $('Save Authentication').item.json.authorization}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        320
+      ],
+      "id": "dbeb745e-b0b0-47e8-9d54-f56be7ed0f3a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "## Determinar Vigencia Session `($getWorkflowStaticData('global'))`\nOptimizar el uso del hash de `session` para evitar sobrecarga de logins al sistema `eGOB`",
+        "height": 384,
+        "width": 720,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        208
+      ],
+      "typeVersion": 1,
+      "id": "561146c2-8bd0-4117-97db-6c0739a69cf5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ok",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        432
+      ],
+      "id": "197d1b5d-626a-41ee-8798-e743aa759365",
+      "name": "Executed by Tryton Sync Assets"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst MAX_RETRIES = 3;\n\nif (staticData.retryCount >= MAX_RETRIES) {\n  // Resetear para la próxima ejecución del schedule\n  staticData.retryCount = 0;\n  staticData.sessionHash = null;\n  // Limpiar la sesion de tryton\n  staticData.tryton = null;\n  return { \n    json: { \n      shouldStop: true, \n      reason: \"Max retries reached\" \n    } \n  };\n}\n\n// Incrementar contador\nstaticData.retryCount = (staticData.retryCount || 0) + 1;\n\nreturn { \n  json: { \n    shouldStop: false, \n    retryCount: staticData.retryCount \n  } \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        496
+      ],
+      "id": "358f8e81-a3f6-40c9-9d49-41f26598da16",
+      "name": "Retries 3 times"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Problemas para iniciar sesión en eGOB revise su correo electrónico"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        640
+      ],
+      "id": "feaef033-daa9-44d8-bd25-ed33c0fa72a3",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const [uid,session] = $json.result;\nconst auth = Buffer\n  .from(`svc_n8n:${uid}:${session}`)\n  .toString('base64');\n\n// Guardar la sesion\nconst staticData = $getWorkflowStaticData('global');\n\nstaticData.tryton = {\n  uid,\n  session,\n  authorization: `Session ${auth}`\n};\nreturn staticData.tryton;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        624
+      ],
+      "id": "869cf9a5-9726-48a6-a3b4-9c3ba02d7032",
+      "name": "Save Authentication"
+    },
+    {
+      "parameters": {
+        "content": "## Session Persistente `($getWorkflowStaticData('global'))` \n",
+        "height": 272,
+        "width": 496,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        528
+      ],
+      "id": "192807ea-b0b3-4ae6-b1c3-e01f37c35a7e",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Tryton login": {
+      "main": [
+        [
+          {
+            "node": "Try again?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retries 3 times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read session": {
+      "main": [
+        [
+          {
+            "node": "Some session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Some session?": {
+      "main": [
+        [
+          {
+            "node": "Testing session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Try again?": {
+      "main": [
+        [
+          {
+            "node": "Some session?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Authentication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Testing session": {
+      "main": [
+        [
+          {
+            "node": "Is working?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is working?": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is not alive?": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executed by Tryton Sync Assets": {
+      "main": [
+        [
+          {
+            "node": "Read session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retries 3 times": {
+      "main": [
+        [
+          {
+            "node": "Is not alive?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Authentication": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0e212720-1b1e-49a4-a3a0-a776a306afa6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "40fbd5ff13b16cce1a758c94fa60f6c8baffad8bdd7673dd94edcdca67fb80d4"
+  },
+  "nodeGroups": [],
+  "id": "lwtmczcb4xwWrwvN",
+  "tags": []
+}
