@@ -202,3 +202,46 @@ El servidor de producción (`financieroprueba.guayas.gob.ec`) tiene un rate limi
 Tryton soporta User Application keys, pero solo funcionan con rutas custom decoradas con `@user_application('app_name')`. El endpoint JSON-RPC estándar NO acepta bearer tokens.
 
 Para integraciones vía JSON-RPC, usar siempre session-based auth.
+
+---
+
+## 2.8 Session validation
+
+Las sesiones en Tryton no tienen un TTL definido, pero expiran por inactividad. Para validar si una sesión cacheada sigue vigente sin hacer una request pesada:
+
+### Request
+```json
+{
+  "id": 0,
+  "method": "model.res.user.get_preferences",
+  "params": [false, {}]
+}
+```
+
+Headers must include `Authorization: Session <base64(user:uid:session)>`.
+
+### Respuesta — sesión vigente
+```json
+{
+  "id": 0,
+  "result": {
+    "id": 2160,
+    "name": "svc_n8n",
+    ...
+  }
+}
+```
+
+### Respuesta — sesión expirada
+```json
+{
+  "id": 0,
+  "error": ["TrytonError", "Session expired", ...]
+}
+```
+
+### Patrón recomendado
+1. Cachear la sesión en memoria estática
+2. Al empezar, validar con `get_preferences`
+3. Si expiró → hacer `common.db.login` de nuevo
+4. Reintentar máximo 3 veces antes de alertar
