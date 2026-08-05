@@ -1,0 +1,912 @@
+[
+  {
+    "updatedAt": "2026-08-05T20:53:33.504Z",
+    "createdAt": "2026-07-31T21:30:53.844Z",
+    "id": "Q5X3iqntFS1etrPW",
+    "name": "Tryton sync snipe-IT models",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "operation": "upsert",
+          "schema": {
+            "__rl": true,
+            "mode": "list",
+            "value": "public"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tryton_snipe_model_map",
+            "mode": "list",
+            "cachedResultName": "tryton_snipe_model_map"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "tryton_model_id": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_id }}",
+              "snipe_model_id": "={{ $json.body.payload.id }}",
+              "snipe_category_id": "={{ $json.body.payload.category.id }}",
+              "snipe_name": "={{ $json.body.payload.name }}",
+              "tryton_name": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_name }}",
+              "created_at": "={{ $json.body.payload.created_at.datetime }}",
+              "updated_at": "={{ $json.body.payload.updated_at.datetime }}"
+            },
+            "matchingColumns": [
+              "tryton_model_id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "tryton_model_id",
+                "displayName": "tryton_model_id",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "tryton_name",
+                "displayName": "tryton_name",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "snipe_model_id",
+                "displayName": "snipe_model_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "snipe_name",
+                "displayName": "snipe_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "snipe_category_id",
+                "displayName": "snipe_category_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "created_at",
+                "displayName": "created_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "dateTime",
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "updated_at",
+                "displayName": "updated_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "dateTime",
+                "canBeUsedToMatch": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          32,
+          -80
+        ],
+        "id": "1907bdb6-2ec0-4247-a9f8-c5f7dc38b5e7",
+        "name": "Save SnipeIT Category",
+        "credentials": {
+          "postgres": {
+            "id": "TXGe9nI7mssMWcpj",
+            "name": "Postgres account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "schema": {
+            "__rl": true,
+            "mode": "list",
+            "value": "public"
+          },
+          "table": {
+            "__rl": true,
+            "value": "integration_sync_log",
+            "mode": "list",
+            "cachedResultName": "integration_sync_log"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "resolved": false,
+              "snipe_id": 0,
+              "response_status": "={{ $json.error.status }}",
+              "retry_count": 0,
+              "execution_id": "={{$execution.id}}",
+              "source_system": "tryton",
+              "entity": "model",
+              "entity_id": 0,
+              "operation": "create",
+              "tryton_id": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_id }}",
+              "request_payload": "={{ JSON.stringify($('Create snipe-it model').params.bodyParameters.parameters[1]) || {} }}",
+              "response_body": "={{ JSON.stringify($('Create snipe-it model').item.json) }}",
+              "workflow_name": "={{ $workflow.name }}",
+              "error_message": "={{ $json.error.message }}",
+              "created_at": "={{ new Date().toISOString().replace(/(\\.\\d{3})\\d+Z$/, '$1Z') }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "workflow_name",
+                "displayName": "workflow_name",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "execution_id",
+                "displayName": "execution_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "source_system",
+                "displayName": "source_system",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "entity",
+                "displayName": "entity",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "entity_id",
+                "displayName": "entity_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "entity_tag",
+                "displayName": "entity_tag",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "operation",
+                "displayName": "operation",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tryton_id",
+                "displayName": "tryton_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "snipe_id",
+                "displayName": "snipe_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "operation_detail",
+                "displayName": "operation_detail",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "request_payload",
+                "displayName": "request_payload",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "object",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "response_status",
+                "displayName": "response_status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "response_body",
+                "displayName": "response_body",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "object",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "error_message",
+                "displayName": "error_message",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "created_at",
+                "displayName": "created_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "dateTime",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "retry_count",
+                "displayName": "retry_count",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "resolved",
+                "displayName": "resolved",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "boolean",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "resolved_at",
+                "displayName": "resolved_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "dateTime",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          32,
+          112
+        ],
+        "id": "3aa83e71-cf2f-4b60-a655-e58c3cb5ba1f",
+        "name": "Log error",
+        "credentials": {
+          "postgres": {
+            "id": "TXGe9nI7mssMWcpj",
+            "name": "Postgres account"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "asset_model_id",
+                "type": "number"
+              },
+              {
+                "name": "asset_model_name"
+              },
+              {
+                "name": "category"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -1216,
+          -32
+        ],
+        "id": "95f33730-2486-4a8e-a093-48e8bbcd2086",
+        "name": "When Executed by Tryton sync assets"
+      },
+      {
+        "parameters": {
+          "content": "## Almacenar Auditoría\n\nEvaluar en SnipeIT la creación del registro y almacenar en las tablas `tryton_snipe_model_map` e `integration_sync_log` de la BD de n8n",
+          "height": 592,
+          "width": 288,
+          "color": 2
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -64,
+          -320
+        ],
+        "id": "5281d210-4f6f-475b-8a28-097a7b1a8dc8",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select snipe_category_id,snipe_name from tryton_snipe_category_map where tryton_name = $1",
+          "options": {
+            "queryReplacement": "={{ [$('When Executed by Tryton sync assets').item.json.category] }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          -720,
+          96
+        ],
+        "id": "5a511bba-9801-4660-8db0-6b8963697e78",
+        "name": "Search category",
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "TXGe9nI7mssMWcpj",
+            "name": "Postgres account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{  $env.SNIPE_HOST }}/api/v1/models",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "category_id",
+                "value": "={{ $json.snipe_category_id }}"
+              },
+              {
+                "name": "name",
+                "value": "={{ $json.asset_model_name }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          -384,
+          96
+        ],
+        "id": "b222061b-4e5c-406c-9b47-5a14c09806aa",
+        "name": "Create snipe-it model",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "DLExfcLzbVJwV8vE",
+            "name": "SnipeIT Auth Token"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          256,
+          -144
+        ],
+        "id": "51c14227-dff3-45dd-9882-e1dea1d4fa94",
+        "name": "Finish models"
+      },
+      {
+        "parameters": {
+          "content": "## Ejecución del flujo\nEspera hasta que el flujo de creación de categorías (`Tryton sync category`) termine de esa manera podemos hacer un query a la base de datos para obtener el ID categoria creado en Snipe-IT",
+          "height": 192,
+          "width": 464,
+          "color": 4
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -1232,
+          -240
+        ],
+        "id": "ee8a1238-9678-4eb0-b609-094fed9f1de4",
+        "name": "Sticky Note1"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select * from tryton_snipe_model_map where tryton_model_id = $1",
+          "options": {
+            "queryReplacement": "={{ [$json.asset_model_id] }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          -1040,
+          -32
+        ],
+        "id": "7a989bc4-cc1d-4a5d-9b0d-312ff816109a",
+        "name": "Execute a SQL query",
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "TXGe9nI7mssMWcpj",
+            "name": "Postgres account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "fc5e1cad-5c28-48b6-9720-3b9ac4705cda",
+                "leftValue": "={{ $json.tryton_model_id }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "number",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -880,
+          -32
+        ],
+        "id": "cd84f854-7298-4ae0-a160-fcbbd83fcec7",
+        "name": "Model exists?"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "70931b79-10a4-445a-9236-9c9e0a442528",
+                "name": "snipe_category_id",
+                "value": "={{ $json.snipe_category_id }}",
+                "type": "number"
+              },
+              {
+                "id": "9b9b6701-2096-46ed-8fde-0ea9d99bbfe9",
+                "name": "asset_model_id",
+                "value": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_id }}",
+                "type": "number"
+              },
+              {
+                "id": "f1e06feb-dfea-4d16-8163-6bc1e31e9122",
+                "name": "asset_model_name",
+                "value": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_name }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -560,
+          96
+        ],
+        "id": "9e962dd8-e4ef-4f60-97ce-a4b5a16afabb",
+        "name": "Endpoint params"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ $env.SNIPE_HOST }}/api/v1/models/{{ $json.snipe_model_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "name",
+                "value": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_name }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          -384,
+          -64
+        ],
+        "id": "80196bd8-b793-4368-8c10-8aee24c0dc74",
+        "name": "Update snipe-it model",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "DLExfcLzbVJwV8vE",
+            "name": "SnipeIT Auth Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "00f2b487-5ea2-43ff-9c92-dad768df9d66",
+                "leftValue": "={{ $json.tryton_name }}",
+                "rightValue": "={{ $('When Executed by Tryton sync assets').item.json.asset_model_name }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -720,
+          -128
+        ],
+        "id": "df6efc4e-bfd4-4128-a8a5-6c2befde0a0c",
+        "name": "Not update?"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "0b207238-8e7a-474e-aaa3-fbab587535eb",
+                "leftValue": "={{ $json.body.status }}",
+                "rightValue": "success",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -208,
+          16
+        ],
+        "id": "2c559f8e-faf0-4779-928e-b0f79e105c4d",
+        "name": "Is SnipeIT Saved?"
+      }
+    ],
+    "connections": {
+      "Save SnipeIT Category": {
+        "main": [
+          [
+            {
+              "node": "Finish models",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log error": {
+        "main": [
+          [
+            {
+              "node": "Finish models",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Tryton sync assets": {
+        "main": [
+          [
+            {
+              "node": "Execute a SQL query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Search category": {
+        "main": [
+          [
+            {
+              "node": "Endpoint params",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create snipe-it model": {
+        "main": [
+          [
+            {
+              "node": "Is SnipeIT Saved?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute a SQL query": {
+        "main": [
+          [
+            {
+              "node": "Model exists?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Model exists?": {
+        "main": [
+          [
+            {
+              "node": "Not update?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Search category",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Endpoint params": {
+        "main": [
+          [
+            {
+              "node": "Create snipe-it model",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update snipe-it model": {
+        "main": [
+          [
+            {
+              "node": "Is SnipeIT Saved?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Not update?": {
+        "main": [
+          [
+            {
+              "node": "Finish models",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Update snipe-it model",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is SnipeIT Saved?": {
+        "main": [
+          [
+            {
+              "node": "Save SnipeIT Category",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "3874ebb4-745c-4ac5-8c2e-9b95ae4f5962",
+    "activeVersionId": "3874ebb4-745c-4ac5-8c2e-9b95ae4f5962",
+    "versionCounter": 227,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-07-31T21:30:53.858Z",
+        "createdAt": "2026-07-31T21:30:53.858Z",
+        "role": "workflow:owner",
+        "workflowId": "Q5X3iqntFS1etrPW",
+        "projectId": "3c8bcOqfYH8Mbr5t",
+        "project": {
+          "updatedAt": "2026-06-23T15:40:24.678Z",
+          "createdAt": "2026-06-19T18:30:51.366Z",
+          "id": "3c8bcOqfYH8Mbr5t",
+          "name": "Cristhian Guerrero <reguerre@espol.edu.ec>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "bf486d4f-f425-4786-bd27-915b19cf85a8"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 3874ebb4",
+      "description": ""
+    }
+  }
+]

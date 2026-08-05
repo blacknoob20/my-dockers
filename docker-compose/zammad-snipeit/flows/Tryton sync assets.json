@@ -1,0 +1,668 @@
+{
+  "name": "Tryton sync assets",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        64
+      ],
+      "id": "daa086a6-3127-4615-b038-bdc2313e1562",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "lwtmczcb4xwWrwvN",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/lwtmczcb4xwWrwvN",
+          "cachedResultName": "Tryton login"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ok": false
+          },
+          "matchingColumns": [
+            "ok"
+          ],
+          "schema": [
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1120,
+        64
+      ],
+      "id": "41d8a23a-9aa9-4348-a99b-16e7fb5f8908",
+      "name": "Execute login"
+    },
+    {
+      "parameters": {
+        "content": "# Docs de los nodos\n**Buscar activos TRYTON: (asset_type: Informatica)**\n\n`ID` · `Descripción`\n`06` · `141.01.07 Equipos y Sistemas Informáticos (Corriente)`\n`39` · `191.01.02 Licencias Computacionales (Corriente)`\n`40` · `191.01.03 Sistemas de Información (Corriente)`\n`48` · `634.45.07 Equipos, Sistemas y Paquetes Informáticos`\n`61` · `151.45.07 Equipos, Sistemas y Paquetes Informáticos (no Depreciables)`\n`92` · `151.41.07 Equipos, Sistemas y Paquetes Informáticos`\n\n**Registrar Categorias SNIPE-IT: (http://<snipe-host>/api/v1/categories)**",
+        "height": 384,
+        "width": 672
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        -352
+      ],
+      "id": "bded5975-5ecf-46be-b953-04072875d58e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.56.102:8000/dbegoblocal/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id\": 0,\n  \"method\": \"model.asset.search_read\",\n  \"params\": [\n    [\n      [\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]\n    ],\n    0, 100, null,\n    [\n      \"id\",\n      \"code\",\n      \"internal_code\", \n      \"name\", \n      \"asset_state\", \n      \"asset_type_new.rec_name\",\n      \"actual_value\", \n      \"category.rec_name\", \n      \"company.rec_name\",\n      \"current_owner.rec_name\", \n      \"asset_model.rec_name\"\n    ],\n    {}\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -912,
+        64
+      ],
+      "id": "5bfe5e46-61dc-40c9-8f22-40b9f5b9266f",
+      "name": "Search assets"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "85fc163a-f19b-4457-81d0-6c1393265ca7",
+              "name": "result",
+              "value": "={{ \n  $json.result.map(r => ({ \n      id: r.id, \n      name: r.name,\n      asset_state: r.asset_state,\n      code: r.code,\n      internal_code: r.internal_code,\n      actual_value: r.actual_value.decimal,\n      asset_model_id: r['asset_model.'].id,\n      asset_model_name: r['asset_model.'].rec_name,\n      current_owner_id: r['current_owner.']?.id,\n      current_owner_name: r['current_owner.']?.rec_name,\n      category: (r.name.includes(':') ? r.name.split(':')[0] : 'NO DEFINIDO'),\n      category_id: r['category.']?.id,\n      category_name: r['category.']?.rec_name,\n    })\n  ) \n}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        64
+      ],
+      "id": "b571cb28-6369-48fb-8df2-716dd7ffef1b",
+      "name": "Flatten assets"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2af9f5ec-afc2-4200-8f63-fbb041daa3b2",
+              "name": "category",
+              "value": "={{\n[...new Set(\n  $json.result.map(r => {\n    const i = r.name.indexOf(':');\n    return (i >= 0 ? r.name.slice(0, i) : 'NO DEFINIDO')\n      .trim()\n      .toUpperCase();\n  })\n)]\n}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -576,
+        144
+      ],
+      "id": "5462ac79-75eb-47d4-af13-dc0f3631750c",
+      "name": "Category list"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "category",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        144
+      ],
+      "id": "3bfd1288-c8eb-4fcd-bbe7-67dbc3451a63",
+      "name": "Split Out categories"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "6K1Olue3CsIyALJB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/6K1Olue3CsIyALJB",
+          "cachedResultName": "Tryton sync categories"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "category": "={{ $json.category }}"
+          },
+          "matchingColumns": [
+            "category"
+          ],
+          "schema": [
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        240
+      ],
+      "id": "5ef1cc84-8fdd-4632-a436-9f761236d109",
+      "name": "Execute Tryton sync categories"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        -256
+      ],
+      "id": "bf279f20-d945-4262-8dbf-647cd9ddf4bf",
+      "name": "Finish sync assets"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f3f6a48-128b-4a1a-80b0-bcc5ed757715",
+              "name": "result",
+              "value": "={{\n  Object.values(\n    $('Flatten assets').first().json.result.reduce((acc, {name, asset_model_id, asset_model_name }) => {\n      const i = name.indexOf(':');\n      const category = (i >= 0 ? name.slice(0, i) : 'NO DEFINIDO')\n      .trim()\n      .toUpperCase();\n      acc[asset_model_id] = { asset_model_id, asset_model_name, category };\n      return acc;\n    }, {})\n  )\n}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        80
+      ],
+      "id": "491fd0bb-4ebf-449e-87ca-7fbb788bbeb5",
+      "name": "Model list"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        256,
+        80
+      ],
+      "id": "0b9e09a2-56f6-45f1-a428-a5591ca4c8c7",
+      "name": "Split Out models"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -48,
+        80
+      ],
+      "id": "22e7117a-d07e-4ab3-be1f-abafb15922ee",
+      "name": "Wait categories"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        144
+      ],
+      "id": "b4734afc-6e3c-4374-902c-b69bb115d5a9",
+      "name": "Loop Over categories",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        432,
+        80
+      ],
+      "id": "64dca282-989d-443e-8959-36f05239c6c2",
+      "name": "Loop Over models"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "End loop models",
+      "typeVersion": 1,
+      "position": [
+        880,
+        160
+      ],
+      "id": "ed5eb914-ab7a-4c8a-9940-e3359070e82d",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Q5X3iqntFS1etrPW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Q5X3iqntFS1etrPW",
+          "cachedResultName": "Tryton sync models"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asset_model_id": "={{ $json.asset_model_id }}",
+            "asset_model_name": "={{ $json.asset_model_name }}",
+            "category": "={{ $json.category }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "asset_model_id",
+              "displayName": "asset_model_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "asset_model_name",
+              "displayName": "asset_model_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        160
+      ],
+      "id": "d5597f06-a2f5-4289-af38-2f02cfb3844e",
+      "name": "Execute Tryton sync models"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        656,
+        -16
+      ],
+      "id": "94d0d03d-2da2-4d99-9c71-717172a432f2",
+      "name": "Wait models"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "End loop categories",
+      "typeVersion": 1,
+      "position": [
+        144,
+        240
+      ],
+      "id": "5bba1982-1b89-4d29-a87e-1a5d152de9a2",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select snipe_category_id,snipe_model_id,tryton_model_id from tryton_snipe_model_map;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "662a53fa-9019-4970-889e-ca0310816c93",
+      "name": "List all mapped models",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "TXGe9nI7mssMWcpj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const categories = {};\nfor (const category of $input.all()) {\n  categories[category.json.tryton_model_id] = category.json.snipe_category_id;\n}\n\nconst models = {}\nfor (const model of $input.all()) {\n  models[model.json.tryton_model_id] = model.json.snipe_model_id;\n}\n\nconst assets = $('Wait models').first().json.result;\nreturn assets.map(asset => {\n    return { \n      ...asset,\n      snipe_category_id: categories[asset.asset_model_id],\n      snipe_model_id: models[asset.asset_model_id]\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -16
+      ],
+      "id": "06fd2ea9-33f1-4ca8-9b75-4d324fdab550",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute login": {
+      "main": [
+        [
+          {
+            "node": "Search assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search assets": {
+      "main": [
+        [
+          {
+            "node": "Flatten assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten assets": {
+      "main": [
+        [
+          {
+            "node": "Wait categories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Category list",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Category list": {
+      "main": [
+        [
+          {
+            "node": "Split Out categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out categories": {
+      "main": [
+        [
+          {
+            "node": "Loop Over categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Tryton sync categories": {
+      "main": [
+        [
+          {
+            "node": "End loop categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model list": {
+      "main": [
+        [
+          {
+            "node": "Split Out models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait categories": {
+      "main": [
+        [
+          {
+            "node": "Model list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over categories": {
+      "main": [
+        [
+          {
+            "node": "Wait categories",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Execute Tryton sync categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out models": {
+      "main": [
+        [
+          {
+            "node": "Loop Over models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over models": {
+      "main": [
+        [
+          {
+            "node": "Wait models",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Execute Tryton sync models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "End loop models": {
+      "main": [
+        [
+          {
+            "node": "Loop Over models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Tryton sync models": {
+      "main": [
+        [
+          {
+            "node": "End loop models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait models": {
+      "main": [
+        [
+          {
+            "node": "List all mapped models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "End loop categories": {
+      "main": [
+        [
+          {
+            "node": "Loop Over categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List all mapped models": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "685bf718-f4e2-4ff4-a090-b711f25dfd82",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "40fbd5ff13b16cce1a758c94fa60f6c8baffad8bdd7673dd94edcdca67fb80d4"
+  },
+  "nodeGroups": [],
+  "id": "1k6JvwtUeXcHnAKe",
+  "tags": [
+    {
+      "updatedAt": "2026-06-25T16:00:07.443Z",
+      "createdAt": "2026-06-25T16:00:07.443Z",
+      "id": "Ciqu6KuivFlZABkW",
+      "name": "dev"
+    }
+  ]
+}
