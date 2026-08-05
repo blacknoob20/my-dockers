@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================
-# TRYTON API — Listado de Activos via JSON-RPC
+# TRYTON API — Listado de Activos de Informática via JSON-RPC
 # ============================================================
 # Descubierto analizando el cliente SAO (tryton-sao.min.js)
 #
@@ -11,7 +11,8 @@
 #   Auth: Authorization: Session <base64(user:uid:session)>
 #
 # Modelo: asset (NO account.asset)
-# Total: ~19,339 activos
+# Total general: ~19,339 activos
+# Total informática: ~9,565 activos (IDs: 6,39,40,48,61,92)
 # ============================================================
 
 # --- CONFIGURACIÓN ---
@@ -20,6 +21,15 @@ TRYTON_DB="${TRYTON_DB:-dbegoblocal}"
 TRYTON_USER="${TRYTON_USER:-svc_n8n}"
 TRYTON_PASS="${TRYTON_PASS:-12345678}"
 DELAY=2
+
+# Tipos de activo de informática (los que IT debe mantener en Snipe-IT)
+# 6: Equipos y Sistemas Informáticos (Corriente)
+# 39: Licencias Computacionales (Corriente)
+# 40: Sistemas de Información (Corriente)
+# 48: Equipos, Sistemas y Paquetes Informáticos
+# 61: Equipos, Sistemas y Paquetes Informáticos (no Depreciables)
+# 92: Equipos, Sistemas y Paquetes Informáticos
+IT_ASSET_TYPES='["asset_type_new","in",[6,39,40,48,61,92]]'
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -42,7 +52,7 @@ echo "============================================"
 echo ""
 
 # --- LOGIN ---
-echo -e "${YELLOW}[1/4]${NC} Login..."
+echo -e "${YELLOW}[1/5]${NC} Login..."
 RESP=$(tryton_rpc "common.db.login" \
   "[\"${TRYTON_USER}\",{\"password\":\"${TRYTON_PASS}\",\"device_cookie\":null},\"es\"]")
 CODE=$(echo "$RESP" | tail -1)
@@ -65,20 +75,29 @@ sleep "$DELAY"
 
 # --- CONTEO ---
 echo ""
-echo -e "${YELLOW}[2/4]${NC} Contando activos..."
+echo -e "${YELLOW}[2/5]${NC} Contando activos totales..."
 RESP=$(tryton_rpc "model.asset.search_read" \
   "[[],0,null,null,[\"id\"],{}]" "$AUTH")
 CODE=$(echo "$RESP" | tail -1)
 BODY=$(echo "$RESP" | sed '$d')
 TOTAL=$(echo "$BODY" | jq '.result | length')
-echo -e "${GREEN}OK${NC} — Total: $TOTAL activos"
+echo -e "${GREEN}OK${NC} — Total general: $TOTAL activos"
+sleep "$DELAY"
+
+echo -e "${YELLOW}[3/5]${NC} Contando activos de informática..."
+RESP=$(tryton_rpc "model.asset.search_read" \
+  "[[${IT_ASSET_TYPES}],0,null,null,[\"id\"],{}]" "$AUTH")
+CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+TOTAL_IT=$(echo "$BODY" | jq '.result | length')
+echo -e "${GREEN}OK${NC} — Total informática: $TOTAL_IT activos"
 sleep "$DELAY"
 
 # --- ESTADOS ---
 echo ""
-echo -e "${YELLOW}[3/4]${NC} Distribución por estado..."
+echo -e "${YELLOW}[4/5]${NC} Distribución por estado (solo informática)..."
 RESP=$(tryton_rpc "model.asset.search_read" \
-  "[[],0,null,null,[\"id\",\"asset_state\"],{}]" "$AUTH")
+  "[[${IT_ASSET_TYPES}],0,null,null,[\"id\",\"asset_state\"],{}]" "$AUTH")
 CODE=$(echo "$RESP" | tail -1)
 BODY=$(echo "$RESP" | sed '$d')
 
@@ -89,9 +108,9 @@ sleep "$DELAY"
 
 # --- MUESTRA ---
 echo ""
-echo -e "${YELLOW}[4/4]${NC} Muestra de 5 activos..."
+echo -e "${YELLOW}[5/5]${NC} Muestra de 5 activos de informática..."
 RESP=$(tryton_rpc "model.asset.search_read" \
-  "[[],0,5,null,[\"id\",\"code\",\"name\",\"asset_state\",\"asset_type_new\",\"actual_value\",\"category.rec_name\",\"company.rec_name\",\"current_owner.rec_name\"],{}]" "$AUTH")
+  "[[${IT_ASSET_TYPES}],0,5,null,[\"id\",\"code\",\"name\",\"asset_state\",\"asset_type_new\",\"actual_value\",\"category.rec_name\",\"company.rec_name\",\"current_owner.rec_name\"],{}]" "$AUTH")
 CODE=$(echo "$RESP" | tail -1)
 BODY=$(echo "$RESP" | sed '$d')
 
