@@ -8,24 +8,25 @@ x-zammad-env: &zammad-env
 
 services:
   # --- INFRAESTRUCTURA GESTIÓN DE ACTIVOS: SNIPE-IT ---
-  snipe-db:
-    image: mariadb:10.11
-    env_file: ./envs/snipe-db.env
-    volumes:
-      - ./snipe-data/db:/var/lib/mysql
-    networks:
-      - net
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "healthcheck.sh",
-          "--su-mysql",
-          "--connect",
-          "--innodb_initialized",
-        ]
-      <<: *hc-defaults
-      retries: 10
+  # snipe-db: usa docker-mariadb-1 (red docker_net) — ejecutar ./scripts/init-external-dbs.sh
+  # snipe-db:
+  #   image: mariadb:10.11
+  #   env_file: ./envs/snipe-db.env
+  #   volumes:
+  #     - ./snipe-data/db:/var/lib/mysql
+  #   networks:
+  #     - net
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "healthcheck.sh",
+  #         "--su-mysql",
+  #         "--connect",
+  #         "--innodb_initialized",
+  #       ]
+  #     <<: *hc-defaults
+  #     retries: 10
 
   snipe-it:
     image: snipe/snipe-it:latest-alpine
@@ -34,28 +35,28 @@ services:
     env_file: ./envs/snipe-it.env
     volumes:
       - ./snipe-data/uploads:/var/www/html/public/uploads
-    depends_on:
-      snipe-db:
-        condition: service_healthy
+    depends_on: {}
     networks:
       - net
+      - docker_net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       <<: *hc-defaults
       retries: 5
 
   # --- INFRAESTRUCTURA MESA DE AYUDA: ZAMMAD ---
-  zammad-db:
-    image: postgres:15-alpine
-    env_file: ./envs/zammad-db.env
-    volumes:
-      - ./zammad-data/db:/var/lib/postgresql/data
-    networks:
-      - net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zammad_user -d zammad_production"]
-      <<: *hc-defaults
-      retries: 10
+  # zammad-db: usa docker-postgres-1 (red docker_net) — ejecutar ./scripts/init-external-dbs.sh
+  # zammad-db:
+  #   image: postgres:15-alpine
+  #   env_file: ./envs/zammad-db.env
+  #   volumes:
+  #     - ./zammad-data/db:/var/lib/postgresql/data
+  #   networks:
+  #     - net
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U zammad_user -d zammad_production"]
+  #     <<: *hc-defaults
+  #     retries: 10
 
   zammad-search:
     image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:8.16.0
@@ -102,15 +103,13 @@ services:
       retries: 5
 
   zammad-init:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-init"]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
       - zammad-storage:/opt/zammad/storage
     depends_on:
-      zammad-db:
-        condition: service_healthy
       zammad-search:
         condition: service_healthy
       zammad-redis:
@@ -119,9 +118,10 @@ services:
         condition: service_healthy
     networks:
       - net
+      - docker_net
 
   zammad-railsserver:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-railsserver"]
     <<: *zammad-env
     volumes:
@@ -132,9 +132,10 @@ services:
         condition: service_completed_successfully
     networks:
       - net
+      - docker_net
 
   zammad-scheduler:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-scheduler"]
     <<: *zammad-env
     volumes:
@@ -145,9 +146,10 @@ services:
         condition: service_completed_successfully
     networks:
       - net
+      - docker_net
 
   zammad-websocket:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-websocket"]
     <<: *zammad-env
     volumes:
@@ -158,9 +160,10 @@ services:
         condition: service_completed_successfully
     networks:
       - net
+      - docker_net
 
   zammad-nginx:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-nginx"]
     ports:
       - "8000:8080"
@@ -178,33 +181,34 @@ services:
       retries: 5
     networks:
       - net
+      - docker_net
 
   zammad-backup:
-    image: ghcr.io/zammad/zammad:7.1.1-0000
+    image: ghcr.io/zammad/zammad:latest
     command: ["zammad-backup"]
     <<: *zammad-env
     user: "0:0"
     volumes:
       - zammad-backup:/var/tmp/zammad
       - zammad-storage:/opt/zammad/storage
-    depends_on:
-      zammad-db:
-        condition: service_healthy
+    depends_on: {}
     networks:
       - net
+      - docker_net
 
   # --- INFRAESTRUCTURA AUTOMATIZACIÓN: N8N ---
-  n8n-db:
-    image: postgres:15-alpine
-    env_file: ./envs/n8n-db.env
-    volumes:
-      - ./n8n-data/db:/var/lib/postgresql/data
-    networks:
-      - net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n"]
-      <<: *hc-defaults
-      retries: 10
+  # n8n-db: usa docker-postgres-1 (red docker_net) — ejecutar ./scripts/init-external-dbs.sh
+  # n8n-db:
+  #   image: postgres:15-alpine
+  #   env_file: ./envs/n8n-db.env
+  #   volumes:
+  #     - ./n8n-data/db:/var/lib/postgresql/data
+  #   networks:
+  #     - net
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U n8n_user -d n8n"]
+  #     <<: *hc-defaults
+  #     retries: 10
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
@@ -218,11 +222,10 @@ services:
       # Named volume: n8n corre como uid 1000 (node) pero el bind mount
       # se crea como root → "EACCES: permission denied" en config.
       - n8n-home-data:/home/node/.n8n
-    depends_on:
-      n8n-db:
-        condition: service_healthy
+    depends_on: {}
     networks:
       - net
+      - docker_net
 
   # --- N8N TASK RUNNER (descomentar en producción) ---
   # Ejecuta código JS/Python de forma aislada del proceso principal de n8n.
@@ -252,3 +255,5 @@ volumes:
 networks:
   net:
     driver: bridge
+  docker_net:
+    external: true
