@@ -1,0 +1,562 @@
+{
+  "name": "Tryton login",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TRYTON_URL }}/{{ $env.TRYTON_DB }}/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": 0,\n  \"method\": \"common.db.login\",\n  \"params\": [\n    \"{{ $env.TRYTON_USER }}\",\n    {\"password\": \"{{ $env.TRYTON_PASS }}\", \"device_cookie\": null},\n    \"es\"\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -592,
+        368
+      ],
+      "id": "c0e85794-bde5-4727-b0bb-f400e29262ea",
+      "name": "Tryton login",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 1. Obtener los datos estáticos del flujo\nconst staticData = $getWorkflowStaticData('global');\n\nif(!staticData.tryton) return {some_session:false};\n\nreturn {some_session: true,...staticData.tryton};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        352
+      ],
+      "id": "b1d1fcbe-2598-4cc7-9bcf-e5e15ba83deb",
+      "name": "Read session"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ccca5ff6-986f-4663-9827-8e8d04109f3c",
+              "leftValue": "={{ $json.some_session }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1136,
+        352
+      ],
+      "id": "2f985140-0544-4c51-b771-c621eb523ba8",
+      "name": "Some session?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TRYTON_URL }}/{{ $env.TRYTON_DB }}/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"id\": 0,\n    \"method\": \"model.res.user.get_preferences\",\n    \"params\": [\n        false,\n        {}\n    ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -960,
+        272
+      ],
+      "id": "ad8849ee-fe24-4a88-b58d-0843c67069df",
+      "name": "Testing session",
+      "alwaysOutputData": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        784,
+        240
+      ],
+      "id": "bcc237ea-fe03-43b9-b142-4d29a5e627f1",
+      "name": "Finish"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c9501cf7-e3d2-4511-9c02-d15271584d41",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -784,
+        272
+      ],
+      "id": "f1a86c65-c45c-481c-84f6-7f83fe9a26c5",
+      "name": "Is working?",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de811469-6cd2-401a-a52e-0410643cd9f0",
+              "leftValue": "={{ $json.shouldStop }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -288,
+        464
+      ],
+      "id": "5452323e-7b2c-4ddd-8da1-f344b7c11e7f",
+      "name": "Is not alive?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac532d96-9b08-4392-8ff3-c499e8f6202e",
+              "name": "authorization",
+              "value": "={{ $('Read session').item.json.authorization ||  $('Save Authentication').item.json.authorization}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        240
+      ],
+      "id": "541735d0-efa5-4bab-90bf-7bd9f2f34be8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "## Determinar Vigencia Session `($getWorkflowStaticData('global'))`\nOptimizar el uso del hash de `session` para evitar sobrecarga de logins al sistema `eGOB`",
+        "height": 352,
+        "width": 688,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1296,
+        160
+      ],
+      "typeVersion": 1,
+      "id": "8e43af36-17ff-4d1f-8dbf-ce01314e7827",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ok",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        352
+      ],
+      "id": "d42282f3-056e-4074-8dd6-99fa35975038",
+      "name": "Executed by Tryton Sync Assets"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst MAX_RETRIES = 3;\n\nif (staticData.retryCount >= MAX_RETRIES) {\n  // Resetear para la próxima ejecución del schedule\n  staticData.retryCount = 0;\n  staticData.sessionHash = null;\n  // Limpiar la sesion de tryton\n  staticData.tryton = null;\n  return { \n    json: { \n      shouldStop: true, \n      reason: \"Max retries reached\" \n    } \n  };\n}\n\n// Incrementar contador\nstaticData.retryCount = (staticData.retryCount || 0) + 1;\n\nreturn { \n  json: { \n    shouldStop: false, \n    retryCount: staticData.retryCount \n  } \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        416
+      ],
+      "id": "2ec88106-2cc5-4d86-bfc9-58509fea7e67",
+      "name": "Retries 3 times"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Problemas para iniciar sesión en eGOB revise su correo electrónico"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        64,
+        544
+      ],
+      "id": "6ba9b99c-f960-4568-8810-e5bcb5418b07",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const [uid,session] = $json.result;\nconst auth = Buffer\n  .from(`${$env.TRYTON_USER}:${uid}:${session}`)\n  .toString('base64');\n\n// Guardar la sesion\nconst staticData = $getWorkflowStaticData('global');\n\nstaticData.tryton = {\n  uid,\n  session,\n  authorization: `Session ${auth}`\n};\nreturn staticData.tryton;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        480
+      ],
+      "id": "afa7dd03-6773-4597-96d6-d7e2be600f6c",
+      "name": "Save Authentication"
+    },
+    {
+      "parameters": {
+        "content": "## Session Persistente \n`($getWorkflowStaticData('global'))` \n",
+        "height": 240,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        176,
+        384
+      ],
+      "id": "8f8c6f8e-4d79-445c-9b5c-8467bb620243",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d70e53e1-1fe8-44cd-8922-270f8358cf10",
+              "leftValue": "={{ ($json.error || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        256,
+        480
+      ],
+      "id": "c768dfa0-beec-4e26-a932-e0dbdda6754c",
+      "name": "Is success?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ws.guayas.gob.ec/public/mail",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $env.MAIL_FROM }}"
+            },
+            {
+              "name": "fromname",
+              "value": "={{ $env.MAIL_FROM_NAME }}"
+            },
+            {
+              "name": "address",
+              "value": "={{ $env.MAIL_TO }}"
+            },
+            {
+              "name": "addressname",
+              "value": "={{ $env.MAIL_TO_NAME }}"
+            },
+            {
+              "name": "subject",
+              "value": "Error iniciar sesión en Tryton"
+            },
+            {
+              "name": "body",
+              "value": "={{ $env.MAIL_BODY }}"
+            },
+            {
+              "name": "mtoken",
+              "value": "={{ $env.MAIL_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -96,
+        512
+      ],
+      "id": "3705842b-755d-4ca8-9385-3244e3ab1326",
+      "name": "Mail notif"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Tryton login": {
+      "main": [
+        [
+          {
+            "node": "Is success?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retries 3 times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read session": {
+      "main": [
+        [
+          {
+            "node": "Some session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Some session?": {
+      "main": [
+        [
+          {
+            "node": "Testing session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Testing session": {
+      "main": [
+        [
+          {
+            "node": "Is working?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is working?": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is not alive?": {
+      "main": [
+        [
+          {
+            "node": "Mail notif",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tryton login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executed by Tryton Sync Assets": {
+      "main": [
+        [
+          {
+            "node": "Read session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retries 3 times": {
+      "main": [
+        [
+          {
+            "node": "Is not alive?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Authentication": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is success?": {
+      "main": [
+        [
+          {
+            "node": "Save Authentication",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Some session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mail notif": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "27cc11b3-69c4-47a6-95a2-05fe71dc3a92",
+  "meta": {
+    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
+  },
+  "nodeGroups": [],
+  "id": "Cnq2yvzVCRTKFld5",
+  "tags": []
+}
