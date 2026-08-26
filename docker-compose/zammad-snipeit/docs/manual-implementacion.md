@@ -168,7 +168,7 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 
 | Servicio | Imagen | Puerto publicado | Rol |
 |----------|--------|------------------|-----|
-| `zammad-db` | `postgres:15-alpine` | — | PostgreSQL (zammad_production) |
+| `zammad-db` | `postgres:17-alpine` | — | PostgreSQL (zammad_production) |
 | `zammad-search` | `elasticsearch-wolfi:8.16.0` | — | Índices de búsqueda |
 | `zammad-redis` | `redis:7-alpine` | — | Caché/sesiones |
 | `zammad-memcached` | `memcached:1.6.42-alpine` | — | Caché de objetos (256M) |
@@ -183,7 +183,7 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 
 | Servicio | Imagen | Puerto publicado | Base de datos |
 |----------|--------|------------------|---------------|
-| `n8n-db` | `postgres:15-alpine` | `5432:5432` | PostgreSQL (n8n) |
+| `n8n-db` | `postgres:17-alpine` | `5432:5432` | PostgreSQL (n8n) |
 | `n8n` | `docker.n8n.io/n8nio/n8n` | `5678:5678` | Conecta a `n8n-db` |
 
 ### 4.2 Orden de arranque (dependencias)
@@ -550,7 +550,7 @@ Para restaurar el stack completo: detener servicios (`docker compose stop`), res
 
 El stack incluye una integración documentada y operativa entre el ERP **Tryton** y **Snipe-IT** vía **n8n**, que extrae los activos de informática del ERP y los sincroniza en Snipe-IT.
 
-- **Workflows n8n:** `flows/` contiene los 5 workflows (`Tryton login`, `Tryton sync categories`, `Tryton sync models`, `Tryton sync statuses`, `Tryton sync assets`) — importables en n8n (Workflows → Import).
+- **Workflows n8n:** `flows/` contiene los 5 workflows (`Tryton login` en `flows/tryton/`, `Tryton sync categories`, `Tryton sync models`, `Tryton sync statuses`, `Tryton sync assets`) — importables en n8n (Workflows → Import).
 - **Protocolo JSON-RPC de Tryton:** autenticación por sesión (`Authorization: Session <base64(user:uid:session)>`), método `model.asset.search_read`, ~19,339 activos (~9,565 de informática). Detalle en `docs/02-tryton-protocolo-jsonrpc.md`.
 - **Usuario/permisos:** `svc_n8n` (grupo `integracion_n8n`, solo lectura). Detalle en `docs/01-tryton-usuario-permisos.md`.
 - **Specs:** `.ai/specs/tryton-activos.md` (arquitectura, contratos de los 5 workflows, tablas de mapeo, errores conocidos).

@@ -136,7 +136,7 @@ Las credenciales y variables de entorno están en archivos **`.env`** por servic
 | `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config |
 | `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
 | `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`) |
+| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`) |
 
 ### Archivos .env de DBs (no usados actualmente, referenciados por init-external-dbs.sh)
 

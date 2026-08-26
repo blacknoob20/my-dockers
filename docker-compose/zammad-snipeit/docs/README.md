@@ -19,7 +19,7 @@ Los exports de los workflows (snapshots de n8n) viven en `flows/`:
 
 | Archivo | Workflow |
 |---------|----------|
-| `flows/Tryton login.json` | Autenticación |
+| `flows/tryton/Tryton login.json` | Autenticación |
 | `flows/Tryton sync categories.json` | Categorías |
 | `flows/Tryton sync models.json` | Modelos |
 | `flows/Tryton sync statuses.json` | Status labels |
@@ -39,7 +39,7 @@ Los exports de los workflows (snapshots de n8n) viven en `flows/`:
 - n8n instalado (Docker o standalone)
 - Usuario `svc_n8n` con permisos de solo lectura
 - Acceso a la API JSON-RPC de Tryton
-- Variables de entorno `TRYTON_HOST`, `TRYTON_LOGIN_USER`, `TRYTON_LOGIN_PASS`, `SNIPE_HOST`
+- Variables de entorno `TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`, `SNIPE_HOST`
 
 ## Mantenimiento de los exports
 

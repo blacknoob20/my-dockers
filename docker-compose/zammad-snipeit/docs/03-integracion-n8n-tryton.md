@@ -19,7 +19,7 @@ Los exports de los workflows viven en `flows/`:
 
 | Archivo | Workflow |
 |---------|----------|
-| `flows/Tryton login.json` | Tryton login |
+| `flows/tryton/Tryton login.json` | Tryton login |
 | `flows/Tryton sync categories.json` | Tryton sync categories |
 | `flows/Tryton sync models.json` | Tryton sync models |
 | `flows/Tryton sync statuses.json` | Tryton sync statuses |
@@ -31,7 +31,7 @@ Los exports de los workflows viven en `flows/`:
 
 ## 3.2 Sub-workflow "Tryton login"
 
-Archivo: `flows/Tryton login.json`
+Archivo: `flows/tryton/Tryton login.json`
 
 ### Trigger
 
@@ -45,9 +45,9 @@ Archivo: `flows/Tryton login.json`
 
 ```
 Executed by Tryton Sync Assets
-    ↓
+      ↓
 Read session (staticData.tryton)
-    ↓
+      ↓
 Some session? (IF)
    ├── SÍ ──→ Testing session (get_preferences)
    │              ↓
@@ -56,9 +56,9 @@ Some session? (IF)
    │          └── NO ──→ Tryton login (POST common.db.login)
    └── NO ──→ Tryton login (POST common.db.login)
                   ↓
-             Try again? (IF: ¿error JSON-RPC?)
-              ├── SÍ → Some session? (reintento sin contador)
-              └── NO → Save Authentication ──→ Edit Fields ──→ Finish
+             Is success? (IF: error array length === 0)
+               ├── SÍ → Save Authentication ──→ Edit Fields ──→ Finish
+               └── NO → Some session? (reintento sin contador)
 ```
 
 Ruta de error de transporte (HTTP/red):
@@ -69,10 +69,10 @@ Tryton login (error de red)
 Retries 3 times (Code: contador en staticData, máx 3)
       ↓
 Is not alive? (IF)
- ├── SÍ → Send a message (Gmail a reguerre@espol.edu.ec)
- │            ↓
- │        Stop and Error
- └── NO → Tryton login (reintento)
+  ├── SÍ → Mail notif (POST ws.guayas.gob.ec/public/mail)
+  │            ↓
+  │        Stop and Error
+  └── NO → Tryton login (reintento)
 ```
 
 ### Nodos
@@ -84,13 +84,13 @@ Is not alive? (IF)
 | `Some session?` | IF | `$json.some_session === true` |
 | `Testing session` | HTTP Request | `model.res.user.get_preferences(false, {})` con Auth header |
 | `Is working?` | IF | `$json.error` vacío? |
-| `Tryton login` | HTTP Request | `POST common.db.login` con credenciales |
-| `Try again?` | IF | `($json.error \|\| []).length > 0` |
+| `Tryton login` | HTTP Request | `POST common.db.login` con `$env.TRYTON_USER`/`$env.TRYTON_PASS` |
+| `Is success?` | IF | `($json.error \|\| []).length === 0` |
 | `Retries 3 times` | Code | Contador de reintentos en staticData (máx 3) |
 | `Is not alive?` | IF | `$json.shouldStop === true` (3 intentos fallidos) |
-| `Send a message` | Gmail | Alerta: "Tryton Unavalible — endpoint caído después de 3 intentos" |
+| `Mail notif` | HTTP Request | POST a `https://ws.guayas.gob.ec/public/mail` (correo de error) |
 | `Stop and Error` | Stop and Error | Termina la ejecución con error |
-| `Save Authentication` | Code | Construye `Session <base64(svc_n8n:uid:session)>` y lo guarda en staticData |
+| `Save Authentication` | Code | Construye `Session <base64(user:uid:session)>` y guarda en staticData |
 | `Edit Fields` | Set | Output: `{ authorization }` (toma del path que corresponda) |
 | `Finish` | NoOp | Fin del flujo |
 
@@ -108,7 +108,7 @@ Is not alive? (IF)
 ```javascript
 const [uid, session] = $json.result;
 const auth = Buffer
-  .from(`svc_n8n:${uid}:${session}`)
+  .from(`${$env.TRYTON_USER}:${uid}:${session}`)
   .toString('base64');
 
 const staticData = $getWorkflowStaticData('global');
@@ -147,7 +147,7 @@ return { json: { shouldStop: false, retryCount: staticData.retryCount } };
 | Sesión expirada | Re-login automático (1 request adicional) |
 | Error JSON-RPC (HTTP 200 con `error` en el body) | Vuelve a `Some session?` y reintenta **sin** pasar por el contador |
 | Error de transporte HTTP (red caída) | Pasa por `Retries 3 times` |
-| 3 reintentos fallidos | Alerta por Gmail a `reguerre@espol.edu.ec` y `Stop and Error` |
+| 3 reintentos fallidos | Alerta por correo vía `Mail notif` y `Stop and Error` |
 
 > **Notas:** no existe nodo de espera de 1 segundo entre reintentos. El contador no se reinicia tras un login exitoso (solo al llegar al máximo). La sesión vive en `staticData` global.
 
@@ -178,16 +178,33 @@ Authorization: {{ $json.authorization }}
 
 ## 3.4 Variables de entorno
 
+### Tryton
+
 | Variable | Valor (lab) | Valor (prod) |
 |----------|-------------|--------------|
-| `TRYTON_HOST` | `http://192.168.56.102:8000` | `https://financieroprueba.guayas.gob.ec` |
-| `TRYTON_LOGIN_USER` | `svc_n8n` | `svc_n8n` |
-| `TRYTON_LOGIN_PASS` | (secreto) | (secreto) |
-| `SNIPE_HOST` | `http://snipe-it:80` | `http://snipe-it:80` |
+| `TRYTON_URL` | `http://192.168.56.102:8000` | `https://financieroprueba.guayas.gob.ec` |
+| `TRYTON_DB` | `dbegoblocal` | `dbegob2bak` |
+| `TRYTON_USER` | `svc_n8n` | `svc_n8n` |
+| `TRYTON_PASS` | (secreto) | (secreto) |
 
-> **Nota:** el nombre de base de datos (`dbegoblocal`) está hardcodeado en los nodos HTTP. En producción habría que parametrizarlo (por ejemplo `TRYTON_DB`).
->
-> En producción, el rate limit de HAProxy puede bloquear requests frecuentes. Mantener mínimo 3 segundos entre requests.
+### Notificaciones de correo
+
+| Variable | Valor (lab) |
+|----------|-------------|
+| `MAIL_FROM` | `noti.prefectura@guayas.gob.ec` |
+| `MAIL_FROM_NAME` | `Notificaciones Prefecrtura` |
+| `MAIL_TO` | `cristian.guerrero@guayas.gob.ec` |
+| `MAIL_TO_NAME` | `Cristhian Guerrero` |
+| `MAIL_BODY` | `Error` |
+| `MAIL_TOKEN` | (secreto) |
+
+### n8n
+
+| Variable | Valor | Nota |
+|----------|-------|------|
+| `N8N_BLOCK_ENV_ACCESS_IN_NODE` | `false` | Requerido para acceso a `$env.` dentro de nodos |
+
+> **Nota:** en producción, el rate limit de HAProxy puede bloquear requests frecuentes. Mantener mínimo 3 segundos entre requests.
 
 ---
 
