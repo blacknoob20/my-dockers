@@ -8,7 +8,7 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 
 | Contenedor | Imagen | Puerto | Red | Alias DNS |
 |------------|--------|--------|-----|-----------|
-| `docker-postgres-1` | `postgres:15-alpine` | `5432:5432` | `docker_net` | `postgres`, `docker-postgres-1` |
+| `docker-postgres-1` | `postgres:17-alpine` | `5432:5432` | `docker_net` | `postgres`, `docker-postgres-1` |
 | `docker-mariadb-1` | `mariadb:10.11` | `3306:3306` | `docker_net` | `mariadb`, `docker-mariadb-1` |
 
 ## Credenciales de los Contenedores Externos

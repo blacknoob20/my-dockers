@@ -47,7 +47,7 @@ services:
   # --- INFRAESTRUCTURA MESA DE AYUDA: ZAMMAD ---
   # zammad-db: usa docker-postgres-1 (red docker_net) — ejecutar ./scripts/init-external-dbs.sh
   # zammad-db:
-  #   image: postgres:15-alpine
+  #   image: postgres:17-alpine
   #   env_file: ./envs/zammad-db.env
   #   volumes:
   #     - ./zammad-data/db:/var/lib/postgresql/data
@@ -199,7 +199,7 @@ services:
   # --- INFRAESTRUCTURA AUTOMATIZACIÓN: N8N ---
   # n8n-db: usa docker-postgres-1 (red docker_net) — ejecutar ./scripts/init-external-dbs.sh
   # n8n-db:
-  #   image: postgres:15-alpine
+  #   image: postgres:17-alpine
   #   env_file: ./envs/n8n-db.env
   #   volumes:
   #     - ./n8n-data/db:/var/lib/postgresql/data
@@ -212,6 +212,7 @@ services:
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
+    restart: always
     ports:
       - "5678:5678"
       # - "5679:5679"  # Puerto del task broker (solo necesario con n8n-runner)
