@@ -57,7 +57,7 @@ Some session? (IF)
    └── NO ──→ Tryton login (POST common.db.login)
                   ↓
              Is success? (IF: error array length === 0)
-               ├── SÍ → Save Authentication ──→ Edit Fields ──→ Finish
+               ├── SÍ → Save Authentication ──→ Finish (directo, token fresco)
                └── NO → Some session? (reintento sin contador)
 ```
 
@@ -90,8 +90,8 @@ Is not alive? (IF)
 | `Is not alive?` | IF | `$json.shouldStop === true` (3 intentos fallidos) |
 | `Mail notif` | HTTP Request | POST a `https://ws.guayas.gob.ec/public/mail` (correo de error) |
 | `Stop and Error` | Stop and Error | Termina la ejecución con error |
-| `Save Authentication` | Code | Construye `Session <base64(user:uid:session)>` y guarda en staticData |
-| `Edit Fields` | Set | Output: `{ authorization }` (toma del path que corresponda) |
+| `Save Authentication` | Code | Construye el token fresco y devuelve directo a `Finish` |
+| `Edit Fields` | Set | Solo en el path de sesión cacheada vigente; output `{ authorization }` de `Read session` |
 | `Finish` | NoOp | Fin del flujo |
 
 ### Output
@@ -149,7 +149,7 @@ return { json: { shouldStop: false, retryCount: staticData.retryCount } };
 | Error de transporte HTTP (red caída) | Pasa por `Retries 3 times` |
 | 3 reintentos fallidos | Alerta por correo vía `Mail notif` y `Stop and Error` |
 
-> **Notas:** no existe nodo de espera de 1 segundo entre reintentos. El contador no se reinicia tras un login exitoso (solo al llegar al máximo). La sesión vive en `staticData` global.
+> **Notas:** no existe nodo de espera de 1 segundo entre reintentos. El contador no se reinicia tras un login exitoso (solo al llegar al máximo). La sesión vive en `staticData` global. El token fresco de `Save Authentication` va directo a `Finish`; el fallback por `||` en `Edit Fields` se eliminó porque devolvía la sesión vencida cacheada (401 en `Search assets`, corregido el 2026-08-27).
 
 ---
 

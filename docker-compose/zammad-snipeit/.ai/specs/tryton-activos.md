@@ -46,7 +46,7 @@ Some session? (IF)
   └── NO ──→ Tryton login (POST common.db.login)
                  ↓
             Is success? (IF: error array length === 0)
-              ├── SÍ → Save Authentication ──→ Edit Fields ──→ Finish
+              ├── SÍ → Save Authentication ──→ Finish (directo, token fresco)
               └── NO → Some session? (reintento sin contador)
 ```
 
@@ -74,8 +74,8 @@ Is not alive? (IF)
 | `Is working?` | IF | `$json.error` vacío? |
 | `Tryton login` | HTTP Request | `POST common.db.login` con `$env.TRYTON_USER`/`$env.TRYTON_PASS` |
 | `Is success?` | IF | `($json.error \|\| []).length === 0` |
-| `Save Authentication` | Code | Construye `Session <base64(user:uid:session)>` y guarda en staticData |
-| `Edit Fields` | Set | Output: `{ authorization }` |
+| `Save Authentication` | Code | Construye `Session <base64(user:uid:session)>`, guarda en staticData y devuelve el token fresco directo a `Finish` |
+| `Edit Fields` | Set | Solo en el path de sesión cacheada vigente; output `{ authorization }` tomado de `Read session` |
 | `Retries 3 times` | Code | Contador de reintentos (máx 3) en staticData |
 | `Is not alive?` | IF | `$json.shouldStop === true` |
 | `Mail notif` | HTTP Request | POST a `https://ws.guayas.gob.ec/public/mail` (multipart-form-data) |
@@ -109,10 +109,12 @@ Is not alive? (IF)
 | Situación | Comportamiento |
 |-----------|---------------|
 | Sesión cacheada vigente | Se reusa sin hacer login |
-| Sesión expirada | Re-login automático (1 request adicional) |
+| Sesión expirada | Re-login automático (1 request adicional); el token fresco de `Save Authentication` va directo a `Finish` (nunca se devuelve la sesión vencida del cache) |
 | Error JSON-RPC (HTTP 200 con `error` en body) | Vuelve a `Some session?` y reintenta **sin** pasar por el contador |
 | Error de transporte HTTP (red caída) | Pasa por `Retries 3 times` |
 | 3 reintentos fallidos | Alerta por correo y `Stop and Error` |
+
+> **Fix 2026-08-27:** `Edit Fields` usaba `||` (`Read session.authorization || Save Authentication.authorization`). Cuando la sesión cacheada estaba vencida, el re-login creaba un token nuevo en `Save Authentication`, pero `||` devolvía el valor truthy y vencido de `Read session`. Resultado: `Search assets` recibía un token expirado → **401**. Fix: `Save Authentication` conecta directo a `Finish`; `Edit Fields` solo se usa en el path de sesión-cacheada-válida.
 
 ### Código clave
 
