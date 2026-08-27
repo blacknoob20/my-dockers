@@ -40,7 +40,7 @@ services:
       - net
       - docker_net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
       <<: *hc-defaults
       retries: 5
 
@@ -69,11 +69,7 @@ services:
     networks:
       - net
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'",
-        ]
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'" ]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -84,7 +80,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -92,11 +88,10 @@ services:
   zammad-memcached:
     image: memcached:1.6.42-alpine
     command: memcached -m 256M
-    restart: always
     networks:
       - net
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "11211"]
+      test: [ "CMD", "nc", "-z", "127.0.0.1", "11211" ]
       interval: 10s
       timeout: 5s
       start_period: 10s
@@ -104,7 +99,7 @@ services:
 
   zammad-init:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-init"]
+    command: [ "zammad-init" ]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
@@ -122,7 +117,7 @@ services:
 
   zammad-railsserver:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-railsserver"]
+    command: [ "zammad-railsserver" ]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
@@ -136,7 +131,7 @@ services:
 
   zammad-scheduler:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-scheduler"]
+    command: [ "zammad-scheduler" ]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
@@ -150,7 +145,7 @@ services:
 
   zammad-websocket:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-websocket"]
+    command: [ "zammad-websocket" ]
     <<: *zammad-env
     volumes:
       - zammad-var-data:/opt/zammad/var
@@ -164,7 +159,7 @@ services:
 
   zammad-nginx:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-nginx"]
+    command: [ "zammad-nginx" ]
     ports:
       - "8000:8080"
     <<: *zammad-env
@@ -176,7 +171,7 @@ services:
       - zammad-scheduler
       - zammad-websocket
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       <<: *hc-defaults
       retries: 5
     networks:
@@ -185,7 +180,7 @@ services:
 
   zammad-backup:
     image: ghcr.io/zammad/zammad:latest
-    command: ["zammad-backup"]
+    command: [ "zammad-backup" ]
     <<: *zammad-env
     user: "0:0"
     volumes:
@@ -212,7 +207,6 @@ services:
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
-    restart: always
     ports:
       - "5678:5678"
       # - "5679:5679"  # Puerto del task broker (solo necesario con n8n-runner)
@@ -227,7 +221,6 @@ services:
     networks:
       - net
       - docker_net
-
   # --- N8N TASK RUNNER (descomentar en producción) ---
   # Ejecuta código JS/Python de forma aislada del proceso principal de n8n.
   # Requiere: descomentar puerto 5679, N8N_RUNNERS_BROKER_LISTEN_ADDRESS
@@ -235,7 +228,6 @@ services:
   # Doc: https://docs.n8n.io/hosting/configuration/task-runners/
   # n8n-runner:
   #   image: n8nio/runners
-  #   restart: always
   #   environment:
   #     - N8N_RUNNERS_AUTH_TOKEN=n8n-runner-secret-token
   #     - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
@@ -244,14 +236,15 @@ services:
   #   networks:
   #     - net
 
-# Named volumes para servicios que corren como uid 1000 y no pueden
-# escribir en bind mounts (creados como root por el host).
+  # Named volumes para servicios que corren como uid 1000 y no pueden
+  # escribir en bind mounts (creados como root por el host).
 volumes:
   zammad-search-data: # Elasticsearch indices
   zammad-var-data: # Zammad internal files (shared por init/rails/scheduler/ws/nginx)
   zammad-storage: # Archivos adjuntos de tickets
   zammad-backup: # Backups de DB y storage
-  n8n-home-data: # n8n config y workflows
+  n8n-home-data:
+    # n8n config y workflows
 
 networks:
   net:

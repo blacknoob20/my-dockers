@@ -12,19 +12,20 @@ La integración se compone de un **sub-workflow de autenticación** y **workflow
 
 | Workflow | Tipo | Archivo | ID |
 |----------|------|---------|-----|
-| **Tryton login** | Sub-workflow (autenticación) | `flows/tryton/Tryton login.json` | `lwtmczcb4xwWrwvN` |
-| Tryton sync categories | Workflow de negocio | `flows/Tryton sync categories.json` | `6K1Olue3CsIyALJB` |
-| Tryton sync models | Workflow de negocio | `flows/Tryton sync models.json` | `Q5X3iqntFS1etrPW` |
-| Tryton sync statuses | Workflow de negocio | `flows/Tryton sync statuses.json` | `CisxFC1TxerOtZkG` |
-| Tryton sync assets | Workflow principal (orquestador) | `flows/Tryton sync assets.json` | `1k6JvwtUeXcHnAKe` |
+| **Tryton login** | Sub-workflow (autenticación) | `flows/tryton/Tryton login.json` | `Cnq2yvzVCRTKFld5` |
+| **Tryton login-gmail** | Sub-workflow (autenticación, variante) | — | `HJXnroz6Yno7mkIg` |
+| Tryton sync categories | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT categories.json` | `Ps2wicy3xI4n37nD` |
+| Tryton sync snipe-IT assets orchestrator v2 | Orquestador (batch) | — | `3hh7DBsrq8A1rIQg` |
 
 > **Nota:** los archivos en `flows/` son snapshots de n8n. Al modificar un workflow en la UI, re-exportarlo para mantenerlos al día.
+
+> **Archivos eliminados:** `flows/Tryton sync assets.json`, `flows/Tryton sync categories.json`, `flows/Tryton sync models.json`, `flows/Tryton sync snipe-IT assets orchestrator.json`, `flows/Tryton sync snipe-IT models.json`, `flows/Tryton sync snipe-IT status.json` — todos con IDs muertos (workflows reemplazados o eliminados en la instancia live).
 
 ---
 
 ## Sub-workflow: Tryton login
 
-Archivo: `flows/tryton/Tryton login.json`
+Archivo: `flows/tryton/Tryton login.json` (ID `Cnq2yvzVCRTKFld5`)
 
 ### Propósito
 
@@ -97,12 +98,18 @@ Is not alive? (IF)
 | `TRYTON_DB` | Nombre de la base de datos |
 | `TRYTON_USER` | Usuario de servicio |
 | `TRYTON_PASS` | Contraseña |
+| `SNIPE_HOST` | URL de Snipe-IT **dentro de la red Docker** (ver nota abajo) |
+| `SNIPEIT_TOKEN` | Token API de Snipe-IT (usado por la credencial `SnipeIT Auth Token`) |
 | `MAIL_FROM`, `MAIL_FROM_NAME` | Remitente de notificaciones |
 | `MAIL_TO`, `MAIL_TO_NAME` | Destinatario de notificaciones |
 | `MAIL_BODY` | Cuerpo del email de error |
 | `MAIL_TOKEN` | Token del servicio de correo |
 
 > **Requisito:** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` en `n8n.env` para acceso a `$env.` dentro de nodos.
+
+> **Gotcha `SNIPE_HOST`:** dentro del contenedor n8n, `localhost` se resuelve a `::1` (IPv6) y Snipe-IT no escucha ahí → `ECONNREFUSED ::1:8080`. Usar siempre el nombre del servicio Docker: `http://snipe-it:80` (en la red `net` del compose). **No** usar `http://localhost:8080` (eso funciona solo desde el host, no desde dentro del stack).
+
+> **Fix 2026-08-27:** `SNIPE_HOST` estaba como `http://localhost:8080` en `envs/n8n.env`. Los nodos HTTP de Snipe-IT fallaban con `ECONNREFUSED ::1:8080` silenciosamente (via `onError: continueRegularOutput`). Fix: cambiar a `http://snipe-it:80` + recrear contenedor n8n.
 
 ### Comportamiento de errores
 
@@ -184,28 +191,48 @@ Authorization: Session <base64(user:uid:session)>
 
 ## Workflows de sincronización
 
-### Tryton sync assets (orquestador)
+### Tryton sync snipe-IT assets orchestrator v2 (batch)
 
 - **Trigger:** manual
-- **Orquesta:** login → categorías → estados → modelos → activos
-- **Extracción:** `model.asset.search_read` con dominio `asset_type_new in [6, 39, 40, 48, 61, 92]`, límite 100 registros (sin paginación)
-- **Enriquecimiento:** cruzar con `tryton_snipe_model_map` y `tryton_snipe_status_map` para obtener IDs de Snipe-IT
-- **Creación:** `POST /api/v1/hardware`
+- **Orquesta:** login → categorías → (modelos y estados en batch)
+- **Estado:** experimental (no definitivo)
+- **Nota:** los workflows viejos de models/statuses separados fueron eliminados; v2 los maneja en batch inline
 
 ### Tryton sync categories
 
+- **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT categories.json` (ID `Ps2wicy3xI4n37nD`)
+- **Trigger:** Execute Workflow Trigger (renombrado `Tryton sync snipe-IT assets orchestrator`)
 - **Entrada:** `{ "category": "COMPUTADORAS" }` (prefijo derivado del nombre del activo)
-- **Flujo:** buscar en `tryton_snipe_category_map` → si no existe, crear en Snipe-IT (`POST /api/v1/categories`) → upsert en tabla de mapeo
+- **Flujo:** buscar en `tryton_snipe_category_map` → si no existe, crear en Snipe-IT → auto-recuperación si la creación falla (ver Self-heal abajo)
+- **URL Snipe-IT:** usa `$env.SNIPE_HOST` (no hardcodeado)
+
+#### Self-heal: auto-recuperación de categorías duplicadas
+
+Cuando la creación falla (ej: nombre duplicado → HTTP 422), el flujo no termina en error. En vez de eso, busca la categoría existente en Snipe-IT por nombre y la mapea:
+
+```
+Is SnipeIT Created? ($json.body.status == "success")
+ ├─ Sí → Save SnipeIT Category (upsert) → Finish
+ └─ No → Find category in Snipe (GET /api/v1/categories?search=<name>)
+                ↓
+          Recover category (Code: normaliza respuesta)
+                ↓
+          Recovered category? ($json.found == true)
+           ├─ Sí → Save SnipeIT Category (upsert) → Finish
+           └─ No → Log error → Finish
+```
+
+- `Find category in Snipe`: HTTP Request con `onError: continueRegularOutput` (si falla, devuelve `{ found: false }`)
+- `Recover category`: Code node que busca el match exacto por nombre (case-insensitive) y construye el mismo formato de payload que la creación exitosa
+- `onError: continueRegularOutput` en `Find category in Snipe` significa que errores de conexión se capturan como item `[{"error": "..."}]` en vez de marcar el nodo en rojo
 
 ### Tryton sync models
 
-- **Entrada:** `{ "asset_model_id", "asset_model_name", "category" }`
-- **Flujo:** buscar en `tryton_snipe_model_map` → si no existe, crear en Snipe-IT (`POST /api/v1/models`) → si existe y el nombre cambió, actualizar (`PATCH /api/v1/models/:id`) → upsert en tabla de mapeo
+> **Archivado:** el workflow viejo (`flows/Tryton sync models.json`, ID `Q5X3iqntFS1etrPW`) fue eliminado. Los modelos se manejan actualmente en batch dentro del orquestador v2.
 
 ### Tryton sync statuses
 
-- **Entrada:** `{ "status": "good" }`
-- **Flujo:** obtener catálogo de estados vía `model.asset.fields_get` → mapear tipo Snipe-IT → buscar en `tryton_snipe_status_map` → si no existe, crear en Snipe-IT (`POST /api/v1/statuslabels`) → upsert en tabla de mapeo
+> **Archivado:** el workflow viejo (`flows/Tryton sync statuses.json`, ID `CisxFC1TxerOtZkG`) fue eliminado. Los estados se manejan actualmente en batch dentro del orquestador v2.
 
 ---
 
@@ -268,8 +295,11 @@ Auditoría de operaciones contra Snipe-IT. Limitaciones conocidas:
 | Nombre de modelo cambiado | PATCH automático |
 | Nombre duplicado en Snipe-IT | POST falla; el modelo queda sin mapeo |
 | Modelo borrado en Snipe-IT | Falso "existe" por el mapa; sin reconciliación |
-| Categoría duplicada | POST falla; no queda mapeada |
+| Categoría duplicada | **Self-heal:** busca en Snipe-IT por nombre y mapea si la encuentra |
 | Categoría con comilla | `Search category` usa interpolación directa SQL; puede romper |
 | `asset_model` o `actual_value` nulos | `Flatten assets` lanza error |
 | Más de 100 activos | Sin paginación; solo los primeros 100 |
 | Rate limit Tryton/Snipe-IT | 429 posibles en operación masiva |
+| `SNIPE_HOST = localhost` dentro del stack | `ECONNREFUSED ::1:8080`; usar `http://snipe-it:80` |
+| Pinned data en trigger de sub-workflow | `Unpin '<trigger>' to execute` al ejecutar desde orquestador; el trigger recibe datos del padre y n8n se niega a usar pinned data |
+| `onError: continueRegularOutput` en HTTP | Errores de conexión se capturan como item `[{"error": "..."}]` en vez de fallar; puede enmascarar problemas de red |

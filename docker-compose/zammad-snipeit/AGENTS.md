@@ -23,12 +23,12 @@ Este repositorio contiene un entorno Docker Compose con tres pilas de servicios 
 | `zammad-search`       | `elasticsearch-wolfi:8.16.0`                        | —      | Elasticsearch        |
 | `zammad-redis`        | `redis:7-alpine`                                    | —      | Redis                |
 | `zammad-memcached`    | `memcached:1.6.42-alpine`                           | —      | Caché de objetos     |
-| `zammad-init`         | `ghcr.io/zammad/zammad:7.1.1-0000`                 | —      | `docker-postgres-1` (externo) |
-| `zammad-railsserver`  | `ghcr.io/zammad/zammad:7.1.1-0000`                 | —      | —                    |
-| `zammad-scheduler`    | `ghcr.io/zammad/zammad:7.1.1-0000`                 | —      | —                    |
-| `zammad-websocket`    | `ghcr.io/zammad/zammad:7.1.1-0000`                 | —      | —                    |
-| `zammad-nginx`        | `ghcr.io/zammad/zammad:7.1.1-0000`                 | 8000   | —                    |
-| `zammad-backup`       | `ghcr.io/zammad/zammad:7.1.1-0000`                 | —      | Backups automáticos  |
+| `zammad-init`         | `ghcr.io/zammad/zammad:latest`                     | —      | `docker-postgres-1` (externo) |
+| `zammad-railsserver`  | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
+| `zammad-scheduler`    | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
+| `zammad-websocket`    | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
+| `zammad-nginx`        | `ghcr.io/zammad/zammad:latest`                     | 8000   | —                    |
+| `zammad-backup`       | `ghcr.io/zammad/zammad:latest`                     | —      | Backups automáticos  |
 
 ### 3. n8n — Automatización (Puerto `5678`)
 

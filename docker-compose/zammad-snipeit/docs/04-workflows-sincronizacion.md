@@ -1,74 +1,56 @@
-# 4. Workflows de Sincronización Tryton → Snipe-IT
+# 4. Workflows de Sincronizacion Tryton -> Snipe-IT
 
-Este documento describe los workflows de negocio que sincronizan datos de Tryton hacia Snipe-IT. Complementa `03-integracion-n8n-tryton.md` (autenticación) y el spec `.ai/specs/tryton-activos.md`.
+Este documento describe los workflows de negocio que sincronizan datos de Tryton hacia Snipe-IT. Complementa `03-integracion-n8n-tryton.md` (autenticacion) y el spec `.ai/specs/tryton-activos.md`.
 
-## Índice
+## Indice
 
-- [4.1 Workflow principal: Tryton sync assets](#41-workflow-principal-tryton-sync-assets)
+- [4.1 Workflow principal: Tryton sync snipe-IT assets orchestrator v2](#41-workflow-principal-tryton-sync-snipe-it-assets-orchestrator-v2)
 - [4.2 Tryton sync categories](#42-tryton-sync-categories)
-- [4.3 Tryton sync models](#43-tryton-sync-models)
-- [4.4 Tryton sync statuses](#44-tryton-sync-statuses)
+- [4.3 Tryton sync models (archivado)](#43-tryton-sync-models-archivado)
+- [4.4 Tryton sync statuses (archivado)](#44-tryton-sync-statuses-archivado)
 - [4.5 Tablas de mapeo](#45-tablas-de-mapeo)
 - [4.6 Limitaciones y errores conocidos](#46-limitaciones-y-errores-conocidos)
 
 ---
 
-## 4.1 Workflow principal: Tryton sync assets
+## 4.1 Workflow principal: Tryton sync snipe-IT assets orchestrator v2
 
-Archivo: `flows/Tryton sync assets.json` (ID `1k6JvwtUeXcHnAKe`)
+**ID:** `3hh7DBsrq8A1rIQg`
 
-### Ejecución
+### Ejecucion
 
-- Trigger: **manual** (`When clicking ‘Execute workflow’`). No es un webhook.
-- Orquesta todos los sub-workflows: login, categorías, modelos, estados.
+- Trigger: **manual** (`When clicking 'Execute workflow'`). No es un webhook.
+- Orquesta: login -> categorias (sub-workflow) -> modelos y estados (batch inline).
 
-### Diagrama
+> **Estado:** experimental. Los workflows viejos de models/statuses separados fueron eliminados; v2 los maneja en batch.
+
+### Diagrama (simplificado)
 
 ```
-When clicking ‘Execute workflow’
-      ↓
+When clicking 'Execute workflow'
+      |
 Execute login (Tryton login)
-      ↓
+      |
 Search assets
-      ↓
+      |
 Flatten assets
-      ↓
-┌──────────────┬──────────────┬──────────────┐
-│ Status list  │ Category list│ Model list   │
-└──────┬───────┴──────┬───────┴──────┬───────┘
-       ↓             ↓              ↓
-  Loop statuses  Loop categories  Loop models
-       ↓             ↓              ↓
-  Tryton sync    Tryton sync     Tryton sync
-  statuses       categories      models
-       └─────────────┴──────┬───────┘
-                            ↓
-                    Wait categories & statuses
-                            ↓
-                        Model list
-                            ↓
-                    Loop Over models
-                            ↓
-                    Execute Tryton sync models
-                            ↓
-                        Wait models
-                            ↓
-                    List all catalogs
-                            ↓
-                    Endpoint assets params
-                            ↓
-                      Create asset
+      |
+Category list -> Split Out categories -> Loop categories -> Execute Tryton sync categories
+      |
+Wait categories & statuses
+      |
+... (batch: modelos y estados inline)
 ```
 
-### Extracción de activos
+### Extraccion de activos
 
 `Search assets` usa `model.asset.search_read` con:
 
 - Dominio: `asset_type_new in [6, 39, 40, 48, 61, 92]`
 - Offset: `0`, Limit: `100`
-- **No hay paginación**: solo se procesan los primeros 100 registros.
+- **No hay paginacion**: solo se procesan los primeros 100 registros.
 
-### Normalización (`Flatten assets`)
+### Normalizacion (`Flatten assets`)
 
 De cada registro se extrae:
 
@@ -79,15 +61,15 @@ current_owner_id, current_owner_name,
 category, category_id, category_name
 ```
 
-`category` se deriva del prefijo de `name` (texto antes de `:`), en mayúsculas. Si no hay `:`, se usa `NO DEFINIDO`.
+`category` se deriva del prefijo de `name` (texto antes de `:`), en mayusculas. Si no hay `:`, se usa `NO DEFINIDO`.
 
 ### Enriquecimiento (`Endpoint assets params`)
 
 Con `List all catalogs` (consulta a `tryton_snipe_model_map` y `tryton_snipe_status_map`) se construyen mapas:
 
 ```text
-modelos: tryton_model_id → snipe_model_id, snipe_category_id
-status:  tryton_name     → snipe_status_id
+modelos: tryton_model_id -> snipe_model_id, snipe_category_id
+status:  tryton_name     -> snipe_status_id
 ```
 
 Cada activo recibe:
@@ -96,7 +78,7 @@ Cada activo recibe:
 snipe_category_id, snipe_model_id, snipe_status_id
 ```
 
-### Creación de activos (`Create asset`)
+### Creacion de activos (`Create asset`)
 
 ```json
 POST /api/v1/hardware
@@ -108,13 +90,13 @@ POST /api/v1/hardware
 }
 ```
 
-El body se construye por interpolación cruda. Si `snipe_status_id` o `snipe_model_id` es `undefined`, n8n deja el campo vacío y el JSON no parsea (error `The value in the "JSON Body" field is not valid JSON`).
+El body se construye por interpolacion cruda. Si `snipe_status_id` o `snipe_model_id` es `undefined`, n8n deja el campo vacio y el JSON no parsea (error `The value in the "JSON Body" field is not valid JSON`).
 
 ---
 
 ## 4.2 Tryton sync categories
 
-Archivo: `flows/Tryton sync categories.json` (ID `6K1Olue3CsIyALJB`)
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT categories.json` (ID `Ps2wicy3xI4n37nD`)
 
 ### Entrada
 
@@ -128,14 +110,20 @@ Archivo: `flows/Tryton sync categories.json` (ID `6K1Olue3CsIyALJB`)
 
 ```
 Search category (tryton_snipe_category_map where tryton_name)
-      ↓
+      |
 Exists category?
- ├─ Sí → Finish
- └─ No → Create snipe-it category
-            ↓
+ +-- Si -> Finish
+ +-- No -> Create snipe-it category
+            |
         Is SnipeIT Created? ($json.body.status == "success")
-         ├─ Sí → Save SnipeIT Category (upsert)
-         └─ No → Log error
+         +-- Si -> Save SnipeIT Category (upsert)
+         +-- No -> Find category in Snipe (GET /api/v1/categories?search=<name>)
+                        |
+                  Recover category (Code: normaliza respuesta)
+                        |
+                  Recovered category? ($json.found == true)
+                   +-- Si -> Save SnipeIT Category (upsert)
+                   +-- No -> Log error
 ```
 
 ### Detalles
@@ -143,143 +131,28 @@ Exists category?
 - `POST /api/v1/categories` con `{ name, category_type: "asset" }`.
 - `Full Response` activado: el IF usa `$json.body.status` y el upsert usa `$json.body.payload.*`.
 - Upsert en `tryton_snipe_category_map`, matching por `tryton_name`.
-- **Semántica:** `tryton_name` es el prefijo derivado del nombre del activo, no el ID de categoría de Tryton.
+- **Semantica:** `tryton_name` es el prefijo derivado del nombre del activo, no el ID de categoria de Tryton.
+- **URL Snipe-IT:** usa `$env.SNIPE_HOST` (no hardcodeado).
+
+### Self-heal: auto-recuperacion de categorias duplicadas
+
+Cuando la creacion falla (ej: nombre duplicado -> HTTP 422), el flujo no termina en error. En vez de eso, busca la categoria existente en Snipe-IT por nombre y la mapea:
+
+- `Find category in Snipe`: HTTP Request con `onError: continueRegularOutput` (si falla, devuelve `{ found: false }`)
+- `Recover category`: Code node que busca el match exacto por nombre (case-insensitive) y construye el mismo formato de payload que la creacion exitosa
+- `onError: continueRegularOutput` en `Find category in Snipe` significa que errores de conexion se capturan como item `[{"error": "..."}]` en vez de marcar el nodo en rojo
 
 ---
 
-## 4.3 Tryton sync models
+## 4.3 Tryton sync models (archivado)
 
-Archivo: `flows/Tryton sync models.json` (ID `Q5X3iqntFS1etrPW`)
-
-### Entrada
-
-```json
-{
-  "asset_model_id": 1519,
-  "asset_model_name": "DDR3",
-  "category": "COMPUTADORAS"
-}
-```
-
-### Flujo (crear o actualizar)
-
-```
-Execute a SQL query (tryton_snipe_model_map where tryton_model_id)
-      ↓
-Model exists?
- ├─ No → Search category
- │         ↓
- │     Endpoint params
- │         ↓
- │     Create snipe-it model (POST /api/v1/models) [Full Response]
- │         ↓
- │     Is SnipeIT Saved?
- │      ├─ Sí → Save SnipeIT Category (upsert) → Finish
- │      └─ No → Log error → Finish
- └─ Sí → Not update?
-          ├─ Sí (nombres iguales) → Finish
-          └─ No (nombre cambió) → Update snipe-it model (PATCH /api/v1/models/:id) [Full Response]
-                    ↓
-                Is SnipeIT Saved?
-                 ├─ Sí → Save SnipeIT Category (upsert) → Finish
-                 └─ No → Log error → Finish
-```
-
-### Claves técnicas
-
-- `Create` y `Update` devuelven el mismo formato gracias a `Full Response`:
-
-```json
-{
-  "body": {
-    "status": "success",
-    "payload": { "id": 23, "name": "DDR3 8GB", "category": { "id": 12 } }
-  },
-  "headers": {}
-}
-```
-
-- El IF común `Is SnipeIT Saved?` evalúa `$json.body.status == "success"`.
-- El upsert toma `tryton_model_id` y `tryton_name` desde `$('When Executed by Tryton sync assets').item.json` porque ese trigger **siempre** se ejecuta; `Endpoint params` solo corre en la rama de creación.
-
-### Cambios de nombre
-
-Cuando el nombre del modelo cambia en Tryton:
-
-```text
-tryton_name (mapa) = "DDR3"
-asset_model_name (actual) = "DDR3 8GB"
-```
-
-Se ejecuta:
-
-```json
-PATCH /api/v1/models/13
-{
-  "name": "DDR3 8GB"
-}
-```
-
-Los activos existentes conservan `snipe_model_id = 13`; solo cambia el nombre mostrado.
+> **Archivado:** el workflow viejo (`flows/Tryton sync models.json`, ID `Q5X3iqntFS1etrPW`) fue eliminado. Los modelos se manejan actualmente en batch dentro del orquestador v2.
 
 ---
 
-## 4.4 Tryton sync statuses
+## 4.4 Tryton sync statuses (archivado)
 
-Archivo: `flows/Tryton sync statuses.json` (ID `CisxFC1TxerOtZkG`)
-
-### Entrada
-
-```json
-{ "status": "good" }
-```
-
-(Usa `inputSource: passthrough`.)
-
-### Flujo
-
-```
-Execute login (Tryton login)
-      ↓
-Tryton status catalog (model.asset.fields_get [asset_state])
-      ↓
-Tryton status list (selection → [{name, label}])
-      ↓
-Status list (Code: mapea tipo Snipe-IT)
-      ↓
-Search status (tryton_snipe_status_map where tryton_name)
-      ↓
-Status exists?
- ├─ Sí → Finish
- └─ No → Create snipe-it status (POST /api/v1/statuslabels) [Full Response]
-            ↓
-        Is SnipeIT Created?
-         ├─ Sí → Save SnipeIT Status (upsert)
-         └─ No → Log error
-```
-
-### Mapeo estado → tipo
-
-| Estado Tryton | Tipo Snipe-IT |
-|---------------|---------------|
-| `good` | `deployable` |
-| `regular` | `deployable` |
-| `bad` | `pending` |
-| `seized` | `pending` |
-| `repair` | `pending` |
-| `disuse` | `pending` |
-| `unspecified` | `pending` |
-| `baja` | `archived` |
-
-Estados desconocidos: `label: "Sin mapear: <estado>"`, `type: pending`, `unknown: true`.
-
-### Nombre del status label
-
-```
-{{ `${status}: ${label}` }}
-```
-
-Ejemplo: `good: Bueno`.
+> **Archivado:** el workflow viejo (`flows/Tryton sync statuses.json`, ID `CisxFC1TxerOtZkG`) fue eliminado. Los estados se manejan actualmente en batch dentro del orquestador v2.
 
 ---
 
@@ -304,7 +177,7 @@ Tablas en PostgreSQL (BD de n8n).
 | `tryton_name` | Nombre en Tryton (se actualiza) |
 | `snipe_model_id` | ID en Snipe-IT |
 | `snipe_name` | Nombre actual en Snipe-IT |
-| `snipe_category_id` | ID de categoría Snipe-IT |
+| `snipe_category_id` | ID de categoria Snipe-IT |
 | `created_at`, `updated_at` | Fechas |
 
 ### `tryton_snipe_status_map`
@@ -319,12 +192,12 @@ Tablas en PostgreSQL (BD de n8n).
 
 ### `integration_sync_log`
 
-Auditoría de operaciones contra Snipe-IT. Limitaciones:
+Auditoria de operaciones contra Snipe-IT. Limitaciones:
 
 - `operation` hardcodeado a `create` (las actualizaciones quedan mal etiquetadas).
-- Categorías/estados: `tryton_id` y `snipe_id` en `0`.
+- Categorias/estados: `tryton_id` y `snipe_id` en `0`.
 - `request_payload` parcial (solo el segundo bodyParameter).
-- No hay mapa de activos ni reconciliación de activos existentes.
+- No hay mapa de activos ni reconciliacion de activos existentes.
 
 ---
 
@@ -332,12 +205,15 @@ Auditoría de operaciones contra Snipe-IT. Limitaciones:
 
 | Caso | Comportamiento actual |
 |------|----------------------|
-| Modelo sin mapeo | `snipe_model_id` undefined → error JSON en `Create asset` |
-| Nombre de modelo cambiado | PATCH automático |
+| Modelo sin mapeo | `snipe_model_id` undefined -> error JSON en `Create asset` |
+| Nombre de modelo cambiado | PATCH automatico |
 | Nombre duplicado en Snipe-IT | POST falla; el modelo queda sin mapeo |
-| Modelo borrado en Snipe-IT | Falso "existe" por el mapa; sin reconciliación |
-| Categoría duplicada | POST falla; no queda mapeada |
-| Categoría con comilla | `Search category` usa interpolación directa SQL; puede romper |
+| Modelo borrado en Snipe-IT | Falso "existe" por el mapa; sin reconciliacion |
+| Categoria duplicada | **Self-heal:** busca en Snipe-IT por nombre y mapea si la encuentra |
+| Categoria con comilla | `Search category` usa interpolacion directa SQL; puede romper |
 | `asset_model` o `actual_value` nulos | `Flatten assets` lanza error |
-| Más de 100 activos | Sin paginación; solo los primeros 100 |
-| Rate limit Tryton/Snipe-IT | 429 posibles en operación masiva |
+| Mas de 100 activos | Sin paginacion; solo los primeros 100 |
+| Rate limit Tryton/Snipe-IT | 429 posibles en operacion masiva |
+| `SNIPE_HOST = localhost` dentro del stack | `ECONNREFUSED ::1:8080`; usar `http://snipe-it:80` |
+| Pinned data en trigger de sub-workflow | `Unpin '<trigger>' to execute` al ejecutar desde orquestador |
+| `onError: continueRegularOutput` en HTTP | Errores de conexion se capturan como item `[{"error": "..."}]` en vez de fallar |

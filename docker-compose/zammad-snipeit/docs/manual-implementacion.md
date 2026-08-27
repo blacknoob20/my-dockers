@@ -139,7 +139,7 @@ El stack **no utiliza Dockerfiles propios**: todos los servicios corren con las 
 - **Seguridad y mantenimiento:** cada vendor publica parches de seguridad y correcciones en sus releases oficiales; actualizar es solo cambiar la etiqueta de la imagen y recrear los contenedores.
 - **Configuración validada por el vendor:** los archivos `docker-compose.yml` oficiales de referencia (healthchecks, variables de entorno, volúmenes) son la fuente de la configuración usada en este proyecto; esto elimina errores de configuración y versiones divergentes entre entornos.
 - **Cero mantenimiento propio:** no hay dependencias de librerías a actualizar, ni builds que se rompan, ni conocimiento interno necesario para mantener una imagen customizada.
-- **Trazabilidad:** se conoce exactamente la versión de cada componente (ej. Zammad 7.1.1, Elasticsearch 8.16.0, Postgres 15) y se puede reproducir el entorno en cualquier momento.
+- **Trazabilidad:** se conoce exactamente la version de cada componente (ej. Zammad latest, Elasticsearch 8.16.0, Postgres 15) y se puede reproducir el entorno en cualquier momento.
 
 ### 3.2 Fuentes oficiales utilizadas
 
@@ -172,12 +172,12 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 | `zammad-search` | `elasticsearch-wolfi:8.16.0` | — | Índices de búsqueda |
 | `zammad-redis` | `redis:7-alpine` | — | Caché/sesiones |
 | `zammad-memcached` | `memcached:1.6.42-alpine` | — | Caché de objetos (256M) |
-| `zammad-init` | `ghcr.io/zammad/zammad:7.1.1-0000` | — | Inicialización de la base |
-| `zammad-railsserver` | `ghcr.io/zammad/zammad:7.1.1-0000` | — | Aplicación principal |
-| `zammad-scheduler` | `ghcr.io/zammad/zammad:7.1.1-0000` | — | Tareas programadas |
-| `zammad-websocket` | `ghcr.io/zammad/zammad:7.1.1-0000` | — | Notificaciones en tiempo real |
-| `zammad-nginx` | `ghcr.io/zammad/zammad:7.1.1-0000` | `8000:8080` | Reverse proxy interno |
-| `zammad-backup` | `ghcr.io/zammad/zammad:7.1.1-0000` | — | Backups automáticos |
+| `zammad-init` | `ghcr.io/zammad/zammad:latest` | — | Inicializacion de la base |
+| `zammad-railsserver` | `ghcr.io/zammad/zammad:latest` | — | Aplicacion principal |
+| `zammad-scheduler` | `ghcr.io/zammad/zammad:latest` | — | Tareas programadas |
+| `zammad-websocket` | `ghcr.io/zammad/zammad:latest` | — | Notificaciones en tiempo real |
+| `zammad-nginx` | `ghcr.io/zammad/zammad:latest` | `8000:8080` | Reverse proxy interno |
+| `zammad-backup` | `ghcr.io/zammad/zammad:latest` | — | Backups automaticos |
 
 **n8n — Automatización (puerto `5678`)**
 

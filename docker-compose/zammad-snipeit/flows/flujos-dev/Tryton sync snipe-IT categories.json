@@ -45,10 +45,16 @@
       "typeVersion": 4.4,
       "position": [
         544,
-        304
+        240
       ],
       "id": "63a952ef-274c-48fb-83d6-1095cd8b2c9d",
       "name": "Create snipe-it category",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth account"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -79,7 +85,7 @@
       "typeVersion": 2.3,
       "position": [
         736,
-        304
+        240
       ],
       "id": "5836ca4d-5531-4545-92ca-96f0b98f3fe2",
       "name": "Is SnipeIT Created?"
@@ -166,11 +172,17 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        976,
+        1456,
         224
       ],
       "id": "28b6f2f2-6f82-4add-a318-c3782086fad2",
-      "name": "Save SnipeIT Category"
+      "name": "Save SnipeIT Category",
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -390,11 +402,17 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        976,
+        1456,
         384
       ],
       "id": "07879565-262d-4ffd-b792-07a5bcc61cf6",
       "name": "Log error",
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres account"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -402,7 +420,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1200,
+        1664,
         160
       ],
       "id": "7a4bbdb0-625b-46c7-b960-adba41363ce1",
@@ -411,15 +429,15 @@
     {
       "parameters": {
         "content": "## Almacenar en tablas auditoría\n\nEvaluar en SnipeIT la creación del registro y almacenar en las tablas `tryton_snipe_category_map` e `integration_sync_log` de la BD de n8n",
-        "height": 544,
+        "height": 512,
         "width": 288,
         "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        880,
-        0
+        1360,
+        32
       ],
       "id": "596d730f-0524-47b3-9e7f-4cad5523b32d",
       "name": "Sticky Note"
@@ -438,7 +456,13 @@
       ],
       "id": "4c786747-d4f2-456e-a179-7ad0019ede11",
       "name": "Search category",
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -485,7 +509,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        0
+        16
       ],
       "id": "2e8a75ec-0909-4b5b-a4d8-68046aafbdec",
       "name": "Sticky Note1"
@@ -528,11 +552,17 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        736,
-        576
+        896,
+        320
       ],
       "id": "043fa3f4-cf44-4886-92b1-3a7afbe4ea35",
       "name": "Find category in Snipe",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth account"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -543,8 +573,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        944,
-        576
+        1072,
+        320
       ],
       "id": "287aba33-b063-435c-98bd-751d6f8b68f1",
       "name": "Recover category"
@@ -577,8 +607,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1136,
-        576
+        1248,
+        320
       ],
       "id": "de8a3e3b-2802-4765-8039-4cc0c3aa38b0",
       "name": "Recovered category?"
@@ -718,13 +748,14 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "eff91110-7699-4f92-8332-bb8ae626502e",
+  "versionId": "201e5a03-0da4-4f43-91aa-fc0ccdd9f701",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
   "nodeGroups": [],
