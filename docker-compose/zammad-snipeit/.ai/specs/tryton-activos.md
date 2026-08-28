@@ -196,9 +196,12 @@ Authorization: Session <base64(user:uid:session)>
 ### Tryton sync snipe-IT assets orchestrator v2 (batch)
 
 - **Trigger:** manual (`When clicking 'Execute workflow'`)
-- **Orquesta:** `Execute login` → `Search assets` → `Flatten assets` → `Category list`/`Model list`/`Status list` → `Split Out` por entidad → `Execute Tryton sync snipe-IT categories` / `Execute Tryton sync snipe-IT models` / `Execute Tryton sync snipe-IT status` (sub-workflows vía `Execute Workflow`)
 - **ID:** `3hh7DBsrq8A1rIQg` — inactivo, se dispara manualmente
 - **Nota:** los workflows viejos `flows/Tryton sync snipe-IT models.json` y `flows/Tryton sync snipe-IT status.json` (IDs muertos) fueron reemplazados por los sub-workflows en `flows/flujos-dev/` listados arriba
+- **Orquesta (fase 1 — catálogos):** `Execute login` → `Search assets` → `Flatten assets` → `Category list`/`Status list` → `Split Out` por entidad → `Execute Tryton sync snipe-IT categories` / `Execute Tryton sync snipe-IT status` → `Wait categories & statuses` → `Model list` → `Split Out models` → `Execute Tryton sync snipe-IT models` → `Wait models` (sub-workflows vía `Execute Workflow`)
+- **Orquesta (fase 2 — batch PG activos):** `Prepare staging payload` (Code) → `Reset staging` (`DELETE FROM staging_tryton_assets`) → `Load staging (bulk)` (`INSERT ... SELECT FROM jsonb_to_recordset($1) ON CONFLICT DO NOTHING`) → `Diff assets (batch)` (`SELECT ... FROM staging_tryton_assets JOIN tryton_snipe_model_map JOIN tryton_snipe_status_map LEFT JOIN tryton_snipe_asset_map WHERE IS DISTINCT`) → `Any changes?` → `Batch changes` (`splitInBatches`) → `Create or update?` → `Create snipe-IT asset (batch)` / `Update snipe-IT asset (batch)` (`POST/PATCH /api/v1/hardware`) → `Saved?` → `Upsert asset map` (`INSERT INTO tryton_snipe_asset_map ... ON CONFLICT DO UPDATE`) / `Log error (batch)` (`INSERT INTO integration_sync_log`) → `Run summary` (`INSERT INTO sync_run_summary`)
+
+> **Fix 2026-08-28:** los 6 nodos Postgres de la fase 2 apuntaban a `staging_tryton_assets`, `tryton_snipe_asset_map` y `sync_run_summary` que no existían en la BD `n8n` (`relation does not exist`). Se añadió DDL §5-7 a `sql/init-sync-tables.sql` y se aplicó; ver § Tablas de mapeo. El bloque `Run summary` se ejecuta con `executeOnce` y los `Upsert/Log error` con `onError: continueRegularOutput`.
 
 ### Tryton sync categories
 
@@ -393,6 +396,56 @@ Auditoría de operaciones contra Snipe-IT. Esquema en `public.integration_sync_l
 - **Categories flow:** `operation` hardcodeado a `"create"`; `request_payload` es `JSON.stringify($('Create snipe-it category').params.bodyParameters.parameters[1])` (solo el segundo parámetro).
 - **Limitaciones generales:** `tryton_id` y `snipe_id` en `0` para categorías/estados; sin reconciliación de activos existentes; `SNIPE_HOST` debe ser `http://snipe-it:80` dentro de la red Docker (no `localhost`).
 
+### `staging_tryton_assets` — orquestador v2 (batch)
+
+Tabla efímera por ejecución. Se hace `DELETE` al inicio y `INSERT` masivo desde `jsonb_to_recordset`. Esquema en `public.staging_tryton_assets` (BD `n8n`). **Fix 2026-08-28:** no existía; los nodos PG `Reset staging`, `Load staging (bulk)`, `Diff assets (batch)` y `Run summary` fallaban con `relation "staging_tryton_assets" does not exist`. Añadida a `sql/init-sync-tables.sql` §5 y aplicada.
+
+| Columna | Notas |
+|---------|-------|
+| `tryton_asset_id` | Clave (UNIQUE, target de `ON CONFLICT DO NOTHING`) |
+| `code` | `asset_tag` en Snipe-IT |
+| `internal_code` | Código interno Tryton |
+| `name` | Nombre del activo |
+| `asset_state` | Estado Tryton (`good`, `bad`, …) — join con `tryton_snipe_status_map.tryton_name` |
+| `tryton_model_id` | FK lógico a `tryton_snipe_model_map.tryton_model_id` |
+| `tryton_model_name` | Nombre de modelo en Tryton (auditoría) |
+| `category_name` | Categoría derivada (auditoría) |
+
+### `tryton_snipe_asset_map` — orquestador v2 (batch)
+
+Mapa persistente Tryton ↔ Snipe-IT. Esquema en `public.tryton_snipe_asset_map` (BD `n8n`). **Fix 2026-08-28:** no existía; `Diff assets (batch)` y `Upsert asset map` fallaban. Añadida a `sql/init-sync-tables.sql` §6 y aplicada.
+
+| Columna | Notas |
+|---------|-------|
+| `tryton_asset_id` | Clave (UNIQUE, target de `ON CONFLICT DO UPDATE`) |
+| `tryton_code` | `code` de Tryton (mapeado a `snipe_asset_tag`) |
+| `tryton_internal_code` | Código interno |
+| `tryton_name` | Nombre en Tryton |
+| `tryton_asset_state` | Estado Tryton |
+| `tryton_model_id` | ID de modelo en Tryton |
+| `snipe_asset_id` | ID del asset en Snipe-IT |
+| `snipe_asset_tag` | `asset_tag` en Snipe-IT |
+| `snipe_model_id` | FK a Snipe-IT `models.id` |
+| `snipe_status_id` | FK a Snipe-IT `status_labels.id` |
+| `snipe_name` | Nombre en Snipe-IT |
+| `created_at`, `updated_at`, `last_synced_at` | Fechas (DEFAULT `now()`) |
+
+### `sync_run_summary` — orquestador v2 (batch)
+
+Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD `n8n`). **Fix 2026-08-28:** no existía; `Run summary` fallaba. Añadida a `sql/init-sync-tables.sql` §7 y aplicada.
+
+| Columna | Notas |
+|---------|-------|
+| `id` | PK BIGSERIAL |
+| `run_id` | `TEXT` — `$execution.id` (UNIQUE) |
+| `total_tryton` | Total en staging |
+| `to_create` / `to_update` | Conteo por acción |
+| `unchanged` | `GREATEST(total - to_create - to_update - missing_model, 0)` |
+| `missing_model` | Sin mapeo de modelo o estado |
+| `deleted_in_tryton` | En `asset_map` pero no en staging |
+| `api_errors` | `COUNT(*) FROM integration_sync_log WHERE execution_id = run_id` |
+| `finished_at` | `now()` |
+
 ---
 
 ## Errores conocidos
@@ -414,3 +467,4 @@ Auditoría de operaciones contra Snipe-IT. Esquema en `public.integration_sync_l
 | `Invalid key supplied` / `Key path ... not readable` en toda la API | Llaves Passport `oauth-*.key` perdidas (volumen anónimo destruido con el contenedor) o `root:root` sin permiso para `apache`. Fix: bind `./snipe-data/snipeit:/var/lib/snipeit` + `php artisan passport:keys --force` + `chown apache:apache` (ver `AGENTS.md`) |
 | 401 `Unauthorized or unauthenticated.` en Snipe-IT | Credencial `Bearer Auth snipe-it` (`httpBearerAuth` id `Adhjdtilu8D9eQs8`) con PAT inválido/revocado. Regenerar en Snipe-IT (Admin → API Tokens) y actualizar en n8n |
 | `$('Nodo').item` sobre nodo no ejecutado | En expresiones, referencia a nodo de la rama no tomada evalúa a vacío silenciosamente (ej. ternario `Create ? ... : Update ? ...` → `"\n  "`). Usar `Recover *` para propagar contexto en vez de ternario cruzado |
+| `staging_tryton_assets` / `tryton_snipe_asset_map` / `sync_run_summary` no existen en BD `n8n` | Orquestador v2 (batch) fallaba en `Reset staging` con `relation "staging_tryton_assets" does not exist`; DDL faltaba en `sql/init-sync-tables.sql`. > **Fix 2026-08-28:** DDL añadido §5-7 a `sql/init-sync-tables.sql` y aplicado a BD `n8n` (`docker-postgres-1`); spec § Tablas de mapeo y `docs/04` §4.5 sincronizados; `scripts/reset-sync.sh` actualizado para truncar las 3 tablas. |
