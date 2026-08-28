@@ -10,6 +10,7 @@
 **/.env-mio*
 **/.env-local
 **/.seguridad
+*.key
 
 # Datos de aplicaciones
 n8n_data/
