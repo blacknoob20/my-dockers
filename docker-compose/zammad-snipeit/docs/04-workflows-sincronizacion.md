@@ -6,8 +6,8 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 
 - [4.1 Workflow principal: Tryton sync snipe-IT assets orchestrator v2](#41-workflow-principal-tryton-sync-snipe-it-assets-orchestrator-v2)
 - [4.2 Tryton sync categories](#42-tryton-sync-categories)
-- [4.3 Tryton sync models (archivado)](#43-tryton-sync-models-archivado)
-- [4.4 Tryton sync statuses (archivado)](#44-tryton-sync-statuses-archivado)
+- [4.3 Tryton sync snipe-IT models](#43-tryton-sync-snipe-it-models)
+- [4.4 Tryton sync snipe-IT status](#44-tryton-sync-snipe-it-status)
 - [4.5 Tablas de mapeo](#45-tablas-de-mapeo)
 - [4.6 Limitaciones y errores conocidos](#46-limitaciones-y-errores-conocidos)
 
@@ -20,9 +20,9 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 ### Ejecucion
 
 - Trigger: **manual** (`When clicking 'Execute workflow'`). No es un webhook.
-- Orquesta: login -> categorias (sub-workflow) -> modelos y estados (batch inline).
+- Orquesta: login → categorías, modelos y estados vía sub-workflows (`Execute Tryton sync snipe-IT categories` / `models` / `status`).
 
-> **Estado:** experimental. Los workflows viejos de models/statuses separados fueron eliminados; v2 los maneja en batch.
+> **Estado:** experimental. Los workflows viejos en `flows/` fueron reemplazados por sub-workflows en `flows/flujos-dev/`.
 
 ### Diagrama (simplificado)
 
@@ -144,15 +144,29 @@ Cuando la creacion falla (ej: nombre duplicado -> HTTP 422), el flujo no termina
 
 ---
 
-## 4.3 Tryton sync models (archivado)
+## 4.3 Tryton sync snipe-IT models
 
-> **Archivado:** el workflow viejo (`flows/Tryton sync models.json`, ID `Q5X3iqntFS1etrPW`) fue eliminado. Los modelos se manejan actualmente en batch dentro del orquestador v2.
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT models.json` (ID `JODxuGjfCJ2wDobA`, inactivo) — invocado por el orquestador vía `Execute Tryton sync snipe-IT models`.
 
----
+## 4.4 Tryton sync snipe-IT status
 
-## 4.4 Tryton sync statuses (archivado)
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT status.json` (ID `DFYH9aXY2QE6uJzl`, activo) — invocado por el orquestador vía `Execute Tryton sync snipeIT status` (uno por estado, `inputSource: passthrough` `{status}`).
 
-> **Archivado:** el workflow viejo (`flows/Tryton sync statuses.json`, ID `CisxFC1TxerOtZkG`) fue eliminado. Los estados se manejan actualmente en batch dentro del orquestador v2.
+### Flujo
+
+```
+Tryton sync snipe-IT assets orchestrator ({status})
+      ↓
+Execute login → Tryton status catalog → Tryton status list → Status asset
+      ↓
+Search status → Status exists? → Status up to date? / Create / Update → Is SnipeIT Saved?
+      ↓ (false)
+Find status in Snipe → Recover status → Recovered status? → Save SnipeIT Status / Log error
+```
+
+### Self-heal
+
+`Find status in Snipe` usa `onError: continueRegularOutput` + `fullResponse:true`; en 401/500 devuelve `{error:{message,status}}`. `Recover status` propaga `response_status`/`error_message`/`response_body`/`operation`/`request_payload` y `Log error` los mapea con `={{ $json.* }}`. **Fix 2026-08-28:** antes `Log error` leía `$json.statusCode` sobre `{found:false}` y ternario sobre nodos no ejecutados → `operation` quedaba en `"\n  "`.
 
 ---
 
@@ -192,12 +206,11 @@ Tablas en PostgreSQL (BD de n8n).
 
 ### `integration_sync_log`
 
-Auditoria de operaciones contra Snipe-IT. Limitaciones:
+Auditoría en `public.integration_sync_log` (BD `n8n`).
 
-- `operation` hardcodeado a `create` (las actualizaciones quedan mal etiquetadas).
-- Categorias/estados: `tryton_id` y `snipe_id` en `0`.
-- `request_payload` parcial (solo el segundo bodyParameter).
-- No hay mapa de activos ni reconciliacion de activos existentes.
+- **Status flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde `Recover status` (propaga error context). **Fix 2026-08-28** corrigió lecturas vacías sobre `{found:false}`.
+- **Categories flow:** `operation` hardcodeado a `"create"`; `request_payload` es `JSON.stringify(params.bodyParameters.parameters[1])`.
+- **General:** `tryton_id`/`snipe_id` en `0` para categorías/estados; sin mapa de activos ni reconciliación.
 
 ---
 
@@ -216,4 +229,7 @@ Auditoria de operaciones contra Snipe-IT. Limitaciones:
 | Rate limit Tryton/Snipe-IT | 429 posibles en operacion masiva |
 | `SNIPE_HOST = localhost` dentro del stack | `ECONNREFUSED ::1:8080`; usar `http://snipe-it:80` |
 | Pinned data en trigger de sub-workflow | `Unpin '<trigger>' to execute` al ejecutar desde orquestador |
-| `onError: continueRegularOutput` en HTTP | Errores de conexion se capturan como item `[{"error": "..."}]` en vez de fallar |
+| `onError: continueRegularOutput` en HTTP | Errores se capturan como `{error:{message,status}}` (con `fullResponse:true` sin `statusCode`/`body`) — no mapear `$json.statusCode` directamente |
+| `Invalid key supplied` en Snipe-IT | Llaves Passport perdidas → bind `./snipe-data/snipeit:/var/lib/snipeit` + `chown apache:apache` |
+| 401 `Unauthorized` en Snipe-IT | PAT de credencial `Bearer Auth snipe-it` inválido → regenerar en Snipe-IT y actualizar en n8n |
+| `$('Nodo').item` sobre nodo no ejecutado | Evalúa a vacío silenciosamente (ternario cruzado → `"\n  "`) |
