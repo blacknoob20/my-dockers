@@ -20,12 +20,14 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 ### Ejecucion
 
 - Trigger: **manual** (`When clicking 'Execute workflow'`). No es un webhook.
-- **Fase 1 — catálogos:** login → categorías y estados en paralelo (`Execute Tryton sync snipe-IT categories` / `status`) → `Wait categories & statuses` → modelos (`Execute Tryton sync snipe-IT models`) → `Wait models`.
-- **Fase 2 — batch PG (activos):** `Prepare staging payload` → `Reset staging` → `Load staging (bulk)` → `Diff assets (batch)` → `Any changes?` → `Batch changes` (splitInBatches) → `Create snipe-IT asset (batch)` / `Update snipe-IT asset (batch)` → `Upsert asset map` / `Log error (batch)` → `Run summary`.
+- **Fase 1 — catálogos:** login → categorías y estados en paralelo (`Execute Tryton sync snipe-IT categories` / `status`) → `Wait categories & statuses` → modelos (`Execute Tryton sync snipe-IT models`).
+- **Fase 2 — batch PG (activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (`Code`, `const assets = $('Flatten assets').first().json.result`) → `Reset staging` → `Load staging (bulk)` → `Diff assets (batch)` → `Any changes?` → `Batch changes` (splitInBatches) → `Create snipe-IT asset (batch)` / `Update snipe-IT asset (batch)` → `Upsert asset map` / `Log error (batch)` → `Run summary`.
 
 > **Estado:** experimental. Los workflows viejos en `flows/` fueron reemplazados por sub-workflows en `flows/flujos-dev/`.
 
-> **Fix 2026-08-28:** los 6 nodos Postgres de la fase 2 (`Reset staging`, `Load staging (bulk)`, `Diff assets (batch)`, `Upsert asset map`, `Log error (batch)`, `Run summary`) apuntaban a `staging_tryton_assets`, `tryton_snipe_asset_map` y `sync_run_summary` que no existían en la BD `n8n`. Se añadió DDL §5-7 a `sql/init-sync-tables.sql` y se aplicó (ver §4.5).
+> **Fix 2026-08-28 (PG-DDL):** los 6 nodos Postgres de la fase 2 (`Reset staging`, `Load staging (bulk)`, `Diff assets (batch)`, `Upsert asset map`, `Log error (batch)`, `Run summary`) apuntaban a `staging_tryton_assets`, `tryton_snipe_asset_map` y `sync_run_summary` que no existían en la BD `n8n`. Se añadió DDL §5-7 a `sql/init-sync-tables.sql` y se aplicó (ver §4.5).
+
+> **Fix 2026-08-28 (Wait models):** Merge `Wait models` (`mode: chooseBranch`, input 1→output 1 no conectado → fase 2 nunca disparaba) eliminado; `Execute Tryton sync snipeIT models` conecta directo a `Prepare staging payload`; `Prepare staging payload` migrado de `$('Wait models')` a `$('Flatten assets')`. `Wait categories & statuses` queda pendiente (mismo patrón `chooseBranch`, sólo passthrough).
 
 ### Diagrama (simplificado)
 
@@ -40,9 +42,7 @@ Category list ──┐
 Status list   ──┼──→ Split Out ──→ Execute categories/status ──→ Wait categories & statuses
                 │                                              |
 Model list    ──┘                                              ↓
-                                          Split Out models ──→ Execute models ──→ Wait models
-                                                                          |
-                                          Prepare staging payload ←───────┘
+                                          Split Out models ──→ Execute models ──→ Prepare staging payload
                                                           |
                                           Reset staging (DELETE staging_tryton_assets)
                                                           |
@@ -345,3 +345,4 @@ Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD
 | 401 `Unauthorized` en Snipe-IT | PAT de credencial `Bearer Auth snipe-it` inválido → regenerar en Snipe-IT y actualizar en n8n |
 | `$('Nodo').item` sobre nodo no ejecutado | Evalúa a vacío silenciosamente (ternario cruzado → `"\n  "`) |
 | `staging_tryton_assets` / `tryton_snipe_asset_map` / `sync_run_summary` no existen en BD `n8n` | Orquestador v2 (batch) fallaba en `Reset staging` con `relation does not exist`; DDL faltaba en `sql/init-sync-tables.sql`. > **Fix 2026-08-28:** DDL añadido §5-7 a `sql/init-sync-tables.sql` y aplicado a BD `n8n`; spec § Tablas de mapeo y `scripts/reset-sync.sh` actualizados. |
+| Merge `Wait models` `chooseBranch` dead-end | Orquestador v2: Merge recibía por input 1 y salía por output 1 no conectado → `Prepare staging payload` nunca recibía datos; `Prepare staging payload` leía `$('Wait models')` sin `result`. > **Fix 2026-08-28:** Merge eliminado; `Execute Tryton sync snipeIT models` → `Prepare staging payload` directo; payload migrado a `$('Flatten assets').first().json.result`. `Wait categories & statuses` pendiente (mismo patrón). |
