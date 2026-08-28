@@ -90,3 +90,71 @@ CREATE INDEX IF NOT EXISTS ix_isl_execution_id
 
 CREATE INDEX IF NOT EXISTS ix_isl_created_at
     ON public.integration_sync_log (created_at DESC);
+
+-- -----------------------------------------------------------------
+-- 5. staging_tryton_assets — orquestador v2 (batch)
+--    Tabla efímera por ejecución. Matching column: tryton_asset_id (UNIQUE).
+--    La usa: Reset staging, Load staging (bulk), Diff assets (batch),
+--    Run summary. ON CONFLICT (tryton_asset_id) DO NOTHING.
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.staging_tryton_assets (
+    tryton_asset_id   INTEGER NOT NULL,
+    code              TEXT,
+    internal_code     TEXT,
+    name              TEXT,
+    asset_state       TEXT,
+    tryton_model_id   INTEGER,
+    tryton_model_name TEXT,
+    category_name     TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sta_tryton_asset_id
+    ON public.staging_tryton_assets (tryton_asset_id);
+
+-- -----------------------------------------------------------------
+-- 6. tryton_snipe_asset_map — orquestador v2 (batch)
+--    Mapa de activos. Matching column: tryton_asset_id (UNIQUE).
+--    Columnas alineadas con Upsert asset map / Diff assets (batch).
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.tryton_snipe_asset_map (
+    tryton_asset_id      INTEGER NOT NULL,
+    tryton_code          TEXT,
+    tryton_internal_code TEXT,
+    tryton_name          TEXT,
+    tryton_asset_state   TEXT,
+    tryton_model_id      INTEGER,
+    snipe_asset_id       INTEGER,
+    snipe_asset_tag      TEXT,
+    snipe_model_id       INTEGER,
+    snipe_status_id      INTEGER,
+    snipe_name           TEXT,
+    created_at           TIMESTAMPTZ DEFAULT now(),
+    updated_at           TIMESTAMPTZ DEFAULT now(),
+    last_synced_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_tsam_tryton_asset_id
+    ON public.tryton_snipe_asset_map (tryton_asset_id);
+
+CREATE INDEX IF NOT EXISTS ix_tsam_snipe_asset_id
+    ON public.tryton_snipe_asset_map (snipe_asset_id);
+
+-- -----------------------------------------------------------------
+-- 7. sync_run_summary — orquestador v2 (batch)
+--    Resumen por ejecución. run_id = $execution.id.
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.sync_run_summary (
+    id                BIGSERIAL PRIMARY KEY,
+    run_id            TEXT NOT NULL,
+    total_tryton      INTEGER,
+    to_create         INTEGER,
+    to_update         INTEGER,
+    unchanged         INTEGER,
+    missing_model     INTEGER,
+    deleted_in_tryton INTEGER,
+    api_errors        INTEGER,
+    finished_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_srs_run_id
+    ON public.sync_run_summary (run_id);
