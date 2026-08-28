@@ -12,8 +12,9 @@
 #      por su snipe_name en tryton_snipe_status_map. Preserva los 3
 #      status labels built-in (Pending, Ready to Deploy, Archived).
 #   2. n8n (PostgreSQL): trunca tryton_snipe_model_map,
-#      tryton_snipe_category_map, tryton_snipe_status_map e
-#      integration_sync_log (reinicia secuencias).
+#      tryton_snipe_category_map, tryton_snipe_status_map,
+#      staging_tryton_assets, tryton_snipe_asset_map,
+#      sync_run_summary e integration_sync_log (reinicia secuencias).
 #
 # NO toca: usuarios, assets, ni la categoría por defecto (id 1).
 #
@@ -26,8 +27,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../envs/snipe-db.env"
 source "$SCRIPT_DIR/../envs/n8n-db.env"
 
-SNIPE_DB_CONT="${SNIPE_DB_CONT:-zammad-snipe-snipe-db-1}"
-N8N_DB_CONT="${N8N_DB_CONT:-zammad-snipe-n8n-db-1}"
+SNIPE_DB_CONT="${SNIPE_DB_CONT:-docker-mariadb-1}"
+N8N_DB_CONT="${N8N_DB_CONT:-docker-postgres-1}"
 
 mysql_q() {
   docker exec "$SNIPE_DB_CONT" mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -N -B -e "$1" 2>/dev/null
@@ -53,6 +54,9 @@ fi
 MAP_MODELS=$(psql_q "SELECT COUNT(*) FROM tryton_snipe_model_map;")
 MAP_CATS=$(psql_q "SELECT COUNT(*) FROM tryton_snipe_category_map;")
 LOG_COUNT=$(psql_q "SELECT COUNT(*) FROM integration_sync_log;")
+STAGING_COUNT=$(psql_q "SELECT COUNT(*) FROM staging_tryton_assets;")
+MAP_ASSETS=$(psql_q "SELECT COUNT(*) FROM tryton_snipe_asset_map;")
+SUMMARY_COUNT=$(psql_q "SELECT COUNT(*) FROM sync_run_summary;")
 
 STATUS_NAMES=()
 while IFS= read -r name; do
@@ -77,6 +81,9 @@ echo "    - Snipe-IT:  $((${#STATUS_IDS[@]})) status_label(s) a borrar [${STATUS
 echo "    - n8n:       $MAP_MODELS fila(s) en tryton_snipe_model_map"
 echo "    - n8n:       $MAP_CATS fila(s) en tryton_snipe_category_map"
 echo "    - n8n:       $MAP_STATUS fila(s) en tryton_snipe_status_map"
+echo "    - n8n:       $STAGING_COUNT fila(s) en staging_tryton_assets"
+echo "    - n8n:       $MAP_ASSETS fila(s) en tryton_snipe_asset_map"
+echo "    - n8n:       $SUMMARY_COUNT fila(s) en sync_run_summary"
 echo "    - n8n:       $LOG_COUNT fila(s) en integration_sync_log"
 
 if [[ "${1:-}" != "-y" ]]; then
@@ -139,6 +146,9 @@ fi
 psql_q "TRUNCATE TABLE tryton_snipe_model_map RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE tryton_snipe_category_map RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE tryton_snipe_status_map RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE staging_tryton_assets RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE tryton_snipe_asset_map RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE sync_run_summary RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE integration_sync_log RESTART IDENTITY;" >/dev/null
 echo "==> n8n: tablas truncadas, secuencias reiniciadas."
 
@@ -147,6 +157,9 @@ echo "==> Verificación:"
 echo "    Map models:     $(psql_q "SELECT COUNT(*) FROM tryton_snipe_model_map;")"
 echo "    Map categories: $(psql_q "SELECT COUNT(*) FROM tryton_snipe_category_map;")"
 echo "    Map status:     $(psql_q "SELECT COUNT(*) FROM tryton_snipe_status_map;")"
+echo "    Staging:        $(psql_q "SELECT COUNT(*) FROM staging_tryton_assets;")"
+echo "    Asset map:      $(psql_q "SELECT COUNT(*) FROM tryton_snipe_asset_map;")"
+echo "    Run summary:    $(psql_q "SELECT COUNT(*) FROM sync_run_summary;")"
 echo "    Log rows:       $(psql_q "SELECT COUNT(*) FROM integration_sync_log;")"
 echo "    Snipe models:   $(mysql_q "SELECT COUNT(*) FROM models;")"
 echo "    Snipe cats:     $(mysql_q "SELECT COUNT(*) FROM categories;")"
