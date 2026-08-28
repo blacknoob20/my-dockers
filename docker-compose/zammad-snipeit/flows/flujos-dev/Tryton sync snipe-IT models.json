@@ -18,18 +18,18 @@
           "mappingMode": "defineBelow",
           "value": {
             "snipe_id": 0,
-            "response_status": "={{ $json.statusCode }}",
+            "response_status": "={{ $json.response_status }}",
             "retry_count": 0,
             "execution_id": "={{$execution.id}}",
             "source_system": "tryton",
             "entity": "model",
             "entity_id": 0,
-            "operation": "create",
+            "operation": "={{ $json.operation }}",
             "tryton_id": "={{ $('Tryton sync snipe-IT assets orchestrator').item.json.asset_model_id }}",
-            "request_payload": "={{ JSON.stringify($('Create snipe-it model').params.bodyParameters.parameters[1]) || {} }}",
-            "response_body": "={{ JSON.stringify($('Create snipe-it model').item.json) }}",
+            "request_payload": "={{ $json.request_payload }}",
+            "response_body": "={{ $json.response_body }}",
             "workflow_name": "={{ $workflow.name }}",
-            "error_message": "={{ $json.body.messages }}",
+            "error_message": "={{ $json.error_message }}",
             "created_at": "={{ new Date().toISOString().replace(/(\\.\\d{3})\\d+Z$/, '$1Z') }}"
           },
           "matchingColumns": [
@@ -768,7 +768,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const t = ($('Tryton sync snipe-IT assets orchestrator').item.json.asset_model_name || '').trim().toUpperCase();\nconst rows = ($json.body && $json.body.rows) || [];\nconst m = rows.find(r => (r.name || '').trim().toUpperCase() === t);\nif (m) {\n  const now = new Date().toISOString();\n  const catId = (m.category && m.category.id) || null;\n  return { json: { found: true, body: { payload: { id: m.id, name: m.name, category: { id: catId }, created_at: { datetime: now }, updated_at: { datetime: now } } } } };\n}\nreturn { json: { found: false } };"
+        "jsCode": "const t = ($('Tryton sync snipe-IT assets orchestrator').item.json.asset_model_name || '').trim().toUpperCase();\nconst rows = ($json.body && $json.body.rows) || [];\nconst m = rows.find(r => (r.name || '').trim().toUpperCase() === t);\nif (m) {\n  const now = new Date().toISOString();\n  const catId = (m.category && m.category.id) || null;\n  return { json: { found: true, body: { payload: { id: m.id, name: m.name, category: { id: catId }, created_at: { datetime: now }, updated_at: { datetime: now } } } } };\n}\nconst response = $json;\nconst errorMsg = response.error?.message || response.body?.messages || response.body?.message || response.message || null;\nconst statusCode = response.statusCode || response.error?.status || null;\nlet operation = 'Unknown';\ntry { if ($('Create snipe-it model').item?.json?.statusCode || $('Create snipe-it model').item?.json?.error) operation = 'Create'; } catch(e) {}\nif (operation === 'Unknown') {\n  try { if ($('Update snipe-it model').item?.json?.statusCode || $('Update snipe-it model').item?.json?.error) operation = 'Update'; } catch(e) {}\n}\nlet requestPayload = null;\ntry { requestPayload = JSON.stringify({ name: $('Tryton sync snipe-IT assets orchestrator').item.json.asset_model_name }); } catch(e) {}\nreturn { json: { found: false, response_status: statusCode, error_message: errorMsg, response_body: JSON.stringify(response), operation, request_payload: requestPayload } };"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

@@ -148,6 +148,46 @@ Cuando la creacion falla (ej: nombre duplicado -> HTTP 422), el flujo no termina
 
 **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT models.json` (ID `JODxuGjfCJ2wDobA`, inactivo) — invocado por el orquestador vía `Execute Tryton sync snipe-IT models`.
 
+**Entrada:** `{ "model": "...", "category": "..." }` derivado del activo (`asset_model_name`, `asset_model_id`, `category`).
+
+### Flujo
+
+```
+Tryton sync snipe-IT assets orchestrator ({asset_model_id, asset_model_name, category})
+      ↓
+Execute a SQL query (SELECT tryton_snipe_model_map WHERE tryton_model_id = $1) → Model exists?
+  ├─ Sí → Not update? (tryton_name == asset_model_name)
+  │        ├─ Sí → Finish
+  │        └─ No → Update snipe-it model (PATCH /models/{id} {name, fieldset_id:2}) → Is SnipeIT Saved?
+  └─ No → Search category (SELECT snipe_category_id FROM tryton_snipe_category_map WHERE tryton_name = $category)
+              ↓
+          Endpoint params → Create snipe-it model (POST /models {category_id, name, fieldset_id:2}) → Is SnipeIT Saved?
+                         ↓
+                    Is SnipeIT Saved? (body.status == "success")
+                     ├─ Sí → Save SnipeIT Model (upsert) → Finish
+                     └─ No → Find model in Snipe ─┐
+```
+
+### Self-heal: auto-recuperación de modelos duplicados
+
+```
+Is SnipeIT Saved? == false
+      ↓
+Find model in Snipe (GET /api/v1/models?search=<name>, onError: continueRegularOutput, fullResponse: true)
+      ↓
+Recover model (Code: match exacto case-insensitive por name)
+      ↓
+Recovered model? (found == true)
+  ├─ Sí → Save SnipeIT Model (upsert) → Finish
+  └─ No → Log error → Finish
+```
+
+- `Find model in Snipe`: `onError: continueRegularOutput` — en 401/500 devuelve `{error:{message,status}}` en vez de fallar
+- `Recover model`: busca el match exacto y, en `found:false`, **propaga contexto de error** (`response_status`, `error_message`, `response_body`, `operation`, `request_payload`) para que `Log error` lo registre completo
+- `Log error` lee todo desde `$json.*` del output de `Recover model` (no referencia nodos no ejecutados)
+
+> **Fix 2026-08-28:** `Log error` y `Recover model` tenían el mismo bug que `status` antes de su fix: `Log error` leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y `operation` hardcodeado a `"create"` con `request_payload`/`response_body` que referenciaban `Create snipe-it model` directamente (vacío si la rama de `Update` ejecutó o si el error vino de `Find`/`Recover`). Fix: `Recover model` propaga `response_status`/`error_message`/`response_body`/`operation`/`request_payload` y `Log error` mapea `={{ $json.* }}`. Ver spec `.ai/specs/tryton-activos.md` § Tryton sync snipe-IT models.
+
 ## 4.4 Tryton sync snipe-IT status
 
 **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT status.json` (ID `DFYH9aXY2QE6uJzl`, activo) — invocado por el orquestador vía `Execute Tryton sync snipeIT status` (uno por estado, `inputSource: passthrough` `{status}`).
@@ -209,6 +249,7 @@ Tablas en PostgreSQL (BD de n8n).
 Auditoría en `public.integration_sync_log` (BD `n8n`).
 
 - **Status flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde `Recover status` (propaga error context). **Fix 2026-08-28** corrigió lecturas vacías sobre `{found:false}`.
+- **Models flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde `Recover model` (propaga error context). **Fix 2026-08-28:** antes leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y `operation` hardcodeado a `"create"` con `request_payload`/`response_body` que referenciaban `Create snipe-it model` directamente.
 - **Categories flow:** `operation` hardcodeado a `"create"`; `request_payload` es `JSON.stringify(params.bodyParameters.parameters[1])`.
 - **General:** `tryton_id`/`snipe_id` en `0` para categorías/estados; sin mapa de activos ni reconciliación.
 
