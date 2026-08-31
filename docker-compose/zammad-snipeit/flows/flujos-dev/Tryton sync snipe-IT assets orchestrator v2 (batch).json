@@ -3,12 +3,12 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "76ee1f1b-f17f-42ce-bbbf-b6e946db31bc",
+      "id": "13086e17-965c-4e1f-9dc2-4922e7f152a9",
       "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "position": [
-        64,
-        336
+        4848,
+        1984
       ],
       "typeVersion": 1
     },
@@ -47,12 +47,12 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "9884cf59-740f-4482-844e-bbf8333b02dd",
+      "id": "f85e7582-5acb-4699-8e21-22e109dde77e",
       "name": "Execute login",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        224,
-        336
+        5008,
+        1984
       ],
       "typeVersion": 1.3
     },
@@ -63,12 +63,12 @@
         "width": 656,
         "color": "#105612"
       },
-      "id": "49ecc374-963f-4172-afc0-d25257e09545",
+      "id": "d10fb7c6-1a0e-4ad7-a965-b9c239a3365c",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        0,
-        0
+        4784,
+        1648
       ],
       "typeVersion": 1
     },
@@ -90,12 +90,12 @@
         "jsonBody": "{\n  \"id\": 0,\n  \"method\": \"model.asset.search_read\",\n  \"params\": [\n    [\n      [\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]\n    ],\n    0, null, null,\n    [\n      \"id\",\n      \"code\",\n      \"internal_code\", \n      \"name\", \n      \"asset_state\", \n      \"asset_type_new.rec_name\",\n      \"actual_value\", \n      \"category.rec_name\", \n      \"company.rec_name\",\n      \"current_owner.rec_name\", \n      \"asset_model.rec_name\"\n    ],\n    {}\n  ]\n}",
         "options": {}
       },
-      "id": "99ccbcf7-72ba-4d8a-b237-74905a2f99bf",
+      "id": "0ed65c05-5444-4fca-beeb-8ed4990b4cc7",
       "name": "Search assets",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        384,
-        336
+        5168,
+        1984
       ],
       "typeVersion": 4.4
     },
@@ -113,12 +113,12 @@
         },
         "options": {}
       },
-      "id": "cb1a16f5-a843-4f13-b24e-894c6424befc",
+      "id": "fb7223c2-32f5-48ee-8181-973f8ec27f96",
       "name": "Flatten assets",
       "type": "n8n-nodes-base.set",
       "position": [
-        544,
-        336
+        5328,
+        1984
       ],
       "typeVersion": 3.4
     },
@@ -136,12 +136,12 @@
         },
         "options": {}
       },
-      "id": "8b805a73-33cb-42c9-86fe-b4cd27649d35",
+      "id": "4f9e2cb4-a54f-403a-8a0c-7aa4d92875e3",
       "name": "Category list",
       "type": "n8n-nodes-base.set",
       "position": [
-        704,
-        416
+        5488,
+        2064
       ],
       "typeVersion": 3.4
     },
@@ -150,12 +150,12 @@
         "fieldToSplitOut": "category",
         "options": {}
       },
-      "id": "ce2f1388-79fd-47b4-b71f-83cd031eafcb",
+      "id": "606471ee-f20c-4c4e-aefe-58716aa6540f",
       "name": "Split Out categories",
       "type": "n8n-nodes-base.splitOut",
       "position": [
-        848,
-        416
+        5632,
+        2064
       ],
       "typeVersion": 1
     },
@@ -173,28 +173,14 @@
         },
         "options": {}
       },
-      "id": "2e236edb-8e24-489f-b7f8-a4a58a4930cb",
+      "id": "292e1129-0371-475e-a161-c648a9343c8d",
       "name": "Model list",
       "type": "n8n-nodes-base.set",
       "position": [
-        1360,
-        368
+        6144,
+        2016
       ],
       "typeVersion": 3.4
-    },
-    {
-      "parameters": {
-        "fieldToSplitOut": "result",
-        "options": {}
-      },
-      "id": "bf1c16db-b253-4709-84ce-0b044047a923",
-      "name": "Split Out models",
-      "type": "n8n-nodes-base.splitOut",
-      "position": [
-        1504,
-        368
-      ],
-      "typeVersion": 1
     },
     {
       "parameters": {
@@ -210,12 +196,12 @@
         },
         "options": {}
       },
-      "id": "426bbe00-6335-4b90-99ba-dde62b05ddba",
+      "id": "c11381b3-1f99-4056-8eb7-108c749a4ee1",
       "name": "Status list",
       "type": "n8n-nodes-base.set",
       "position": [
-        704,
-        592
+        5488,
+        2240
       ],
       "typeVersion": 3.4
     },
@@ -224,12 +210,12 @@
         "fieldToSplitOut": "status",
         "options": {}
       },
-      "id": "9da82aea-1f45-4c6a-9c02-405b3029a09d",
+      "id": "9eec525d-5bb8-48c2-ba9a-ac0e8ae438f6",
       "name": "Split Out statuses",
       "type": "n8n-nodes-base.splitOut",
       "position": [
-        848,
-        592
+        5632,
+        2240
       ],
       "typeVersion": 1
     },
@@ -238,12 +224,12 @@
         "mode": "chooseBranch",
         "numberInputs": 3
       },
-      "id": "b42812a4-e918-4775-b4a6-03733ce33849",
+      "id": "1638bba0-dfec-43b6-a861-345a59982928",
       "name": "Wait categories & statuses",
       "type": "n8n-nodes-base.merge",
       "position": [
-        1216,
-        352
+        6000,
+        2000
       ],
       "typeVersion": 3.2
     },
@@ -269,12 +255,12 @@
         "mode": "each",
         "options": {}
       },
-      "id": "7ccc0e45-812c-4bbf-97d7-fcfa405d8cb4",
+      "id": "d06a9f54-c95c-430f-bcce-fc9635e1059c",
       "name": "Execute Tryton sync snipeIT status",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        1008,
-        592
+        5792,
+        2240
       ],
       "typeVersion": 1.3
     },
@@ -298,12 +284,12 @@
         "mode": "each",
         "options": {}
       },
-      "id": "2ed07715-0e4a-450e-a95f-b6d3d9b34133",
+      "id": "c99c1ddb-cdfa-42e2-8376-eea5a3b9c2ee",
       "name": "Execute Tryton sync snipeIT categories",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        1008,
-        416
+        5792,
+        2064
       ],
       "typeVersion": 1.3
     },
@@ -324,17 +310,19 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
-        "mode": "each",
-        "options": {}
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
-      "id": "fda4ea3b-5b61-4356-aa84-5488023e6e2c",
+      "id": "7f463778-0f4b-4d1a-a503-feab151376e8",
       "name": "Execute Tryton sync snipeIT models",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        1664,
-        368
+        6304,
+        2016
       ],
-      "typeVersion": 1.3
+      "typeVersion": 1.3,
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -343,12 +331,12 @@
         "width": 640,
         "color": "#105612"
       },
-      "id": "138f8b21-53ae-4ca4-8cd8-6103401a3e1e",
+      "id": "28904fdc-8cc1-4341-9b8e-e8be5779aab0",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        0,
-        512
+        4784,
+        2160
       ],
       "typeVersion": 1
     },
@@ -356,366 +344,50 @@
       "parameters": {
         "jsCode": "const assets = $('Flatten assets').first().json.result;\nconst rows = assets.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
       },
-      "id": "56a7ae8f-7816-4bea-802a-96af5c413b8c",
+      "id": "614f993e-71eb-465f-b95c-104e2951d0a3",
       "name": "Prepare staging payload",
       "type": "n8n-nodes-base.code",
       "position": [
-        1856,
-        368
+        6496,
+        2016
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "DELETE FROM staging_tryton_assets;",
-        "options": {}
-      },
-      "id": "b371f08a-1fea-47dc-93a6-02597ffcaf04",
-      "name": "Reset staging",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        2016,
-        368
-      ],
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH ins AS (\n  INSERT INTO staging_tryton_assets (tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name)\n  SELECT DISTINCT ON (x.tryton_asset_id) x.tryton_asset_id, x.code, x.internal_code, x.name, x.asset_state, x.tryton_model_id, x.tryton_model_name, x.category_name\n  FROM jsonb_to_recordset($1::jsonb) AS x(tryton_asset_id int, code text, internal_code text, name text, asset_state text, tryton_model_id int, tryton_model_name text, category_name text)\n  ON CONFLICT (tryton_asset_id) DO NOTHING\n  RETURNING 1\n) SELECT COUNT(*)::int AS staged FROM ins;",
-        "options": {
-          "queryReplacement": "={{ [ $('Prepare staging payload').first().json.payload ] }}"
-        }
-      },
-      "id": "ef529ee4-fbf3-4b2a-9473-a90663eeb024",
-      "name": "Load staging (bulk)",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        2176,
-        368
-      ],
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT s.tryton_asset_id AS id, s.code, s.internal_code, s.name, s.asset_state,\n       s.tryton_model_id, m.snipe_model_id, st.snipe_status_id, am.snipe_asset_id,\n       CASE WHEN am.tryton_asset_id IS NULL THEN 'create' ELSE 'update' END AS action\nFROM staging_tryton_assets s\nJOIN tryton_snipe_model_map m  ON m.tryton_model_id = s.tryton_model_id AND m.snipe_model_id IS NOT NULL\nJOIN tryton_snipe_status_map st ON st.tryton_name = s.asset_state\nLEFT JOIN tryton_snipe_asset_map am ON am.tryton_asset_id = s.tryton_asset_id\nWHERE am.tryton_asset_id IS NULL\n   OR am.snipe_asset_tag      IS DISTINCT FROM s.code\n   OR am.tryton_name          IS DISTINCT FROM s.name\n   OR am.snipe_model_id       IS DISTINCT FROM m.snipe_model_id\n   OR am.snipe_status_id      IS DISTINCT FROM st.snipe_status_id\n   OR am.tryton_internal_code IS DISTINCT FROM s.internal_code\nORDER BY s.tryton_asset_id;",
-        "options": {}
-      },
-      "id": "d9005b38-5c98-40a7-a80f-4de85fbc9ca5",
-      "name": "Diff assets (batch)",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        2336,
-        368
-      ],
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "v2-anychg",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              },
-              "leftValue": "={{ $json.action }}",
-              "rightValue": ""
-            }
-          ]
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Asse2tIngestSub01",
+          "cachedResultUrl": "/workflow/Asse2tIngestSub01",
+          "cachedResultName": "Tryton sync snipe-IT assets ingest (batch)"
         },
-        "looseTypeValidation": "={{ true }}",
-        "options": {}
-      },
-      "id": "43c41486-f35a-40db-b153-a696a257a71f",
-      "name": "Any changes?",
-      "type": "n8n-nodes-base.if",
-      "position": [
-        2480,
-        368
-      ],
-      "typeVersion": 2.3
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "c711c3ed-352a-4113-86a4-37fb85e39451",
-      "name": "Batch changes",
-      "type": "n8n-nodes-base.splitInBatches",
-      "position": [
-        2704,
-        176
-      ],
-      "typeVersion": 3
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "v2-cou",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "6ba12b2c-9346-49ae-bc6d-3c0830deb56a",
-      "name": "Create or update?",
-      "type": "n8n-nodes-base.if",
-      "position": [
-        2864,
-        288
-      ],
-      "typeVersion": 2.3
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{\n  {\n    name: String($json.name ?? '').trim(),\n    asset_tag: String($json.code ?? '').trim(),\n    status_id: Number($json.snipe_status_id),\n    model_id: Number($json.snipe_model_id),\n    _snipeit_internal_code_2: String($json.internal_code ?? '').trim()\n  }\n}}",
         "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
+          "waitForSubWorkflow": true
         }
       },
-      "id": "abb2d313-07f9-4d12-9707-0b43b4fef35a",
-      "name": "Create snipe-IT asset (batch)",
-      "type": "n8n-nodes-base.httpRequest",
+      "id": "18bd450e-8de2-4d30-9a9c-d637d13f5942",
+      "name": "Execute ingest (batch)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [
-        3040,
-        256
-      ],
-      "typeVersion": 4.4,
-      "onError": "continueRegularOutput"
+        6688,
+        2016
+      ]
     },
     {
       "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $json.snipe_asset_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{\n  {\n    name: String($json.name ?? '').trim(),\n    asset_tag: String($json.code ?? '').trim(),\n    status_id: Number($json.snipe_status_id),\n    model_id: Number($json.snipe_model_id),\n    _snipeit_internal_code_2: String($json.internal_code ?? '').trim()\n  }\n}}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          }
-        }
-      },
-      "id": "1b1ee1bd-22e3-435a-b835-07e4cf03ddd5",
-      "name": "Update snipe-IT asset (batch)",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        3040,
-        416
-      ],
-      "typeVersion": 4.4,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "v2-saved",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "leftValue": "={{ $json.body.status }}",
-              "rightValue": "success"
-            }
-          ]
-        },
-        "looseTypeValidation": "={{ true }}",
-        "options": {}
-      },
-      "id": "150a5ddf-2f03-4276-99d3-006958427d58",
-      "name": "Saved?",
-      "type": "n8n-nodes-base.if",
-      "position": [
-        3344,
-        416
-      ],
-      "typeVersion": 2.3
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO tryton_snipe_asset_map (tryton_asset_id, tryton_code, tryton_internal_code, tryton_name, tryton_asset_state, tryton_model_id, snipe_asset_id, snipe_asset_tag, snipe_model_id, snipe_status_id, snipe_name, created_at, updated_at, last_synced_at)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now(), now(), now())\nON CONFLICT (tryton_asset_id) DO UPDATE SET\n  tryton_code=EXCLUDED.tryton_code, tryton_internal_code=EXCLUDED.tryton_internal_code,\n  tryton_name=EXCLUDED.tryton_name, tryton_asset_state=EXCLUDED.tryton_asset_state,\n  tryton_model_id=EXCLUDED.tryton_model_id, snipe_asset_id=EXCLUDED.snipe_asset_id,\n  snipe_asset_tag=EXCLUDED.snipe_asset_tag, snipe_model_id=EXCLUDED.snipe_model_id,\n  snipe_status_id=EXCLUDED.snipe_status_id, snipe_name=EXCLUDED.snipe_name,\n  updated_at=now(), last_synced_at=now();",
-        "options": {
-          "queryReplacement": "={{ [ $('Batch changes').item.json.id, $('Batch changes').item.json.code, $('Batch changes').item.json.internal_code, $('Batch changes').item.json.name, $('Batch changes').item.json.asset_state, $('Batch changes').item.json.tryton_model_id, $json.body.payload.id, $json.body.payload.asset_tag, $('Batch changes').item.json.snipe_model_id, $('Batch changes').item.json.snipe_status_id, $json.body.payload.name ] }}"
-        }
-      },
-      "id": "f75d2947-af5e-48a5-bee4-4ae515d67e23",
-      "name": "Upsert asset map",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        3536,
-        432
-      ],
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, tryton_id, snipe_id, operation, request_payload, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'tryton','asset',0,$3,0,$4,'',$5,$6,$7,0);",
-        "options": {
-          "queryReplacement": "={{ [ String($execution.id), $workflow.name, $('Batch changes').item.json.id, $('Batch changes').item.json.action, String($json.statusCode ?? ''), JSON.stringify($json.body ?? {}).slice(0,2000), JSON.stringify(($json.body && $json.body.messages) ? $json.body.messages : ($json.error ?? {})).slice(0,500) ] }}"
-        }
-      },
-      "id": "18e3aa43-11a3-4a22-9f6a-058741388c6e",
-      "name": "Log error (batch)",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        3520,
-        624
-      ],
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO sync_run_summary (run_id, total_tryton, to_create, to_update, unchanged, missing_model, deleted_in_tryton, api_errors, finished_at)\nSELECT $1, s.total, $2::int, $3::int,\n       GREATEST(s.total - $2::int - $3::int - mm.cnt, 0), mm.cnt, del.cnt,\n       (SELECT COUNT(*)::int FROM integration_sync_log WHERE execution_id = $1), now()\nFROM (SELECT COUNT(*)::int AS total FROM staging_tryton_assets) s,\n     (SELECT COUNT(*)::int AS cnt FROM staging_tryton_assets st\n        LEFT JOIN tryton_snipe_model_map m ON m.tryton_model_id = st.tryton_model_id AND m.snipe_model_id IS NOT NULL\n        LEFT JOIN tryton_snipe_status_map ss ON ss.tryton_name = st.asset_state\n       WHERE m.tryton_model_id IS NULL OR ss.tryton_name IS NULL) mm,\n     (SELECT COUNT(*)::int AS cnt FROM tryton_snipe_asset_map am\n        LEFT JOIN staging_tryton_assets st ON st.tryton_asset_id = am.tryton_asset_id\n       WHERE st.tryton_asset_id IS NULL) del\nRETURNING *;",
-        "options": {
-          "queryReplacement": "={{ [ String($execution.id), $('Diff assets (batch)').all().filter(i => i.json.action === 'create').length, $('Diff assets (batch)').all().filter(i => i.json.action === 'update').length ] }}"
-        }
-      },
-      "id": "59c12dce-4240-4944-84d9-a7c0d1c48dc1",
-      "name": "Run summary",
-      "type": "n8n-nodes-base.postgres",
-      "position": [
-        4480,
-        160
-      ],
-      "executeOnce": true,
-      "typeVersion": 2.6,
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "content": "## Fase de activos v2 - VALIDACION EN LOTE\nStaging (1 query) -> Diff SQL set-based (1 query) -> loop SOLO de cambios -> resumen en sync_run_summary.\nCatalogos: fases originales intactas.",
+        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (sync_run_summary).",
         "height": 220,
         "width": 420,
         "color": 4
       },
-      "id": "eb332296-cfec-46e1-9a60-a0c96d6ae3d2",
+      "id": "b1e2561e-26be-4b57-8601-347c6e90de43",
       "name": "Sticky v2",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1856,
-        96
+        6688,
+        1776
       ],
       "typeVersion": 1
     },
@@ -755,52 +427,23 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "0554d5a4-bc79-44bd-9eb8-4b50b524fb83",
+      "id": "ca8beb84-fa96-47b9-adec-aa21cc9ecbc2",
       "name": "Sync titular activo",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        4736,
-        352
+        6896,
+        2016
       ],
       "typeVersion": 1.3
     }
   ],
   "pinData": {},
   "connections": {
-    "Saved?": {
-      "main": [
-        [
-          {
-            "node": "Upsert asset map",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log error (batch)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Model list": {
       "main": [
         [
           {
-            "node": "Split Out models",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Run summary": {
-      "main": [
-        [
-          {
-            "node": "Sync titular activo",
+            "node": "Execute Tryton sync snipeIT models",
             "type": "main",
             "index": 0
           }
@@ -812,42 +455,6 @@
         [
           {
             "node": "Split Out statuses",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Any changes?": {
-      "main": [
-        [
-          {
-            "node": "Batch changes",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Run summary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Batch changes": {
-      "main": [
-        [
-          {
-            "node": "Run summary",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Create or update?",
             "type": "main",
             "index": 0
           }
@@ -870,17 +477,6 @@
         [
           {
             "node": "Search assets",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Reset staging": {
-      "main": [
-        [
-          {
-            "node": "Load staging (bulk)",
             "type": "main",
             "index": 0
           }
@@ -919,84 +515,11 @@
         ]
       ]
     },
-    "Split Out models": {
-      "main": [
-        [
-          {
-            "node": "Execute Tryton sync snipeIT models",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert asset map": {
-      "main": [
-        [
-          {
-            "node": "Batch changes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create or update?": {
-      "main": [
-        [
-          {
-            "node": "Create snipe-IT asset (batch)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Update snipe-IT asset (batch)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log error (batch)": {
-      "main": [
-        [
-          {
-            "node": "Batch changes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Split Out statuses": {
       "main": [
         [
           {
             "node": "Execute Tryton sync snipeIT status",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Diff assets (batch)": {
-      "main": [
-        [
-          {
-            "node": "Any changes?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Load staging (bulk)": {
-      "main": [
-        [
-          {
-            "node": "Diff assets (batch)",
             "type": "main",
             "index": 0
           }
@@ -1014,44 +537,11 @@
         ]
       ]
     },
-    "Prepare staging payload": {
-      "main": [
-        [
-          {
-            "node": "Reset staging",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Wait categories & statuses": {
       "main": [
         [
           {
             "node": "Model list",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create snipe-IT asset (batch)": {
-      "main": [
-        [
-          {
-            "node": "Saved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update snipe-IT asset (batch)": {
-      "main": [
-        [
-          {
-            "node": "Saved?",
             "type": "main",
             "index": 0
           }
@@ -1101,6 +591,28 @@
           }
         ]
       ]
+    },
+    "Prepare staging payload": {
+      "main": [
+        [
+          {
+            "node": "Execute ingest (batch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute ingest (batch)": {
+      "main": [
+        [
+          {
+            "node": "Sync titular activo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1108,7 +620,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ed45cfd2-f0a0-4a5a-8de6-2c1ecdeb35a9",
+  "versionId": "46c77863-6db5-459b-b96c-672e4be8b3ec",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
