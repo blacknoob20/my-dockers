@@ -1043,7 +1043,12 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "executionTimeout": 3600
   },
   "versionId": "9b7ab8a3-be85-4119-b3b9-0ae883ed3e3d",
   "meta": {
