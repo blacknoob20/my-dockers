@@ -172,7 +172,7 @@ Los specs de integración están en `.ai/specs/`:
 
 | Archivo | Descripción |
 |---------|-------------|
-| `.ai/specs/tryton-activos.md` | Spec canónico de sincronización Tryton → Snipe-IT: arquitectura de los 5 workflows, contratos, tablas de mapeo, errores conocidos |
+| `.ai/specs/tryton-activos.md` | Spec canónico de sincronización Tryton → Snipe-IT: arquitectura de los 6 workflows, contratos, tablas de mapeo, errores conocidos |
 | `.ai/specs/external-databases.md` | Configuración de bases de datos externas: contenedores, credenciales, DBs/usuarios creados, paso a paso para volver a DBs internas |
 
 ### Servidor Tryton (producción)

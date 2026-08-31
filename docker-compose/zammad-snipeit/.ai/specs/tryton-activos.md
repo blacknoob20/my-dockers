@@ -17,7 +17,8 @@ La integración se compone de un **sub-workflow de autenticación** y **workflow
 | Tryton sync categories | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT categories.json` | `Ps2wicy3xI4n37nD` |
 | Tryton sync snipe-IT models | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT models.json` | `JODxuGjfCJ2wDobA` |
 | Tryton sync snipe-IT status | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT status.json` | `DFYH9aXY2QE6uJzl` |
-| Tryton sync snipe-IT assets orchestrator v2 | Orquestador (batch) | — | `3hh7DBsrq8A1rIQg` |
+| Tryton sync snipe-IT assets ingest (batch) | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` | `Asse2tIngestSub01` |
+| Tryton sync snipe-IT assets orchestrator v2 | Orquestador (batch) | `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator v2 (batch).json` | `3hh7DBsrq8A1rIQg` |
 
 > **Nota:** los archivos en `flows/` son snapshots de n8n. Al modificar un workflow en la UI, re-exportarlo para mantenerlos al día.
 
@@ -198,12 +199,19 @@ Authorization: Session <base64(user:uid:session)>
 - **Trigger:** manual (`When clicking 'Execute workflow'`)
 - **ID:** `3hh7DBsrq8A1rIQg` — inactivo, se dispara manualmente
 - **Nota:** los workflows viejos `flows/Tryton sync snipe-IT models.json` y `flows/Tryton sync snipe-IT status.json` (IDs muertos) fueron reemplazados por los sub-workflows en `flows/flujos-dev/` listados arriba
-- **Orquesta (fase 1 — catálogos):** `Execute login` → `Search assets` → `Flatten assets` → `Category list`/`Status list` → `Split Out` por entidad → `Execute Tryton sync snipe-IT categories` / `Execute Tryton sync snipe-IT status` → `Wait categories & statuses` → `Model list` → `Split Out models` → `Execute Tryton sync snipe-IT models` (sub-workflows vía `Execute Workflow`)
-- **Orquesta (fase 2 — batch PG activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (Code, `const assets = $('Flatten assets').first().json.result`) → `Reset staging` (`DELETE FROM staging_tryton_assets`) → `Load staging (bulk)` (`INSERT ... SELECT FROM jsonb_to_recordset($1) ON CONFLICT DO NOTHING`) → `Diff assets (batch)` (`SELECT ... FROM staging_tryton_assets JOIN tryton_snipe_model_map JOIN tryton_snipe_status_map LEFT JOIN tryton_snipe_asset_map WHERE IS DISTINCT`) → `Any changes?` → `Batch changes` (`splitInBatches`) → `Create or update?` → `Create snipe-IT asset (batch)` / `Update snipe-IT asset (batch)` (`POST/PATCH /api/v1/hardware`) → `Saved?` → `Upsert asset map` (`INSERT INTO tryton_snipe_asset_map ... ON CONFLICT DO UPDATE`) / `Log error (batch)` (`INSERT INTO integration_sync_log`) → `Run summary` (`INSERT INTO sync_run_summary`)
+- **Orquesta (fase 1 — catálogos):** `Execute login` → `Search assets` → `Flatten assets` → `Category list`/`Status list` → `Split Out` por entidad → `Execute Tryton sync snipe-IT categories` / `Execute Tryton sync snipe-IT status` → `Wait categories & statuses` → `Model list` → `Execute Tryton sync snipe-IT models` (sub-workflows vía `Execute Workflow`; models sin `Split Out`: recibe el lote completo en 1 item y corre en modo once — ver Fix 2026-08-28 batch models)
+- **Orquesta (fase 2 — batch PG activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (Code, `const assets = $('Flatten assets').first().json.result` → `payload: JSON.stringify(rows), total`) → `Execute ingest (batch)` (sub-workflow `Tryton sync snipe-IT assets ingest (batch)` vía `Execute Workflow`, inputs `{payload, total}`, `waitForSubWorkflow: true`) → `Sync titular activo` (sub-workflow `Tryton sync titular-activo (v1)` vía `Execute Workflow`). Ver detalle de `Execute ingest (batch)` en § Tryton sync snipe-IT assets ingest (batch).
 
-> **Fix 2026-08-28 (PG-DDL):** los 6 nodos Postgres de la fase 2 apuntaban a `staging_tryton_assets`, `tryton_snipe_asset_map` y `sync_run_summary` que no existían en la BD `n8n` (`relation does not exist`). Se añadió DDL §5-7 a `sql/init-sync-tables.sql` y se aplicó; ver § Tablas de mapeo. El bloque `Run summary` se ejecuta con `executeOnce` y los `Upsert/Log error` con `onError: continueRegularOutput`.
+> **Fix 2026-08-28 (PG-DDL):** los 6 nodos Postgres de la fase 2 (ahora en el sub-workflow `assets ingest`) apuntaban a `staging_tryton_assets`, `tryton_snipe_asset_map` y `sync_run_summary` que no existían en la BD `n8n` (`relation does not exist`). Se añadió DDL §5-7 a `sql/init-sync-tables.sql` y se aplicó; ver § Tablas de mapeo. El bloque `Run summary` se ejecuta con `executeOnce` y los `Upsert/Log error` con `onError: continueRegularOutput`.
+
+> **Refactor 2026-08-28 (ingest sub-workflow):** fase 2 (staging/diff/loop/upsert/summary) extraída del orquestador al sub-workflow `Tryton sync snipe-IT assets ingest (batch)` (ID `Asse2tIngestSub01`) para mejorar mantenibilidad. El orquestador pasa `payload`/`total` vía `workflowInputs` y espera (`waitForSubWorkflow: true`); `Load staging (bulk)` relee desde `$('Tryton sync snipe-IT assets orchestrator').first().json.payload`. `Log error (batch)` en el sub registra `workflow_name = $workflow.name` del sub y `execution_id` del sub (conteo `api_errors` de `Run summary` queda consistente dentro de la ejecución del sub). El orquestador invoca `Sync titular activo` tras el ingest.
 
 > **Fix 2026-08-28 (Wait models):** Merge `Wait models` (`mode: chooseBranch`, recibía por input 1 y salía por output 1 no conectado → fase 2 nunca disparaba) eliminado; `Execute Tryton sync snipeIT models` conecta directo a `Prepare staging payload`; `Prepare staging payload` migrado de `$('Wait models')` a `$('Flatten assets')`. `Wait categories & statuses` queda pendiente de análisis (mismo patrón `chooseBranch`, sólo hace passthrough del item de `Flatten assets`).
+
+> **Fix 2026-08-28 (batch models):** con `Split Out models` + `Execute Tryton sync snipe-IT models` en modo `each`, cada modelo lanzaba una sub-ejecución completa del sub-workflow (≈0.5 s serial por modelo: arranque n8n + 1–2 queries PG `WHERE ... = $1` + HTTP). En el run 288 (2026-08-28) fueron 597 sub-ejecuciones = 331 s, ~100% de la duración del orquestador. Se eliminó `Split Out models` del orquestador (`Model list` pasa el lote en 1 item, `result` = array) y `Execute Tryton sync snipeIT models` quedó en modo once con `waitForSubWorkflow: true`. Dentro del sub: `Resolve batch models` (1 query con `jsonb_to_recordset($1)` LEFT JOIN `tryton_snipe_model_map` + `tryton_snipe_category_map`), `Prepare items` (Code `runOnceForAllItems`: filtra no-ops y marca `action: create|update`; en steady-state emite ~0 items), upsert bulk `Save models (bulk)` (`INSERT ... jsonb_to_recordset ... ON CONFLICT (tryton_model_id) DO UPDATE`) para el camino feliz; la rama self-heal/error queda por-item (`Save model (self-heal)`/`Log error`). El settings del sub fija `saveDataSuccessExecution: none` (antes se escribían ~4.8 MB de `execution_data` por run). Hot path: de ~3N queries PG + N sub-ejecuciones a 2 queries PG + 1 ejecución.
+
+> **Fix 2026-08-31 (freeze UI):** `Search assets` (`model.asset.search_read`) usaba `0, null, null` (sin límite) → ~9.5k activos informática (≈10 MB `jsonSizeBytes`, runs 288/1053/1054 con 7-10 MB en `execution_entity`) congelaba el navegador al renderizar. Fix inicial: `0, 100, null` (límite 100, §4.1) + `settings.saveDataSuccessExecution: none / saveDataErrorExecution: all / saveExecutionProgress: false / executionTimeout: 3600` en los 6 workflows (`flows/flujos-dev/*`, `flows/tryton/Tryton login.json`, `v6K5kipkr7UKp0fE`) vía `UPDATE workflow_entity`. Con `100` solo se veían 23/558 modelos distintos (primeros 100 activos).
+> **Fix 2026-08-31 (full fetch + Tag for save SET):** restaurado `Search assets` a `0, null, null` para traer 9565 activos y 558 modelos distintos (meta 597 del run 288) manteniendo `saveDataSuccessExecution: none` (no se guarda `execution_data`, no congela). `Tag for save` (`JODxuGjfCJ2wDobA:38f549da`) convertido de `Code runOnceForEachItem` a `Set 3.4` (7 campos mapeados por expresión, `includeOtherFields: false` por defecto) para reducir overhead del JS task runner; `Build save payload` quedó como `Code runOnceForAllItems` con `$input.all()`.
 
 ### Tryton sync categories
 
@@ -236,26 +244,35 @@ Is SnipeIT Created? ($json.body.status == "success")
 ### Tryton sync snipe-IT models
 
 - **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT models.json` (ID `JODxuGjfCJ2wDobA`, inactivo)
-- **Trigger:** Execute Workflow Trigger (`Tryton sync snipe-IT assets orchestrator`)
-- **Entrada:** `{ "model": "...", "category": "..." }` derivado del activo (`asset_model_name`, `asset_model_id`, `category`)
-- **Invocado por:** orquestador v2 vía `Execute Tryton sync snipe-IT models`
+- **Trigger:** Execute Workflow Trigger (`Tryton sync snipe-IT assets orchestrator`, `inputSource: passthrough`)
+- **Entrada:** 1 solo item con el lote completo: `{ "result": [ {asset_model_id, asset_model_name, category}, ... ] }` (output de `Model list` del orquestador, sin Split Out)
+- **Invocado por:** orquestador v2 vía `Execute Tryton sync snipeIT models` (modo once, `waitForSubWorkflow: true`)
 
 #### Flujo
 
 ```
-Tryton sync snipe-IT assets orchestrator ({asset_model_id, asset_model_name, category})
+Tryton sync snipe-IT assets orchestrator ({ result: [modelos] })
       ↓
-Execute a SQL query (SELECT tryton_snipe_model_map WHERE tryton_model_id = $1) → Model exists?
-  ├─ Sí → Not update? (tryton_name == asset_model_name)
-  │        ├─ Sí → Finish
-  │        └─ No → Update snipe-it model (PATCH /models/{id} {name, fieldset_id:2}) → Is SnipeIT Saved?
-  └─ No → Search category (SELECT snipe_category_id FROM tryton_snipe_category_map WHERE tryton_name = $category)
-              ↓
-          Endpoint params → Create snipe-it model (POST /models {category_id, name, fieldset_id:2}) → Is SnipeIT Saved?
-                         ↓
-                    Is SnipeIT Saved? (body.status == "success")
-                     ├─ Sí → Save SnipeIT Model (upsert tryton_snipe_model_map) → Finish
-                     └─ No → Find model in Snipe ─┐
+Resolve batch models (1 query, executeOnce: jsonb_to_recordset($1::jsonb)
+  LEFT JOIN tryton_snipe_model_map ON tryton_model_id
+  LEFT JOIN tryton_snipe_category_map ON tryton_name
+  → jsonb_agg con {snipe_model_id, map_tryton_name, snipe_category_id} por modelo)
+      ↓
+Prepare items (Code runOnceForAllItems: descarta modelos existentes sin cambio
+  de nombre; emite 1 item por modelo pendiente con action: "create" | "update";
+  pairedItem explícito. Sin pendientes emite 1 item `noop` para no vaciar la salida)
+      ↓
+Has work? (IF: $json.action != "noop")
+   ├─ Sí → Create or update? (IF: $json.action == "create")
+   │        ├─ create → Create snipe-it model (POST /models {category_id: $json.snipe_category_id, name, fieldset_id:2}, batching batchSize:1/batchInterval:1200) → Is SnipeIT Saved?
+   │        └─ update → Update snipe-it model (PATCH /models/{id} {name, fieldset_id:2}, batching batchSize:1/batchInterval:1200) → Is SnipeIT Saved?
+  └─ No (noop) → Finish (saca al menos 1 item para que el orquestador dispare la fase 2)
+                     ↓
+                 Is SnipeIT Saved? (body.status == "success")
+                  ├─ Sí → Tag for save (Set por-item: mapea $('Prepare items') + body.payload → tryton_model_id/tryton_name/snipe_model_id/snipe_category_id/snipe_name/created_at/updated_at)
+                  │         → Build save payload (Code runOnceForAllItems: JSON de filas)
+                  │         → Save models (bulk) (INSERT ... jsonb_to_recordset ... ON CONFLICT (tryton_model_id) DO UPDATE, executeOnce) → Finish
+                  └─ No → Find model in Snipe (rama self-heal, ver abajo)
 ```
 
 #### Self-heal: auto-recuperación de modelos duplicados
@@ -268,15 +285,22 @@ Find model in Snipe (GET /api/v1/models?search=<name>, onError: continueRegularO
 Recover model (Code: match exacto case-insensitive por name)
       ↓
 Recovered model? (found == true)
-  ├─ Sí → Save SnipeIT Model (upsert) → Finish
+  ├─ Sí → Save model (self-heal) (upsert tryton_snipe_model_map por-item) → Finish
   └─ No → Log error → Finish
 ```
 
 - `Find model in Snipe`: `onError: continueRegularOutput` — en 401/500 devuelve `{error:{message,status}}` en vez de fallar
 - `Recover model`: busca el match exacto y, en `found:false`, **propaga contexto de error** (`response_status`, `error_message`, `response_body`, `operation`, `request_payload`) para que `Log error` lo registre completo
-- `Log error` lee todo desde `$json.*` del output de `Recover model` (no referencia nodos no ejecutados)
+- `Log error` lee todo desde `$json.*` del output de `Recover model` (no referencia nodos no ejecutados); el tryton_id se toma de `$('Prepare items').item.json.asset_model_id`
+- La rama self-heal (`Save model (self-heal)`, `Log error`) queda deliberadamente por-item: solo corre en errores (raros); el hot path va en bulk
 
 > **Fix 2026-08-28:** `Log error` y `Recover model` tenían el mismo bug que `status` antes de su fix: `Log error` leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y `operation` hardcodeado a `"create"` con `request_payload`/`response_body` que referenciaban `Create snipe-it model` directamente (vacío si la rama de `Update` ejecutó o si el error vino de `Find`/`Recover`). Fix: `Recover model` propaga `response_status`/`error_message`/`response_body`/`operation`/`request_payload` y `Log error` mapea `={{ $json.* }}`. Ver `docs/04-workflows-sincronizacion.md` §4.3.
+
+> **Fix 2026-08-31 (0 pendientes bloqueaba fase 2):** en steady-state `Prepare items` emitía 0 items → el sub devolvía 0 items → `Execute Tryton sync snipeIT models` sacaba 0 → `Prepare staging payload` nunca se disparaba y la fase 2 quedaba sin correr (staging/asset_map/summary vacíos). `Prepare items` ahora emite un item `noop` y `Has work?` lo rutea directo a `Finish` para garantizar ≥1 salida; el orquestador además fija `alwaysOutputData: true` en `Execute models` como red de seguridad. `Update snipe-it model` fija `onError: continueRegularOutput` para no tumbar el lote.
+
+> **Fix 2026-08-31 (Build save payload):** `Build save payload` (Code `runOnceForAllItems`) usaba `$input.allItems()` — API inexistente → `TypeError: $input.allItems is not a function` (n8n 2.36.7, `JsTaskRunner.runForAllItems`). Fix: cambiado a `$input.all().map(i => i.json)` (`flows/flujos-dev/Tryton sync snipe-IT models.json:628`).
+
+> **Fix 2026-08-31 (429 batching):** `Create snipe-it model`/`Update snipe-it model` sin batching generaban `429 Try spacing your requests out using the batching settings` (150/582 en `integration_sync_log` run 1101; luego 219/291 con `5/1000`). Fix: `options.batching.batch {batchSize:1, batchInterval:550}` + `retryOnFail:true/maxTries:4/waitBetweenTries:3000` en ambos HTTP (`flows/flujos-dev/Tryton sync snipe-IT models.json:287,376`) + restart n8n; 558 modelos en ~310s (109/min, bajo el cap 120/min) con 0 pérdidas.
 
 ### Tryton sync snipe-IT status
 
@@ -345,6 +369,45 @@ Usado en `Status asset` (knownTypes):
 | `baja` | `archived` |
 
 > **Nota archivos eliminados:** los workflows viejos en `flows/` (`Tryton sync models.json` ID `Q5X3iqntFS1etrPW`, `Tryton sync statuses.json` ID `CisxFC1TxerOtZkG` y otros) siguen dados de baja; los activos viven en `flows/flujos-dev/`.
+
+### Tryton sync snipe-IT assets ingest (batch)
+
+- **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` (ID `Asse2tIngestSub01`, inactivo)
+- **Trigger:** Execute Workflow Trigger (`Tryton sync snipe-IT assets orchestrator`, `inputSource: passthrough`)
+- **Entrada:** `{ "payload": "<json-array-string>", "total": 100 }` desde `Prepare staging payload` del orquestador (`payload = JSON.stringify(rows)` donde cada row es `{tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name}`)
+- **Invocado por:** orquestador v2 vía `Execute ingest (batch)` (`waitForSubWorkflow: true`)
+- **Credenciales:** `postgres` id `qJJfZl7PuKahcYb0`, `httpBearerAuth` id `Adhjdtilu8D9eQs8` (Bearer Snipe-IT)
+
+#### Flujo
+
+```
+Tryton sync snipe-IT assets orchestrator ({payload, total})
+      ↓
+Reset staging (DELETE FROM staging_tryton_assets;)
+      ↓
+Load staging (bulk) (INSERT INTO staging_tryton_assets ... SELECT DISTINCT ON (tryton_asset_id) ... FROM jsonb_to_recordset($1) ON CONFLICT DO NOTHING — $1 = $('Tryton sync snipe-IT assets orchestrator').first().json.payload)
+      ↓
+Diff assets (batch) (SELECT ... FROM staging_tryton_assets s JOIN tryton_snipe_model_map m ON m.tryton_model_id = s.tryton_model_id AND m.snipe_model_id IS NOT NULL JOIN tryton_snipe_status_map st ON st.tryton_name = s.asset_state LEFT JOIN tryton_snipe_asset_map am ON am.tryton_asset_id = s.tryton_asset_id WHERE IS DISTINCT — calcula action='create'|'update')
+      ↓
+Any changes? (IF $json.action notEmpty)
+  ├─ true  → Batch changes (splitInBatches, batch size 1)
+  │              ↓ (done)           ↓ (each)
+  │           Run summary        Create or update? (IF $json.action == 'create')
+  │                                 ├─ true  → Create snipe-IT asset (batch) (POST /api/v1/hardware {name, asset_tag, status_id, model_id, _snipeit_internal_code_2})
+  │                                 └─ false → Update snipe-IT asset (batch) (PATCH /api/v1/hardware/{snipe_asset_id} {name, asset_tag, status_id, model_id, _snipeit_internal_code_2})
+  │                                              ↓
+  │                                           Saved? (IF body.status == "success")
+  │                                            ├─ true  → Upsert asset map (INSERT INTO tryton_snipe_asset_map ... ON CONFLICT (tryton_asset_id) DO UPDATE)
+  │                                            └─ false → Log error (batch) (INSERT INTO integration_sync_log {execution_id=$execution.id, workflow_name=$workflow.name, tryton_id, operation=action, response_status, response_body, error_message})
+  │                                                         ↓
+  │                                                      Batch changes (loop-back)
+  └─ false → Run summary (INSERT INTO sync_run_summary (run_id, total_tryton, to_create, to_update, unchanged, missing_model, deleted_in_tryton, api_errors) SELECT ... FROM staging ... RETURNING *, executeOnce)
+```
+
+- `Create/Update snipe-IT asset (batch)`: `onError: continueRegularOutput` + `fullResponse: true` — errores HTTP no rompen el loop, pasan a `Saved?` → `Log error`.
+- `Upsert asset map` / `Log error (batch)`: `onError: continueRegularOutput`, `alwaysOutputData: true` — el loop continúa aunque el upsert/log falle.
+- `Run summary`: `executeOnce: true` — se ejecuta una sola vez aunque `Diff assets` devuelva múltiples filas; cuenta `api_errors` con `COUNT(*) FROM integration_sync_log WHERE execution_id = $execution.id` (mismo `execution_id` del sub).
+- **Nota `workflow_name`:** `Log error (batch)` registra `$workflow.name` del **sub-workflow** (no del orquestador). Es el comportamiento elegido tras el refactor; ver nota en orquestador v2.
 
 ---
 
@@ -469,5 +532,10 @@ Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD
 | `Invalid key supplied` / `Key path ... not readable` en toda la API | Llaves Passport `oauth-*.key` perdidas (volumen anónimo destruido con el contenedor) o `root:root` sin permiso para `apache`. Fix: bind `./snipe-data/snipeit:/var/lib/snipeit` + `php artisan passport:keys --force` + `chown apache:apache` (ver `AGENTS.md`) |
 | 401 `Unauthorized or unauthenticated.` en Snipe-IT | Credencial `Bearer Auth snipe-it` (`httpBearerAuth` id `Adhjdtilu8D9eQs8`) con PAT inválido/revocado. Regenerar en Snipe-IT (Admin → API Tokens) y actualizar en n8n |
 | `$('Nodo').item` sobre nodo no ejecutado | En expresiones, referencia a nodo de la rama no tomada evalúa a vacío silenciosamente (ej. ternario `Create ? ... : Update ? ...` → `"\n  "`). Usar `Recover *` para propagar contexto en vez de ternario cruzado |
-| `staging_tryton_assets` / `tryton_snipe_asset_map` / `sync_run_summary` no existen en BD `n8n` | Orquestador v2 (batch) fallaba en `Reset staging` con `relation "staging_tryton_assets" does not exist`; DDL faltaba en `sql/init-sync-tables.sql`. > **Fix 2026-08-28:** DDL añadido §5-7 a `sql/init-sync-tables.sql` y aplicado a BD `n8n` (`docker-postgres-1`); spec § Tablas de mapeo y `docs/04` §4.5 sincronizados; `scripts/reset-sync.sh` actualizado para truncar las 3 tablas. |
+| `staging_tryton_assets` / `tryton_snipe_asset_map` / `sync_run_summary` no existen en BD `n8n` | Orquestador v2 (batch) fallaba en `Reset staging` con `relation "staging_tryton_assets" does not exist`; DDL faltaba en `sql/init-sync-tables.sql`. > **Fix 2026-08-28:** DDL añadido §5-7 a `sql/init-sync-tables.sql` y aplicado a BD `n8n` (`docker-postgres-1`); spec § Tablas de mapeo y `docs/04` §4.6 sincronizados; `scripts/reset-sync.sh` actualizado para truncar las 3 tablas. |
 | Merge `Wait models` `chooseBranch` dead-end | Orquestador v2: Merge recibía por input 1 (`Execute models`) y salía por output 1 no conectado → `Prepare staging payload` nunca recibía datos; además `Prepare staging payload` esperaba `$('Wait models').first().json.result` (item de `Flatten assets` que no existe en esa rama). > **Fix 2026-08-28:** Merge `Wait models` eliminado; `Execute Tryton sync snipeIT models` conecta directo a `Prepare staging payload`; `Prepare staging payload` migrado a `$('Flatten assets').first().json.result`. `Wait categories & statuses` queda pendiente (mismo patrón `chooseBranch`, sólo passthrough). |
+| Sub-workflow models lanzado 1 vez por modelo | `Split Out models` + `Execute Workflow` en modo `each`: 597 sub-ejecuciones seriales de ~0.5 s (arranque n8n + queries PG por item) ≈ 331 s en el run 288, ~100% del orquestador; ~4.8 MB de `execution_data` por run. > **Fix 2026-08-28 (batch models):** lote en 1 item al sub (modo once), 1 query `jsonb_to_recordset` para resolver mapas, filtro de no-ops en `Prepare items`, upsert bulk con `ON CONFLICT (tryton_model_id)`; self-heal/log quedan por-item; `saveDataSuccessExecution: none` en el sub. Steady-state: fase models de ~200-300 s a ~1-3 s. |
+| `Prepare items` vaciaba salida en steady-state | `Prepare items` filtrado a 0 items dejaba al sub con 0 de salida → `Execute Workflow` sacaba 0 → `Prepare staging payload` no corría y la fase 2 nunca evaluaba assets (observado run 886, 2026-08-31: staging/asset_map/summary vacíos). > **Fix 2026-08-31:** `Prepare items` emite un item `noop` cuando no hay pendientes y `Has work?` lo rutea a `Finish`; el orquestador fija `alwaysOutputData: true` en `Execute models` como red. `Update snipe-it model` con `onError: continueRegularOutput`. |
+| `$input.allItems is not a function` en `Build save payload` | Code `runOnceForAllItems` (`Build save payload`, `flows/flujos-dev/Tryton sync snipe-IT models.json:628`) usaba `$input.allItems()` — no existe en n8n (API es `$input.all()`/`$input.first()`/`$input.last()`). Error `TypeError` en `JsTaskRunner.runForAllItems` (n8n 2.36.7). > **Fix 2026-08-31:** cambiado a `$input.all().map(i => i.json)`; re-importar workflow en n8n si se editó en la UI. |
+| UI congelada al ejecutar nodo | `Search assets` sin límite (`0, null, null` → 9.5k filas, 7-10 MB `execution_entity.jsonSizeBytes`, runs 288/1053/1054) + `saveDataSuccessExecution: all` → navegador colgado al renderizar `Flatten assets`/`Prepare staging payload`/`Model list` y payload `JSON.stringify(rows)`. > **Fix 2026-08-31:** inicial `0,100,null` + `settings.saveDataSuccessExecution: none / …` en 6 workflows + `UPDATE workflow_entity`; `100` solo daba 23/558 modelos → restaurado a `0,null,null` para 558/597 manteniendo `saveDataSuccessExecution: none` + `Tag for save` a `Set` (vs `Code`); limpiar `execution_entity` pesadas. |
+| 429 `Try spacing your requests out` en Snipe-IT models | `Create/Update snipe-it model` sin `batching` → `429` en `integration_sync_log` (150/582 run 1101; 219/291 con `5/1000`) por Snipe-IT rate limit (~300/min → 429). > **Fix 2026-08-31:** `options.batching.batch {batchSize:1, batchInterval:1200}` en ambos HTTP (`flows/flujos-dev/Tryton sync snipe-IT models.json:287,376`) + restart n8n; 558 modelos en ~670s (1/1.2s) sin 429. |
