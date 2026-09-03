@@ -107,8 +107,8 @@
       "typeVersion": 2.6,
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "W6UilZkwBxg69G4f",
+          "name": "Postgres tryton account"
         }
       }
     },
@@ -557,8 +557,7 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 20,
-              "batchInterval": 500
+              "batchSize": 5
             }
           },
           "response": {
@@ -614,7 +613,7 @@
               "id": "ee50ef6a-ecd6-46d3-a0b2-4e27f56a5b77",
               "name": "snipe_user_id",
               "type": "number",
-              "value": "={{ $json.body.payload.id }}"
+              "value": "={{ $json.body?.payload?.id ?? $json.body?.id ?? $json.body?.data?.id ?? $json.payload?.id ?? $json.id }}"
             },
             {
               "id": "623759b9-aed9-42dd-89a9-8d64e3e10623",
@@ -694,8 +693,7 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 20,
-              "batchInterval": 500
+              "batchSize": 5
             }
           },
           "response": {
@@ -751,7 +749,7 @@
               "id": "889d6493-45e6-4379-9c70-1231219f485b",
               "name": "snipe_user_id",
               "type": "number",
-              "value": "={{ $json.body.payload.id }}"
+              "value": "={{ $json.body?.payload?.id ?? $json.body?.id ?? $json.body?.data?.id ?? $json.payload?.id ?? $json.id }}"
             },
             {
               "id": "39ee8c46-e62d-4bf7-8a1b-c600d325b9d3",
@@ -816,6 +814,87 @@
       "position": [
         7712,
         2416
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-id",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.snipe_user_id }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-4789-8abc-def012345678",
+      "name": "Has User ID?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        7872,
+        2280
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1-email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email ?? $('Prep New User').item.json.email }}"
+            },
+            {
+              "id": "m1-status",
+              "name": "status",
+              "type": "string",
+              "value": "error"
+            },
+            {
+              "id": "m1-error",
+              "name": "error_message",
+              "type": "string",
+              "value": "={{ ('Snipe no retorno snipe_user_id (payload.id vacio) para email=' + ($json.email ?? $('Prep New User').item.json.email) + ' body=' + JSON.stringify($json.body ?? $json).slice(0,500)) }}"
+            },
+            {
+              "id": "m1-rstatus",
+              "name": "response_status",
+              "type": "number",
+              "value": "={{ $json.statusCode ?? $json.body?.statusCode ?? 0 }}"
+            },
+            {
+              "id": "m1-rbody",
+              "name": "response_body",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.body ?? $json).slice(0,2000) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6a7-4890-9bcd-ef0123456789",
+      "name": "Mark Missing ID",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        8000,
+        2336
       ],
       "typeVersion": 3.4
     },
@@ -917,8 +996,7 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 20,
-              "batchInterval": 500
+              "batchSize": 5
             }
           },
           "response": {
@@ -1093,8 +1171,7 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 20,
-              "batchInterval": 500
+              "batchSize": 5
             }
           },
           "response": {
@@ -1361,19 +1438,19 @@
             "typeValidation": "strict",
             "version": 3
           },
-          "combinator": "and",
           "conditions": [
             {
               "id": "faltantes-notEmpty",
               "operator": {
-                "type": "string",
+                "type": "array",
                 "operation": "notEmpty",
                 "singleValue": true
               },
               "leftValue": "={{ $json.payload }}",
               "rightValue": ""
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
@@ -1507,7 +1584,7 @@
       "name": "Save New User",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        7872,
+        8032,
         2176
       ],
       "typeVersion": 2.6,
@@ -1525,14 +1602,14 @@
         "width": 1632,
         "color": 4
       },
+      "id": "94732f62-ad56-43b5-ad0c-f1ed29c7f642",
+      "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
       "position": [
         5056,
         2016
       ],
-      "id": "94732f62-ad56-43b5-ad0c-f1ed29c7f642",
-      "name": "Sticky Note2"
+      "typeVersion": 1
     },
     {
       "parameters": {
@@ -1561,14 +1638,14 @@
         "width": 1328,
         "color": 5
       },
+      "id": "dbbeb64a-8019-4ce8-991f-af849592654f",
+      "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
       "position": [
         6704,
         2016
       ],
-      "id": "dbbeb64a-8019-4ce8-991f-af849592654f",
-      "name": "Sticky Note3"
+      "typeVersion": 1
     },
     {
       "parameters": {
@@ -1577,14 +1654,14 @@
         "width": 2048,
         "color": 3
       },
+      "id": "1ddab119-36cd-4979-b142-784dcac8f7f0",
+      "name": "Sticky Note4",
       "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
       "position": [
         8048,
         2016
       ],
-      "id": "1ddab119-36cd-4979-b142-784dcac8f7f0",
-      "name": "Sticky Note4"
+      "typeVersion": 1
     }
   ],
   "pinData": {},
@@ -1677,7 +1754,7 @@
       "main": [
         [
           {
-            "node": "Save New User",
+            "node": "Has User ID?",
             "type": "main",
             "index": 0
           }
@@ -1874,7 +1951,7 @@
       "main": [
         [
           {
-            "node": "Save New User",
+            "node": "Has User ID?",
             "type": "main",
             "index": 0
           }
@@ -2030,6 +2107,35 @@
           }
         ]
       ]
+    },
+    "Has User ID?": {
+      "main": [
+        [
+          {
+            "node": "Save New User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Missing ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Missing ID": {
+      "main": [
+        [
+          {
+            "node": "Users Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -2042,7 +2148,7 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
-  "versionId": "6411e14b-09fb-4419-991d-208c29b81af3",
+  "versionId": "441955a2-a840-4a56-acf8-599c46797435",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
