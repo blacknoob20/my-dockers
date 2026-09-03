@@ -1,0 +1,2052 @@
+{
+  "name": "Tryton sync users assets",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Cnq2yvzVCRTKFld5",
+          "cachedResultUrl": "/workflow/Cnq2yvzVCRTKFld5",
+          "cachedResultName": "Tryton login"
+        },
+        "workflowInputs": {
+          "value": {
+            "ok": false
+          },
+          "schema": [
+            {
+              "id": "ok",
+              "type": "boolean",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "ok",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "ok"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "673c6052-57e3-455e-8566-9a849e1d9d8b",
+      "name": "Tryton Login",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        5264,
+        2528
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.TRYTON_URL || $env.TRYTON_HOST) }}/{{ $env.TRYTON_DB }}/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"id\": 0, \"method\": \"model.asset.search_read\", \"params\": [[[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]], [\"current_owner\", \"!=\", null]], 0, null, null, [\"id\", \"code\", \"current_owner\"], {}]}",
+        "options": {}
+      },
+      "id": "f1a03c45-c577-4db3-9bb7-2d9828e6961b",
+      "name": "Read Owned Assets",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        5424,
+        2528
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json.result || [];\nconst assets = [];\nconst set = new Set();\nfor (const a of result) {\n  if (a.current_owner == null) continue;\n  assets.push({ code: a.code, owner_id: a.current_owner });\n  set.add(a.current_owner);\n}\nreturn [{ json: { assets, owner_ids: [...set], n_assets: assets.length, n_owners: set.size } }];"
+      },
+      "id": "d87a1ae2-31a7-4acf-bb4c-d9c4c26e006b",
+      "name": "Extract Asset Owners",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        5600,
+        2528
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT ON (pp.id)\n       pp.id AS party_id,\n       ru.login,\n       pp.last_name  AS apellidos,\n       pp.first_name AS nombres\nFROM financiero.company_employee ce\nJOIN financiero.party_party pp      ON pp.id = ce.party\nJOIN financiero.company_contract cc ON cc.employee = ce.id\nJOIN financiero.res_user ru         ON ce.id = ru.employee\nWHERE pp.last_name IS NOT NULL AND pp.first_name IS NOT NULL\n  AND cc.state IN ('done')\n  AND ru.active = true\n  AND ru.login LIKE '%.%'\n  AND pp.id = ANY($1)\nORDER BY pp.id, cc.contract_date DESC NULLS LAST;",
+        "options": {
+          "queryReplacement": "={{ [ $json.owner_ids ] }}"
+        }
+      },
+      "id": "3bc97875-5dc9-4e40-b0e2-242e072bb237",
+      "name": "Query Active Employees",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        5792,
+        2528
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const emps = $input.all().map(i => i.json);\nconst assets = $('Extract Asset Owners').first().json.assets || [];\nfunction titleCase(s){\n  return String(s||'').toLowerCase().split(/\\s+/).filter(Boolean)\n    .map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');\n}\nconst byOwner = {};\nfor (const e of emps){\n  const login = String(e.login||'').trim().toLowerCase();\n  if (!login) continue;\n  byOwner[e.party_id] = { email: login+'@guayas.gob.ec', first_name: titleCase(e.nombres), last_name: titleCase(e.apellidos) };\n}\nconst rows = [];\nfor (const a of assets){\n  const o = byOwner[a.owner_id];\n  if (o && o.email) rows.push({ snipe_asset_tag: a.code, email: o.email, first_name: o.first_name, last_name: o.last_name });\n}\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
+      },
+      "id": "d45dc97c-4e43-4be8-945c-9c33e52497e9",
+      "name": "Build Owners",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        5968,
+        2528
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM staging_titular;",
+        "options": {}
+      },
+      "id": "91bce144-a68c-4276-8587-37e65b3eb32e",
+      "name": "Clear Staging",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        6112,
+        2528
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO staging_titular (snipe_asset_tag, email, first_name, last_name)\nSELECT x.snipe_asset_tag, x.email, x.first_name, x.last_name\nFROM jsonb_to_recordset($1::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text);",
+        "options": {
+          "queryReplacement": "={{ [ $('Build Owners').first().json.payload ] }}"
+        }
+      },
+      "id": "e8990dfd-0711-4e82-a502-cc3ff02a4bda",
+      "name": "Stage Owners",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        6256,
+        2528
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.snipe_asset_tag, s.email, s.first_name, s.last_name,\n       am.snipe_asset_id,\n       um.snipe_user_id AS existing_user_id,\n       tm.snipe_user_id AS current_user_id\nFROM staging_titular s\nJOIN tryton_snipe_asset_map am\n  ON am.snipe_asset_tag = s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL\nLEFT JOIN snipe_titular_map tm      ON tm.snipe_asset_tag = s.snipe_asset_tag\nLEFT JOIN snipe_titular_user_map um ON um.email = LOWER(s.email)\nWHERE s.email IS NOT NULL AND s.email <> ''\n  AND (tm.snipe_asset_tag IS NULL\n    OR tm.email IS DISTINCT FROM s.email);",
+        "options": {}
+      },
+      "id": "17358ba0-6baa-45ad-b0d1-3aa08c30bde4",
+      "name": "Detect Changes",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        8288,
+        2544
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at)\nSELECT DISTINCT ON (x.email) x.email, x.snipe_user_id, now()\nFROM jsonb_to_recordset($1::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text, snipe_asset_id int, snipe_user_id int, created_user boolean, status text, error_message text, response_status int, response_body text)\nWHERE x.status = 'ok' AND x.email IS NOT NULL AND x.email <> ''\nORDER BY x.email\nON CONFLICT (email) DO UPDATE SET snipe_user_id = EXCLUDED.snipe_user_id, updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ [ $('Package Results').first().json.payload ] }}"
+        }
+      },
+      "id": "1cde6b79-deae-4597-937c-985b66373462",
+      "name": "Upsert Users (bulk)",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        10016,
+        2560
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_map(snipe_asset_tag, email, snipe_user_id, updated_at)\nSELECT DISTINCT ON (x.snipe_asset_tag) x.snipe_asset_tag, x.email, x.snipe_user_id, now()\nFROM jsonb_to_recordset($1::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text, snipe_asset_id int, snipe_user_id int, created_user boolean, status text, error_message text, response_status int, response_body text)\nWHERE x.status = 'ok'\nORDER BY x.snipe_asset_tag\nON CONFLICT (snipe_asset_tag) DO UPDATE SET email = EXCLUDED.email, snipe_user_id = EXCLUDED.snipe_user_id, updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ [ $('Package Results').first().json.payload ] }}"
+        }
+      },
+      "id": "4b7ba107-5a57-4334-a40e-204efc5289d1",
+      "name": "Upsert Owners (bulk)",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        10016,
+        2384
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*)::int AS omitidos\nFROM staging_titular s\nLEFT JOIN tryton_snipe_asset_map am\n  ON am.snipe_asset_tag = s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL\nWHERE am.snipe_asset_tag IS NULL;",
+        "options": {}
+      },
+      "id": "93fc1ec9-6415-4a4a-944d-34e1fdd8831b",
+      "name": "Count Unmapped",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        8128,
+        2544
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, tryton_id, snipe_id, response_status, response_body, error_message, retry_count)\nSELECT $1, $2, 'tryton', 'titular', 0, x.snipe_asset_tag, 'titular_checkout', 0, COALESCE(x.snipe_asset_id,0), COALESCE(x.response_status,0), COALESCE(x.response_body,''), COALESCE(x.error_message,''), 0\nFROM jsonb_to_recordset($3::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text, snipe_asset_id int, snipe_user_id int, created_user boolean, status text, error_message text, response_status int, response_body text)\nWHERE x.status = 'error';",
+        "options": {
+          "queryReplacement": "={{ [ String($execution.id), $workflow.name, $('Package Results').first().json.payload ] }}"
+        }
+      },
+      "id": "a922dd8a-0314-4f01-8513-9bbea689982d",
+      "name": "Log Errors (bulk)",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        10016,
+        2736
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pkg = $('Package Results').first().json;\nconst diffCount = (()=>{ try { return $('Detect Changes').all().length; } catch(e){ return 0; } })();\nconst omitidos = (()=>{ try { return $('Count Unmapped').first().json.omitidos ?? 0; } catch(e){ return 0; } })();\nconst cambios = diffCount;\nconst ok = pkg.ok ?? 0;\nconst errores = pkg.errores ?? 0;\nconst usuarios_nuevos = pkg.usuarios_nuevos ?? 0;\nconst summary = { cambios, aplicados: ok, errores, omitidos, usuarios_nuevos };\nreturn [{ json: summary }];"
+      },
+      "id": "7e2a7d09-c632-4a74-a6cd-048e8e4e5900",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        9824,
+        2816
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'tryton','titular',0,$3,'run_summary',0,$4,$5,0);",
+        "options": {
+          "queryReplacement": "={{ [ String($execution.id), $workflow.name, 'titular-activo', String(JSON.stringify($json)).slice(0,2000), ($json.errores>0 ? 'errores='+String($json.errores)+' omitidos='+String($json.omitidos) : 'ok omitidos='+String($json.omitidos)).slice(0,500) ] }}"
+        }
+      },
+      "id": "8e4d15a1-b3b5-44bc-ad13-90750f503abd",
+      "name": "Save Summary",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        10016,
+        2912
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**Extraer activos y titulares** (Code):\nfiltra `current_owner != null`, construye `assets:[{code, owner_id}]` (→ Estado deseado) y deduplica `owner_ids` via `Set` (→ Empleados ERP `= ANY($1)`). Se mantiene como Code (1 pasada) vs Set 3.4 que duplicaría filter/map y es ilegible.",
+        "height": 368
+      },
+      "id": "4a7d273c-ff77-4303-8765-8bc664c12b2f",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        5536,
+        2144
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Tryton sync titular↔activo (v1)\nMantiene al día el TITULAR de cada activo en Snipe-IT (requisito del flujo 2.3).\n\n**Fuente autoritativa**: empleados ACTIVOS con contrato vigente del ERP (res_user.login → correo institucional login@guayas.gob.ec, que coincide con AD/Zammad).\n\n**Patrón batch/diff**: staging + diff contra los mapas (snipe_titular_map/_user_map) → solo aplica los CAMBIOS (nuevo titular o titular distinto). Idempotente.\n\nLo invoca el orquestador de assets al final; también corre manual.",
+        "height": 368,
+        "width": 464,
+        "color": 5
+      },
+      "id": "443f9c2e-dacb-4c3a-bd19-a9b03cf3d5f8",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        5056,
+        2144
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "af7c23eb-ca51-4260-a050-75239562a0f4",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.existing_user_id }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "101d8568-f47a-41e3-bef8-b8573342a7eb",
+      "name": "Owner Mapped?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        8432,
+        2496
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "913b5271-3548-49d9-b19f-e2aed5b28385",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $json.snipe_asset_tag }}"
+            },
+            {
+              "id": "ea2dd1b7-d5ef-4064-bc16-be1c1263b206",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "id": "761366bb-a599-4d74-9047-c88a7ddbb901",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.first_name }}"
+            },
+            {
+              "id": "fa7d6bec-7b25-4460-a578-32c05523a068",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $json.last_name }}"
+            },
+            {
+              "id": "87a37902-eed4-49fd-b358-1ea4240a2642",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $json.snipe_asset_id }}"
+            },
+            {
+              "id": "25822f25-9494-4459-b4b2-7f46d9789199",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $json.existing_user_id }}"
+            },
+            {
+              "id": "d3085f0a-5a8f-45ef-add4-620efb6cf6a0",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ false }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b28a9321-d646-4c48-a7d8-4c13d0073471",
+      "name": "Use Mapped User",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        8624,
+        2480
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a140f953-e762-459f-9b5d-d6f3048a47ca",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $json.snipe_asset_tag || '' }}"
+            },
+            {
+              "id": "5109a65f-1e94-48c2-8605-99403052b69f",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $json.snipe_asset_id || 0 }}"
+            },
+            {
+              "id": "23533c40-098f-421b-8995-820b1625cba6",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "id": "bebe287c-47c0-449b-beb0-54016268c36a",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.first_name }}"
+            },
+            {
+              "id": "7ea4970f-d3ca-4200-8946-f2fb700a3317",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $json.last_name }}"
+            },
+            {
+              "id": "7156c225-3e0c-439f-aeca-abf8cd6c1430",
+              "name": "username",
+              "type": "string",
+              "value": "={{ $json.username || $json.email.split('@')[0].slice(0,100) }}"
+            },
+            {
+              "id": "4cc74d87-331d-48c0-8e1c-36a81bb6eddb",
+              "name": "password",
+              "type": "string",
+              "value": "={{ $json.password || (\"Aa9!\" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce8c9c39-baf1-40c4-b371-a01bc76ea15c",
+      "name": "Prep New User",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        7200,
+        2384
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "first_name",
+              "value": "={{ ($json.first_name || $json.username).slice(0,80) }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ ($json.last_name || '-').slice(0,80) }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $json.username.slice(0,100) }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "activated",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "password_confirmation",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "notes",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "17f1749a-cdbd-476d-b5b6-2acadb590c62",
+      "name": "Create Snipe User",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        7344,
+        2384
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dfc86b10-dd47-46d9-909d-f0c233e1e93b",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.email }}"
+            },
+            {
+              "id": "9f6acccb-93b7-4593-83e3-32b9955b9c6f",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.first_name }}"
+            },
+            {
+              "id": "3c052aeb-0a32-4f2c-9a30-326919f8c7fc",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.last_name }}"
+            },
+            {
+              "id": "ee50ef6a-ecd6-46d3-a0b2-4e27f56a5b77",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $json.body.payload.id }}"
+            },
+            {
+              "id": "623759b9-aed9-42dd-89a9-8d64e3e10623",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "=true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5f7842ba-aa8a-468c-95a3-3eda76a2420b",
+      "name": "Tag New User",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        7520,
+        2176
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "first_name",
+              "value": "={{ ($('Prep New User').item.json.first_name || $('Prep New User').item.json.username).slice(0,80) }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ ($('Prep New User').item.json.last_name || '-').slice(0,80) }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $('Prep New User').item.json.username.slice(0,90) + '.' + Math.random().toString(36).slice(2,6) }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Prep New User').item.json.email }}"
+            },
+            {
+              "name": "activated",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $('Prep New User').item.json.password }}"
+            },
+            {
+              "name": "password_confirmation",
+              "value": "={{ $('Prep New User').item.json.password }}"
+            },
+            {
+              "name": "notes",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "08197290-0233-47b9-9930-66b1924ed1bc",
+      "name": "Retry Alt Username",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        7520,
+        2400
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "54374a58-15fd-4d46-a69e-6f4e9ba09896",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.email }}"
+            },
+            {
+              "id": "2dcab81d-5fca-4c34-aea2-5cbdc1c50a35",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.first_name }}"
+            },
+            {
+              "id": "bd759363-849a-4b2d-8f4f-66e3908cce03",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.last_name }}"
+            },
+            {
+              "id": "889d6493-45e6-4379-9c70-1231219f485b",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $json.body.payload.id }}"
+            },
+            {
+              "id": "39ee8c46-e62d-4bf7-8a1b-c600d325b9d3",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "=true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e1ffff8a-94a1-4b49-a313-5729f25445d3",
+      "name": "Tag New User (Alt)",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        7712,
+        2256
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb14a9e4-4339-47c4-95c2-a4326416473f",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep New User').item.json.email }}"
+            },
+            {
+              "id": "864d5f15-a3f9-4fac-9bca-06a13702351f",
+              "name": "status",
+              "type": "string",
+              "value": "error"
+            },
+            {
+              "id": "1673d66a-3746-43aa-8ec2-506a8095fdf9",
+              "name": "error_message",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,500) }}"
+            },
+            {
+              "id": "43ab9997-7009-49cb-88dd-cee1f813203c",
+              "name": "response_status",
+              "type": "number",
+              "value": "={{ $json.statusCode ?? $json.error?.statusCode ?? 0 }}"
+            },
+            {
+              "id": "38366304-f5ad-4a37-a2fa-93b1136b6bb7",
+              "name": "response_body",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,2000) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "384b490a-f580-4470-af0e-544e10f5850e",
+      "name": "Mark Create Failed",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        7712,
+        2416
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cda60b8f-9f45-4fc5-b15a-e51b13b67f58",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $json.snipe_asset_tag }}"
+            },
+            {
+              "id": "bab400e2-02fc-4439-8fa2-a3f80d012e38",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "id": "acd31fff-b561-4fb5-b31a-b65cd5341728",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.first_name }}"
+            },
+            {
+              "id": "76d9e2fe-24ac-4438-89cf-9a472f57250d",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $json.last_name }}"
+            },
+            {
+              "id": "0a2cfb93-7a46-498c-830a-556b9f59050d",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $json.snipe_asset_id }}"
+            },
+            {
+              "id": "57c55a19-bec9-41e4-825a-1c5fb8d2ab55",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $json.snipe_user_id }}"
+            },
+            {
+              "id": "91f67bb1-ef21-4b31-af01-da6a4ab4325c",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ $json.created_user }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "83cd36d7-9c57-4609-8fbb-fbe5af104b5b",
+      "name": "Prep Assignment",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        8784,
+        2480
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $json.snipe_asset_id }}/checkout",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "checkout_to_type",
+              "value": "user"
+            },
+            {
+              "name": "assigned_user",
+              "value": "={{ $json.snipe_user_id }}"
+            },
+            {
+              "name": "note",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "6295a673-aa81-4319-9005-36a01c4a7262",
+      "name": "Checkout Asset",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        8944,
+        2480
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b53034a9-b4ef-4105-9226-42926d7056e4",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_tag }}"
+            },
+            {
+              "id": "1d6e59cd-83fa-4528-8349-c612a7eb9e6f",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.email }}"
+            },
+            {
+              "id": "a41d3783-d1b9-40e6-a498-a3f77d43fd2b",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_id }}"
+            },
+            {
+              "id": "19fa4e2a-d9e0-4435-8c1e-81e728b4820f",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_user_id }}"
+            },
+            {
+              "id": "44fc15f3-fbd5-4f61-b8d7-586546f921f4",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ $('Prep Assignment').item.json.created_user }}"
+            },
+            {
+              "id": "e3e04b35-9cf2-4d33-8a77-40351e8905b8",
+              "name": "status",
+              "type": "string",
+              "value": "ok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1467643d-14fa-453f-aebb-549c09c8709f",
+      "name": "Checkout OK",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        9440,
+        2208
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Prep Assignment').item.json.snipe_asset_id }}/checkin",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "note",
+              "value": "Reasignacion a titular activo (ERP)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "94eeffb2-69ab-43d0-8b76-e3d50563457f",
+      "name": "Checkin Asset",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        9136,
+        2496
+      ],
+      "typeVersion": 4.4,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Prep Assignment').item.json.snipe_asset_id }}/checkout",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "checkout_to_type",
+              "value": "user"
+            },
+            {
+              "name": "assigned_user",
+              "value": "={{ $('Prep Assignment').item.json.snipe_user_id }}"
+            },
+            {
+              "name": "note",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "c949f8f8-49d5-491a-8d22-2f7252a0a7fd",
+      "name": "Retry Checkout",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        9280,
+        2496
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2416e0af-4989-437e-9308-52bd7518d486",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_tag }}"
+            },
+            {
+              "id": "84805e38-1be9-4f04-82b3-5e17dc76bc95",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.email }}"
+            },
+            {
+              "id": "cd26852c-49f5-4952-8f5b-fc7dc3620a37",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_id }}"
+            },
+            {
+              "id": "4375811b-ca35-4196-93c8-ad1c03aed4f7",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_user_id }}"
+            },
+            {
+              "id": "a976ac38-73df-4145-89da-767642aa5261",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ $('Prep Assignment').item.json.created_user }}"
+            },
+            {
+              "id": "01db872d-9122-458a-9dfc-a40ac010b192",
+              "name": "status",
+              "type": "string",
+              "value": "ok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "592c5e4b-36fa-47ef-b2a5-1e599c8c7622",
+      "name": "Checkout OK (Retry)",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        9440,
+        2368
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "028414cf-978b-429f-8c92-de7f9b3bca63",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_tag }}"
+            },
+            {
+              "id": "aafe6147-4643-47d6-a011-d2b07f76d339",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $('Prep Assignment').item.json.email }}"
+            },
+            {
+              "id": "482830e3-7c7e-4f25-90f4-f6cdda9f0152",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_asset_id }}"
+            },
+            {
+              "id": "1cd43b02-62ba-45fa-8c48-49a8d8f38f44",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $('Prep Assignment').item.json.snipe_user_id }}"
+            },
+            {
+              "id": "5d08c6bf-38ab-4e50-b449-0809cba94e09",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ $('Prep Assignment').item.json.created_user }}"
+            },
+            {
+              "id": "98f396ae-6ad2-4965-b43c-2d7a667f5960",
+              "name": "status",
+              "type": "string",
+              "value": "error"
+            },
+            {
+              "id": "1f0d30d5-c465-4457-adee-3d1c5091e1e3",
+              "name": "error_message",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,500) }}"
+            },
+            {
+              "id": "3e728f01-827c-49b5-9be1-6c49d252258a",
+              "name": "response_status",
+              "type": "number",
+              "value": "={{ $json.statusCode ?? $json.error?.statusCode ?? 0 }}"
+            },
+            {
+              "id": "65c3636f-c95a-4689-a8a1-ccdfcd373e8c",
+              "name": "response_body",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,2000) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f28df63-a7bf-4955-b650-90c4425c3b7b",
+      "name": "Checkout Failed",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        9440,
+        2544
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nif (rows.length === 0) return [];\nconst payload = JSON.stringify(rows);\nconst stats = {\n  total: rows.length,\n  ok: rows.filter(r => r.status === 'ok').length,\n  errores: rows.filter(r => r.status === 'error').length,\n  usuarios_nuevos: rows.filter(r => r.status === 'ok' && r.created_user).length,\n};\nreturn [{ json: { payload, ...stats } }];"
+      },
+      "id": "73a6871d-f352-4336-b540-11a1ec33a4f9",
+      "name": "Package Results",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        9648,
+        2656
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users?limit=500",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "1774b2d9-3a88-4d9e-8320-781d34a3af1c",
+      "name": "Preload Snipe Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
+      "position": [
+        6416,
+        2528
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at)\nSELECT LOWER(x.email), x.id, now()\nFROM jsonb_to_recordset($1::jsonb) AS x(email text, id int)\nWHERE x.email IS NOT NULL AND x.email <> ''\nON CONFLICT (email) DO UPDATE SET snipe_user_id = EXCLUDED.snipe_user_id, updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($('Preload Snipe Users').first().json.body.rows.map(r => ({ email: String(r.email||'').toLowerCase(), id: r.id })).filter(r => r.email)) ] }}"
+        }
+      },
+      "id": "df7a3fd8-8d06-49dc-93b5-69254110e0ef",
+      "name": "Bulk Save Users",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        6576,
+        2528
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_agg(json_build_object('email', t.email, 'first_name', t.first_name, 'last_name', t.last_name, 'username', split_part(t.email,'@',1))) AS payload\nFROM (\n  SELECT DISTINCT ON (LOWER(s.email)) LOWER(s.email) AS email, s.first_name, s.last_name\n  FROM staging_titular s\n  WHERE s.email IS NOT NULL AND s.email <> ''\n    AND LOWER(s.email) NOT IN (SELECT email FROM snipe_titular_user_map WHERE email IS NOT NULL)\n  ORDER BY LOWER(s.email)\n) t;",
+        "options": {}
+      },
+      "id": "2e1925f3-1dc3-4394-8128-c06c071cb401",
+      "name": "Find Missing Users",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        6736,
+        2528
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "faltantes-notEmpty",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.payload }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d432817f-711f-44d0-bb16-6d4959625fb9",
+      "name": "Missing Users?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        6896,
+        2528
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json.payload;\nif (!payload) return [];\nconst rows = Array.isArray(payload) ? payload : JSON.parse(payload);\nreturn rows.map(r => ({\n  json: {\n    email: String(r.email||'').toLowerCase(),\n    first_name: r.first_name || '',\n    last_name: r.last_name || '',\n    username: String(r.username || r.email.split('@')[0] || '').slice(0,100),\n    password: 'Aa9!' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),\n  }\n}));"
+      },
+      "id": "165aca84-cb51-4820-ad77-5aa181103088",
+      "name": "Get Missing Users",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        7056,
+        2384
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn [{ json: { ok: true, n_usuarios_creados: items.length } }];"
+      },
+      "id": "e343ab50-6d4c-468d-b263-ca329a4c6c33",
+      "name": "Users Ready",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        7968,
+        2416
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "nd-snipe_asset_tag",
+              "name": "snipe_asset_tag",
+              "type": "string",
+              "value": "={{ $json.snipe_asset_tag }}"
+            },
+            {
+              "id": "nd-email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "id": "nd-first_name",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.first_name }}"
+            },
+            {
+              "id": "nd-last_name",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $json.last_name }}"
+            },
+            {
+              "id": "nd-snipe_asset_id",
+              "name": "snipe_asset_id",
+              "type": "number",
+              "value": "={{ $json.snipe_asset_id }}"
+            },
+            {
+              "id": "nd-snipe_user_id",
+              "name": "snipe_user_id",
+              "type": "number",
+              "value": "={{ $json.existing_user_id }}"
+            },
+            {
+              "id": "nd-status",
+              "name": "status",
+              "type": "string",
+              "value": "error"
+            },
+            {
+              "id": "nd-error_message",
+              "name": "error_message",
+              "type": "string",
+              "value": "snipe_user_id no resuelto (precarga + creación de usuario no cubren email='{{$json.email}}')"
+            },
+            {
+              "id": "nd-response_status",
+              "name": "response_status",
+              "type": "number",
+              "value": "={{ 0 }}"
+            },
+            {
+              "id": "nd-response_body",
+              "name": "response_body",
+              "type": "string",
+              "value": "precarga+usuario: email sin snipe_user_id"
+            },
+            {
+              "id": "nd-created_user",
+              "name": "created_user",
+              "type": "boolean",
+              "value": "={{ false }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "84608b7d-d56e-4ee0-9369-c6cccf9bcc14",
+      "name": "Mark No User",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        8624,
+        2656
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at) VALUES ($1,$2,now()) ON CONFLICT (email) DO UPDATE SET snipe_user_id=EXCLUDED.snipe_user_id, updated_at=now();",
+        "options": {
+          "queryReplacement": "={{ [ $json.email, $json.snipe_user_id ] }}"
+        }
+      },
+      "id": "94f80199-4955-4d75-8413-4160d5c1eb8d",
+      "name": "Save New User",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        7872,
+        2176
+      ],
+      "typeVersion": 2.6,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## ① Obtener datos del ERP\nTitular autoritativo desde Tryton: `login@guayas.gob.ec`. Lee activos con titular, extrae owner_ids y consulta empleados activos.",
+        "height": 112,
+        "width": 1632,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5056,
+        2016
+      ],
+      "id": "94732f62-ad56-43b5-ad0c-f1ed29c7f642",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ok",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "id": "d850250f-7d4b-49ab-b293-0461e58c84ce",
+      "name": "Tryton sync snipe-IT assets orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        5088,
+        2528
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "content": "## ② Detectar cambios (staging + diff)\nCarga el `titular deseado` en `staging_titular` y compara contra `snipe_titular_map`/`user_map`. Solo los cambios siguen.",
+        "height": 112,
+        "width": 1328,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6704,
+        2016
+      ],
+      "id": "dbbeb64a-8019-4ce8-991f-af849592654f",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## ③ Precarga bulk + aplicar en Snipe-IT y auditar\nPrecarga 500 usuarios (1 GET → mapa bulk) y crea usuarios faltantes (1 por email distinto). Luego resuelve `snipe_user_id` desde el mapa (sin búsquedas per-item) y asigna el activo (`checkout` con `checkin` + reintento). Registra éxito/error y resumen.",
+        "height": 112,
+        "width": 2048,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        8048,
+        2016
+      ],
+      "id": "1ddab119-36cd-4979-b142-784dcac8f7f0",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Users Ready": {
+      "main": [
+        [
+          {
+            "node": "Count Unmapped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Assignment": {
+      "main": [
+        [
+          {
+            "node": "Checkout Asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Mapped User": {
+      "main": [
+        [
+          {
+            "node": "Prep Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Checkout": {
+      "main": [
+        [
+          {
+            "node": "Checkout OK (Retry)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Checkout Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Unmapped": {
+      "main": [
+        [
+          {
+            "node": "Detect Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Owned Assets": {
+      "main": [
+        [
+          {
+            "node": "Extract Asset Owners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkin Asset": {
+      "main": [
+        [
+          {
+            "node": "Retry Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag New User": {
+      "main": [
+        [
+          {
+            "node": "Save New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Snipe User": {
+      "main": [
+        [
+          {
+            "node": "Tag New User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry Alt Username",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tryton Login": {
+      "main": [
+        [
+          {
+            "node": "Read Owned Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing Users?": {
+      "main": [
+        [
+          {
+            "node": "Get Missing Users",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Count Unmapped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Missing Users": {
+      "main": [
+        [
+          {
+            "node": "Prep New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Missing Users": {
+      "main": [
+        [
+          {
+            "node": "Missing Users?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage Owners": {
+      "main": [
+        [
+          {
+            "node": "Preload Snipe Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Changes": {
+      "main": [
+        [
+          {
+            "node": "Owner Mapped?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Asset Owners": {
+      "main": [
+        [
+          {
+            "node": "Query Active Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner Mapped?": {
+      "main": [
+        [
+          {
+            "node": "Use Mapped User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark No User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Owners": {
+      "main": [
+        [
+          {
+            "node": "Clear Staging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark No User": {
+      "main": [
+        [
+          {
+            "node": "Package Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Create Failed": {
+      "main": [
+        [
+          {
+            "node": "Users Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout OK": {
+      "main": [
+        [
+          {
+            "node": "Package Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preload Snipe Users": {
+      "main": [
+        [
+          {
+            "node": "Bulk Save Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout Failed": {
+      "main": [
+        [
+          {
+            "node": "Package Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag New User (Alt)": {
+      "main": [
+        [
+          {
+            "node": "Save New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Save Users": {
+      "main": [
+        [
+          {
+            "node": "Find Missing Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Staging": {
+      "main": [
+        [
+          {
+            "node": "Stage Owners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep New User": {
+      "main": [
+        [
+          {
+            "node": "Create Snipe User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Active Employees": {
+      "main": [
+        [
+          {
+            "node": "Build Owners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Save Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New User": {
+      "main": [
+        [
+          {
+            "node": "Users Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Alt Username": {
+      "main": [
+        [
+          {
+            "node": "Tag New User (Alt)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Create Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout Asset": {
+      "main": [
+        [
+          {
+            "node": "Checkout OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Checkin Asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout OK (Retry)": {
+      "main": [
+        [
+          {
+            "node": "Package Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tryton sync snipe-IT assets orchestrator": {
+      "main": [
+        [
+          {
+            "node": "Tryton Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Package Results": {
+      "main": [
+        [
+          {
+            "node": "Upsert Users (bulk)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upsert Owners (bulk)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Errors (bulk)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "executionTimeout": 3600,
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  },
+  "versionId": "47ec26a3-e55b-4412-a8b1-2450856bc5de",
+  "meta": {
+    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
+  },
+  "nodeGroups": [],
+  "id": "yjyUYjVEaZ9UniSs",
+  "tags": []
+}
