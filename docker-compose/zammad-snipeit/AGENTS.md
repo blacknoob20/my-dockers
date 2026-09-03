@@ -2,7 +2,13 @@
 
 ## Regla Principal
 
-**NO guardar nada en Engram.** Este proyecto no utiliza memoria persistente. No ejecutes `mem_save`, `mem_session_summary`, ni ninguna otra herramienta de engram bajo ninguna circunstancia.
+**Usa Engram como base primaria de conocimiento para ahorrar tokens en tareas agénticas.**
+
+- Al iniciar sesión o tras compactación: `mem_context` primero; antes de abrir `flows/*.json` (2000+ líneas), `sql/`, `docs/04*` o `execution_data`, hacer `mem_search` con 2-3 keywords (ej. `Users Ready timeout`, `Bulk Save DISTINCT ON`, `execution pruning`).
+- Tras cada decisión/bugfix/descubrimiento/config: `mem_save` inmediato con formato **What / Why / Where / Learned**, `scope: project`, y `topic_key` estable para upsert (no duplicar).
+- Al cerrar o decir "listo": `mem_session_summary` obligatorio con Goal / Instructions / Discoveries / Accomplished / Next Steps / Relevant Files.
+- **Prohibición total de secretos:** nunca guardar valores de `TRYTON_PASS`, `SNIPEIT_TOKEN`, `MAIL_TOKEN`, `DB_*_PASSWORD`, llaves Passport ni emails de titulares; referenciar solo por nombre (`envs/n8n.env`, `httpBearerAuth Adhjdtilu8D9eQs8`).
+- Specs canónicos siguen en `.ai/specs/tryton-activos.md` + espejo `docs/04-workflows-sincronizacion.md` (regla raíz `AGENTS.md` intacta); Engram es índice/cache, no sustituto. No guardar runs exitosos sin aprendizaje ni dumps de `execution_data`.
 
 ---
 
@@ -87,7 +93,7 @@ Los scripts `.sh` en la raíz del repositorio son **seeders de datos iniciales**
 | Archivo | Qué hace |
 |---------|----------|
 | `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`docker-postgres-1`, `docker-mariadb-1`). Ejecutar una vez antes del primer `docker compose up`. |
-| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: borra modelos, categorías y status labels creados en Snipe-IT (MySQL, `models` y `categories`; los modelos se identifican por su `category_id` del map, capturando también huérfanos de corridas fallidas; los status labels por su `snipe_name` en `tryton_snipe_status_map`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. Preserva los 3 status labels built-in de Snipe-IT (Pending, Ready to Deploy, Archived; `AUTO_INCREMENT` a 4) y no toca la categoría por defecto, usuarios ni assets. Uso: `./scripts/reset-sync.sh -y` |
+| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: borra modelos, categorías y status labels creados en Snipe-IT (MySQL, `models` y `categories`; los modelos se identifican por su `category_id` del map, capturando también huérfanos de corridas fallidas; los status labels por su `snipe_name` en `tryton_snipe_status_map`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `sync_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. Preserva los 3 status labels built-in de Snipe-IT (Pending, Ready to Deploy, Archived; `AUTO_INCREMENT` a 4) y no toca la categoría por defecto, usuarios ni assets. Uso: `./scripts/reset-sync.sh -y` |
 
 > **Nota Passport Snipe-IT:** las llaves RSA de Laravel Passport (`oauth-*.key`) viven en `./snipe-data/snipeit/keys/` (bind mount desde `docker-compose.yml`). Si el contenedor se recrea sin ese volumen, toda la API responde 500 `Invalid key supplied`. Si el volumen se regenera con `php artisan passport:keys` como root, corregir permisos con `chown apache:apache /var/lib/snipeit/keys/*`. Los API tokens quedan inválidos tras regenerar llaves (regenerarlos en Admin → API Tokens y actualizar la credencial `Bearer Auth snipe-it` / `httpBearerAuth` id `Adhjdtilu8D9eQs8` en n8n).
 
@@ -136,7 +142,7 @@ Las credenciales y variables de entorno están en archivos **`.env`** por servic
 | `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config |
 | `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
 | `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`) |
+| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=5`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
 ### Archivos .env de DBs (no usados actualmente, referenciados por init-external-dbs.sh)
 
@@ -159,6 +165,8 @@ Cámbialo antes de producción.
 - Zammad tiene una cadena de dependencias: `zammad-search` + `zammad-redis` + `zammad-memcached` → `zammad-init` → `zammad-railsserver` / `zammad-scheduler` / `zammad-websocket` → `zammad-nginx`.
 - Elasticsearch arranca con `xpack.security.enabled=false` y 1GB de heap (`-Xms1g -Xmx1g`).
 - La zona horaria de n8n está configurada a `America/Guayaquil`.
+- Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (igual que `executionTimeout:3600` del workflow).
+- `execution_data` con `jsonSizeBytes` 35 MB (1497) + 197 `rejected by Runner` + 14 `timeout exceeded when trying to connect` colgaban UI y host. Fix 2026-09-03: `EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168`, `MAX_COUNT=500`, `PRUNE_HARD_DELETE_INTERVAL=15`, `PRUNE_INTERVAL=60`, `DB_POSTGRESDB_POOL_SIZE=5` en `envs/n8n.env`; poda manual `DELETE FROM execution_data WHERE octet_length(data::text)>5MB` (36→152 kB) + `VACUUM`. Sin esto el navegador intenta renderizar 35 MB y el pool PG se satura.
 - El manual de implementación para producción está en `docs/manual-implementacion.md` (hardware, despliegue, tokens de integración, backups).
 - Para volver a usar las DBs internas del compose, ver `.ai/specs/external-databases.md`.
 
