@@ -2,18 +2,15 @@
   "name": "Tryton sync snipe-IT assets ingest (batch)",
   "nodes": [
     {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
+      "parameters": {},
       "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "name": "Tryton sync snipe-IT assets orchestrator",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        368
+        -64,
+        240
       ],
-      "notes": "",
       "notesInFlow": false
     },
     {
@@ -26,8 +23,8 @@
       "name": "Reset staging",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        240,
-        368
+        496,
+        144
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
@@ -50,15 +47,15 @@
       "name": "Load staging (bulk)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        400,
-        368
+        672,
+        144
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -72,15 +69,15 @@
       "name": "Diff assets (batch)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        560,
-        368
+        848,
+        144
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -114,8 +111,8 @@
       "name": "Any changes?",
       "type": "n8n-nodes-base.if",
       "position": [
-        704,
-        368
+        992,
+        144
       ],
       "typeVersion": 2.3
     },
@@ -127,8 +124,8 @@
       "name": "Batch changes",
       "type": "n8n-nodes-base.splitInBatches",
       "position": [
-        928,
-        176
+        1296,
+        -656
       ],
       "typeVersion": 3
     },
@@ -160,8 +157,8 @@
       "name": "Create or update?",
       "type": "n8n-nodes-base.if",
       "position": [
-        1088,
-        288
+        1392,
+        -240
       ],
       "typeVersion": 2.3
     },
@@ -188,6 +185,12 @@
         "specifyBody": "json",
         "jsonBody": "={{\n  {\n    name: String($json.name ?? '').trim(),\n    asset_tag: String($json.code ?? '').trim(),\n    status_id: Number($json.snipe_status_id),\n    model_id: Number($json.snipe_model_id),\n    _snipeit_internal_code_2: String($json.internal_code ?? '').trim()\n  }\n}}",
         "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 550
+            }
+          },
           "response": {
             "response": {
               "fullResponse": true
@@ -199,10 +202,19 @@
       "name": "Create snipe-IT asset (batch)",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        1264,
-        256
+        1568,
+        -320
       ],
       "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -228,6 +240,12 @@
         "specifyBody": "json",
         "jsonBody": "={{\n  {\n    name: String($json.name ?? '').trim(),\n    asset_tag: String($json.code ?? '').trim(),\n    status_id: Number($json.snipe_status_id),\n    model_id: Number($json.snipe_model_id),\n    _snipeit_internal_code_2: String($json.internal_code ?? '').trim()\n  }\n}}",
         "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 550
+            }
+          },
           "response": {
             "response": {
               "fullResponse": true
@@ -239,10 +257,19 @@
       "name": "Update snipe-IT asset (batch)",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        1264,
-        416
+        1568,
+        -144
       ],
       "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -274,8 +301,8 @@
       "name": "Saved?",
       "type": "n8n-nodes-base.if",
       "position": [
-        1568,
-        416
+        1728,
+        -224
       ],
       "typeVersion": 2.3
     },
@@ -284,15 +311,15 @@
         "operation": "executeQuery",
         "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, tryton_id, snipe_id, operation, request_payload, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'tryton','asset',0,$3,0,$4,'',$5,$6,$7,0);",
         "options": {
-          "queryReplacement": "={{ [ String($execution.id), $workflow.name, $('Batch changes').item.json.id, $('Batch changes').item.json.action, String($json.statusCode ?? ''), JSON.stringify($json.body ?? {}).slice(0,2000), JSON.stringify(($json.body && $json.body.messages) ? $json.body.messages : ($json.error ?? {})).slice(0,500) ] }}"
+          "queryReplacement": "={{ [ String($execution.id), $workflow.name, $json.tryton_id, $json.operation, String($json.response_status ?? ''), String($json.response_body ?? '').slice(0,2000), String($json.error_message ?? '').slice(0,500) ] }}"
         }
       },
       "id": "18e3aa43-11a3-4a22-9f6a-058741388c6e",
       "name": "Log error (batch)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        1744,
-        624
+        2368,
+        48
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
@@ -316,8 +343,8 @@
       "name": "Upsert asset map",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        1760,
-        432
+        1904,
+        -304
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
@@ -341,7 +368,7 @@
       "name": "Run summary",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        2704,
+        3280,
         160
       ],
       "executeOnce": true,
@@ -353,6 +380,263 @@
           "name": "Postgres n8n account"
         }
       }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/fields",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "520e7d89-6b73-4621-abf6-9779179b8b61",
+      "name": "Check custom field internal_code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        112,
+        240
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "notes": "Pre-flight: verifica que el custom field _snipeit_internal_code_2 exista. Si falta, el ingest falla con mensaje accionable (ejecuta scripts/snipe-it_custom_fields.sh)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "3df3737d-cbc7-4ef2-b4c9-0f5ae5da3c94",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ (($json.rows ?? []).some(f => f.db_column_name === '_snipeit_internal_code_2')) ? 'true' : 'false' }}",
+              "rightValue": "true"
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "c92db313-6fb9-4451-9d19-6e603879eb33",
+      "name": "Has internal_code field?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        304,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "Falta custom field 'internal_code' en Snipe-IT (db_column _snipeit_internal_code_2). Ejecute ./scripts/snipe-it_custom_fields.sh y reintente. Causa del fallo 2026-09-01: 6,314 assets con error 'This field does not seem to exist'."
+      },
+      "id": "5f4bfcb1-a667-4669-a511-3b12e28de3b8",
+      "name": "Fail: missing custom field",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        496,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "2ea72514-d491-4505-82d9-7d99aa90b036",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ (($json.api_errors ?? 0) > 0) ? 'true' : 'false' }}",
+              "rightValue": "true"
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "5f73e59f-1c84-4ce8-a8b9-97fdbf112606",
+      "name": "Has API errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3424,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "Ingest finalizó con api_errors > 0. Revise integration_sync_log (execution_id = $execution.id) y snipeit custom fields. Si ve '_snipeit_internal_code_2 does not seem to exist', ejecute ./scripts/snipe-it_custom_fields.sh."
+      },
+      "id": "4d222d7c-c4cb-4f0a-bf6d-ad4076c7d4ce",
+      "name": "Fail: ingest had API errors",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        80
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        256
+      ],
+      "id": "5c43e36f-8f29-4e3f-a713-23a8d12dcc16",
+      "name": "Finish"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Loop",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        0
+      ],
+      "id": "c7b60e7a-b7ce-4a44-9192-6deb70ab09d2",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "content": "## SNIPE-IT endpoints\n**Activos**\n`POST: http://<snipe-host>/api/v1/hardware`\n`PATCH: http://<snipe-host>/api/v1/hardware/<:asset_id>`",
+        "width": 496,
+        "color": "#105612"
+      },
+      "id": "3fa8e435-a4f2-469a-a690-1d96f0292d96",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST + '/api/v1/hardware?asset_tag=' + encodeURIComponent($('Batch changes').item.json.code) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "362aa6d8-7865-46dc-812c-4a849066c7b1",
+      "name": "Find asset in Snipe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1904,
+        -128
+      ],
+      "notesInFlow": false,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Self-heal: busca asset existente por asset_tag cuando Create/Update falla."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const batch = ($('Batch changes').item && $('Batch changes').item.json) ? $('Batch changes').item.json : {};\nconst trytonId = batch.id;\nconst operation = batch.action || 'create';\nconst targetTag = (batch.code || '').trim();\nconst rows = ($json.body && $json.body.rows) || [];\nconst m = rows.find(r => (r.asset_tag || '').trim() === targetTag && !r.deleted_at);\nif (m) {\n  return { json: { found: true, tryton_id: trytonId, operation, body: { status: 'success', payload: { id: m.id, asset_tag: m.asset_tag, name: m.name } } } };\n}\nconst response = $json;\nlet statusCode = response.statusCode || null;\nlet errorMsg = response.error?.message || response.body?.message || null;\nlet responseBody = null;\ntry { responseBody = JSON.stringify(response.body || response); } catch(e) { responseBody = String(response); }\nlet orig = null;\ntry {\n  const c = $('Create snipe-IT asset (batch)').item;\n  if (c && (c.json.statusCode || c.json.body || c.json.error)) { orig = c.json; }\n} catch(e) {}\nif (!orig) {\n  try {\n    const u = $('Update snipe-IT asset (batch)').item;\n    if (u && (u.json.statusCode || u.json.body || u.json.error)) { orig = u.json; }\n  } catch(e) {}\n}\nif (orig) {\n  statusCode = orig.statusCode || statusCode;\n  const origMsg = orig.body?.messages || orig.body?.message || orig.error?.message || orig.message;\n  if (origMsg) errorMsg = origMsg;\n  try { responseBody = JSON.stringify(orig.body || orig); } catch(e) {}\n  if (errorMsg && typeof errorMsg === 'object') errorMsg = JSON.stringify(errorMsg);\n}\nif (errorMsg && typeof errorMsg === 'object') errorMsg = JSON.stringify(errorMsg);\nlet requestPayload = null;\ntry { requestPayload = JSON.stringify({ asset_tag: batch.code, name: batch.name }); } catch(e) {}\nreturn { json: { found: false, tryton_id: trytonId, operation, response_status: statusCode != null ? String(statusCode) : null, error_message: errorMsg ? String(errorMsg).slice(0,500) : null, response_body: responseBody ? String(responseBody).slice(0,2000) : null, request_payload: requestPayload } };"
+      },
+      "id": "77efd1b5-629f-467b-8a30-7e2db21f7c8c",
+      "name": "Recover asset",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c51a5530-9481-42fe-920b-2736f4604c29",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "afb12d2e-ed9f-41be-b03c-5fdc8de1841c",
+      "name": "Recovered asset?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2192,
+        -48
+      ]
     }
   ],
   "pinData": {},
@@ -361,7 +645,7 @@
       "main": [
         [
           {
-            "node": "Reset staging",
+            "node": "Check custom field internal_code",
             "type": "main",
             "index": 0
           }
@@ -379,7 +663,7 @@
         ],
         [
           {
-            "node": "Log error (batch)",
+            "node": "Find asset in Snipe",
             "type": "main",
             "index": 0
           }
@@ -437,7 +721,7 @@
       "main": [
         [
           {
-            "node": "Batch changes",
+            "node": "Loop",
             "type": "main",
             "index": 0
           }
@@ -466,7 +750,7 @@
       "main": [
         [
           {
-            "node": "Batch changes",
+            "node": "Loop",
             "type": "main",
             "index": 0
           }
@@ -516,9 +800,118 @@
           }
         ]
       ]
+    },
+    "Check custom field internal_code": {
+      "main": [
+        [
+          {
+            "node": "Has internal_code field?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has internal_code field?": {
+      "main": [
+        [
+          {
+            "node": "Reset staging",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: missing custom field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run summary": {
+      "main": [
+        [
+          {
+            "node": "Has API errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has API errors?": {
+      "main": [
+        [
+          {
+            "node": "Fail: ingest had API errors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "Batch changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find asset in Snipe": {
+      "main": [
+        [
+          {
+            "node": "Recover asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recover asset": {
+      "main": [
+        [
+          {
+            "node": "Recovered asset?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recovered asset?": {
+      "main": [
+        [
+          {
+            "node": "Upsert asset map",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error (batch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -528,12 +921,11 @@
     "saveExecutionProgress": false,
     "executionTimeout": 3600
   },
-  "versionId": "00000000-0000-0000-0000-000000000001",
+  "versionId": "82c2d0f1-b3ce-41fa-8f49-b1a0bf5457b1",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
+  "nodeGroups": [],
   "id": "v6K5kipkr7UKp0fE",
-  "tags": [],
-  "nodeGroups": []
+  "tags": []
 }

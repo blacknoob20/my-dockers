@@ -219,7 +219,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2176,
+        2112,
         528
       ],
       "id": "b219c7b8-5709-4f0f-8895-8a254dc3f3ac",
@@ -227,7 +227,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       },
       "onError": "continueRegularOutput"
@@ -237,7 +237,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2400,
+        2336,
         208
       ],
       "id": "09fc9d64-6a77-4d2a-a338-2fdc165737b9",
@@ -246,14 +246,14 @@
     {
       "parameters": {
         "content": "## Almacenar Auditoría\n\nEvaluar en SnipeIT la creación del registro y almacenar en las tablas `tryton_snipe_status_map` e `integration_sync_log` de la BD de n8n",
-        "height": 656,
+        "height": 640,
         "width": 256,
         "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2096,
+        2032,
         48
       ],
       "id": "575503bc-e7e5-45d7-971a-e77db03794bb",
@@ -279,7 +279,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -360,7 +360,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1280,
+        1264,
         432
       ],
       "id": "95cbdea7-f7ca-4548-9eda-35fddeef230a",
@@ -517,7 +517,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2176,
+        2112,
         352
       ],
       "id": "f4d6b1da-bc21-4fb6-ba57-d411a6f4a919",
@@ -525,7 +525,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -659,7 +659,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1280,
+        1264,
         288
       ],
       "id": "27c2161e-dac8-4edc-8336-fcb8d007c709",
@@ -698,7 +698,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1456,
+        1424,
         368
       ],
       "id": "164f97d7-c64d-4af3-a080-81f86e1a95c8",
@@ -755,7 +755,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1632,
+        1568,
         432
       ],
       "id": "5dd149f5-7395-41a3-b456-a8b312243e3d",
@@ -776,7 +776,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1792,
+        1728,
         432
       ],
       "id": "94b67e80-450d-4d83-a1b1-c92fe47a5521",
@@ -810,7 +810,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1952,
+        1888,
         432
       ],
       "id": "d53ad8c7-8088-4b8f-9527-f408df6db342",
@@ -831,6 +831,22 @@
       ],
       "id": "c437a66d-8444-4cb6-b080-bd735b34c10e",
       "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## SNIPE-IT endpoints\n**Estados:**\n`POST: http://<snipe-host>/api/v1/statuslabels`\n`PATCH: http://<snipe-host>/api/v1/statuslabels/<:status_id>`",
+        "height": 144,
+        "width": 624,
+        "color": "#105612"
+      },
+      "id": "5507cc1c-4bfb-431e-9593-1c131f11e716",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        496
+      ],
+      "typeVersion": 1
     }
   ],
   "pinData": {},
@@ -1050,7 +1066,7 @@
     "saveExecutionProgress": false,
     "executionTimeout": 3600
   },
-  "versionId": "9b7ab8a3-be85-4119-b3b9-0ae883ed3e3d",
+  "versionId": "50a3e66b-9f02-4e58-8c87-a8a036115414",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },

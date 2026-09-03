@@ -281,30 +281,45 @@ Find status in Snipe → Recover status → Recovered status? → Save SnipeIT S
 ```
 Tryton sync snipe-IT assets orchestrator ({payload, total})
       ↓
-Reset staging (DELETE FROM staging_tryton_assets;)
+Check custom field internal_code (GET /api/v1/fields)
       ↓
-Load staging (bulk) (INSERT INTO staging_tryton_assets ... SELECT DISTINCT ON (tryton_asset_id) ... FROM jsonb_to_recordset($1) ON CONFLICT DO NOTHING — $1 = $('Tryton sync snipe-IT assets orchestrator').first().json.payload)
-      ↓
-Diff assets (batch) (SELECT ... FROM staging_tryton_assets s JOIN tryton_snipe_model_map m ON ... JOIN tryton_snipe_status_map st ON ... LEFT JOIN tryton_snipe_asset_map am ON ... WHERE IS DISTINCT — calcula action='create'|'update')
-      ↓
-Any changes? (IF $json.action notEmpty)
-  ├─ true  → Batch changes (splitInBatches, batch size 1)
-  │              ↓ (done)           ↓ (each)
-  │           Run summary        Create or update? (IF $json.action == 'create')
-  │                                 ├─ true  → Create snipe-IT asset (batch) (POST /api/v1/hardware {name, asset_tag, status_id, model_id, _snipeit_internal_code_2}, onError: continueRegularOutput, fullResponse: true)
-  │                                 └─ false → Update snipe-IT asset (batch) (PATCH /api/v1/hardware/{snipe_asset_id} {name, asset_tag, status_id, model_id, _snipeit_internal_code_2}, onError: continueRegularOutput, fullResponse: true)
-  │                                              ↓
-  │                                           Saved? (IF body.status == "success")
-  │                                            ├─ true  → Upsert asset map (INSERT INTO tryton_snipe_asset_map ... ON CONFLICT (tryton_asset_id) DO UPDATE, onError: continueRegularOutput)
-  │                                            └─ false → Log error (batch) (INSERT INTO integration_sync_log {execution_id=$execution.id, workflow_name=$workflow.name, tryton_id, operation=action, response_status, response_body, error_message}, onError: continueRegularOutput)
-  │                                                         ↓
-  │                                                      Batch changes (loop-back)
-  └─ false → Run summary (INSERT INTO sync_run_summary (run_id, total_tryton, to_create, to_update, unchanged, missing_model, deleted_in_tryton, api_errors) SELECT ... FROM staging ... RETURNING *, executeOnce)
+Has internal_code field? (IF ($json.rows ?? []).some(f => f.db_column_name === '_snipeit_internal_code_2'))
+  ├─ false → Fail: missing custom field (Stop and Error) → "Falta _snipeit_internal_code_2. Ejecute ./scripts/snipe-it_custom_fields.sh"
+  └─ true  → Reset staging (DELETE FROM staging_tryton_assets;)
+                ↓
+             Load staging (bulk) (INSERT INTO staging_tryton_assets ... SELECT DISTINCT ON (tryton_asset_id) ... FROM jsonb_to_recordset($1) ON CONFLICT DO NOTHING — $1 = $('Tryton sync snipe-IT assets orchestrator').first().json.payload)
+                ↓
+             Diff assets (batch) (SELECT ... FROM staging_tryton_assets s JOIN tryton_snipe_model_map m ON ... JOIN tryton_snipe_status_map st ON ... LEFT JOIN tryton_snipe_asset_map am ON ... WHERE IS DISTINCT — calcula action='create'|'update')
+                ↓
+             Any changes? (IF $json.action notEmpty)
+               ├─ true  → Batch changes (splitInBatches, batch size 1)
+               │              ↓ (done)           ↓ (each)
+               │           Run summary        Create or update? (IF $json.action == 'create')
+               │           (ver guarda        ├─ true  → Create snipe-IT asset (batch) (POST /api/v1/hardware {name, asset_tag, status_id, model_id, _snipeit_internal_code_2}, onError: continueRegularOutput, fullResponse: true)
+               │            post-loop)       └─ false → Update snipe-IT asset (batch) (PATCH /api/v1/hardware/{snipe_asset_id} {name, asset_tag, status_id, model_id, _snipeit_internal_code_2}, onError: continueRegularOutput, fullResponse: true)
+                │                                              ↓
+                │                                           Saved? (IF body.status == "success")
+                │                                            ├─ true  → Upsert asset map (INSERT INTO tryton_snipe_asset_map ...) → Loop → Batch changes
+                │                                            └─ false → Find asset in Snipe (GET /api/v1/hardware?asset_tag={{code}}, fullResponse, onError: continueRegularOutput)
+                │                                                         ↓
+                │                                                      Recover asset (Code: match exacto en body.rows; encontrado → {found:true, payload}; no → propaga response_status/error del Create/Update)
+                │                                                         ↓
+                │                                                      Recovered asset? (IF $json.found)
+                │                                                        ├─ true  → Upsert asset map → Loop → Batch changes
+                │                                                        └─ false → Log error (batch) → Loop → Batch changes
+                └─ false → Run summary (INSERT INTO sync_run_summary ...) → Has API errors? (IF ($json.api_errors ?? 0) > 0) → true: Fail: ingest had API errors / false: Finish
 ```
 
-- `Run summary` es `executeOnce: true` y cuenta `api_errors` con `COUNT(*) FROM integration_sync_log WHERE execution_id = $execution.id` (mismo `$execution.id` del sub, consistente con `Log error`).
-- `Upsert asset map` mapea `$('Batch changes').item.json.*` + `$json.body.payload.*`; `Log error` mapea `$('Batch changes').item.json.action` + `$json.statusCode/body`.
+- `Check custom field internal_code` / `Has internal_code field?` / `Fail: missing custom field`: **pre-flight**. Verifica `GET /api/v1/fields` y que exista `db_column_name === '_snipeit_internal_code_2'` (id 2). Si falta, falla en ~1 s con mensaje accionable (`ejecute ./scripts/snipe-it_custom_fields.sh`) en vez de procesar 8k assets 50 min para que todos fallen con `_snipeit_internal_code_2 does not seem to exist`. Prerequisito: `scripts/snipe-it_custom_fields.sh` (idempotente) crea el custom field `internal_code` (text, ANY) → `_snipeit_internal_code_2`, el fieldset id 2 y los asocia. Ver `docs/manual-implementacion.md` §7.
+- `Find asset in Snipe` / `Recover asset` / `Recovered asset?`: **self-heal assets** (replica patrón `Recover model`). Cuando `Create/Update` falla (p.ej. `asset_tag must be unique` por los 383 huérfanos), busca por `asset_tag` exacto (`GET /api/v1/hardware?asset_tag=X`, `=`) y si lo encuentra normaliza `body.payload` → `Upsert asset map` (`Recover` propaga `tryton_id`/`operation` y `Log error` lee `$json.*`). La re-ejecución corrige los huérfanos sin SQL manual.
+- `Has API errors?` / `Fail: ingest had API errors`: **guarda post-loop**. Tras `Run summary`, si `api_errors > 0` el sub-workflow pasa a `error` (visible en n8n) en vez de `success` engañoso (caso 2026-09-01: `api_errors=6314/8132` pero ejecución en `success`). `Loop` es puente noOp hacia `Batch changes`; `Finish` es éxito. `Log error` lee `$json.*` propagado por `Recover` (no `$('Batch changes').item` cruzado) para evitar silencio por `continueRegularOutput`.
+- `Create/Update snipe-IT asset (batch)`: `batchSize:1, batchInterval:550` + `retryOnFail (4×3s)` + `onError: continueRegularOutput` + `fullResponse` — evita `429` de Snipe-IT (throttle `api-throttle:api` 60/min) y reintenta. `Find asset in Snipe` también con retry 3×2s.
+- `Upsert asset map` mapea `$('Batch changes').item.json.*` + `$json.body.payload.*`; `Log error` usa `$json.tryton_id`/`$json.operation`/`$json.response_status` de `Recover asset`.
 - **Refactor 2026-08-28:** extraído del orquestador para mejorar mantenibilidad. `workflow_name` en `integration_sync_log` pasa a ser el nombre del sub-workflow (decisión acordada).
+
+> **Fix 2026-09-01 (custom field internal_code faltante — 0 assets):** orquestador 1265 / ingest 1266 (`success` pero 0 assets). Fix: añadida guarda pre-flight y guarda post-loop + script `scripts/snipe-it_custom_fields.sh` idempotente; re-export snapshot (21 nodos con Loop/Finish).
+
+> **Fix 2026-09-01 (self-heal assets — 383 huérfanos tras cancelación):** cancelación a mitad de loop dejó 383 assets en Snipe sin map (`Upsert` no llegó). Sin self-heal la re-ejecución reintentaba `create` → `asset_tag must be unique` perpetuo. Fix: añadidos `Find asset in Snipe` → `Recover asset` → `Recovered asset?` → `Upsert asset map` en rama `Saved? false`. Snapshot 21→24 nodos; sin duplicados de `code` en staging verificado (0).
 
 ---
 
@@ -430,3 +445,7 @@ Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD
 | UI congelada al ejecutar nodo | `Search assets` sin límite (`0, null, null` → 9.5k filas, 7-10 MB `execution_entity.jsonSizeBytes`, runs 288/1053/1054) + `saveDataSuccessExecution: all` → navegador colgado al renderizar `Flatten assets`/`Prepare staging payload`/`Model list` y `JSON.stringify(rows)`. > **Fix 2026-08-31:** inicial `0,100,null` + `settings.saveDataSuccessExecution: none / …` en 6 workflows + `UPDATE workflow_entity`; `100` solo daba 23/558 modelos → restaurado a `0,null,null` para 558/597 manteniendo `saveDataSuccessExecution: none` + `Tag for save` a `Set` (vs `Code`) para no saturar task runner; limpiar `execution_entity` pesadas. |
 | 429 `Try spacing your requests out` en Snipe-IT models | `Create/Update snipe-it model` sin `batching` → `429` en `integration_sync_log` (150/582 run 1101; 219/291 con `5/1000`) por Snipe-IT rate limit. > **Fix 2026-08-31:** `options.batching.batch {batchSize:1, batchInterval:1200}` en ambos HTTP (`flows/flujos-dev/Tryton sync snipe-IT models.json:287,376`) + restart n8n; 558 modelos en ~670s sin 429. |
 | `Find model in Snipe` `search=undefined` (self-heal roto) | `Find model in Snipe` usaba `$json.asset_model_name` tras `Create` con `fullResponse: true` → item es `{body,statusCode}` sin ese campo → `search=undefined` → `{"total":0}`; duplicados Tryton (mismo nombre ya sincronizado) nunca se recuperan → 40/597 sin mapeo (`tryton_snipe_model_map` 557/597). > **Fix 2026-09-01:** cambiado a `$('Prepare items').item.json.asset_model_name` en `flows/flujos-dev/Tryton sync snipe-IT models.json:476` + `UPDATE workflow_entity JODxuGjfCJ2wDobA` + backfill de 40 al `snipe_model_id` canónico; ver §4.3. |
+| Custom field `_snipeit_internal_code_2` inexistente → 0 assets, `success` engañoso | `custom_fields` solo 1 fila (MAC, id 1) y `custom_fieldsets` solo id 1; faltaba `internal_code` (id 2 → `_snipeit_internal_code_2`) y fieldset id 2. Orquestador 1265/ingest 1266: 9565/8132/6314/0 en map/assets; todos los POST `/hardware` con `200 {"status":"error","messages":{"_snipeit_internal_code_2":[...]}}`. > **Fix 2026-09-01:** añadidos pre-flight `Check custom field internal_code` → `Has internal_code field?` → `Fail: missing custom field` (~1 s, `ejecute ./scripts/snipe-it_custom_fields.sh`) y post-loop `Has API errors?` → `Fail: ingest had API errors` (api_errors>0 → error); script `scripts/snipe-it_custom_fields.sh` idempotente + `docs/manual-implementacion.md`; re-export snapshot (21 nodos con Loop/Finish). |
+| Activos huérfanos tras cancelación → 383 en Snipe-IT sin map | Cancelación a mitad de loop dejó 383 assets sin map (`Upsert` no llegó). Re-ejecución sin self-heal reintentaba `create` → `asset_tag must be unique` perpetuo. > **Fix 2026-09-01 (self-heal assets):** añadidos `Find asset in Snipe` (GET `/api/v1/hardware?asset_tag=X`, `=`) → `Recover asset` → `Recovered asset?` → `Upsert asset map` en rama `Saved? false`. Re-ejecución corrige los 383. Snapshot 21→24 nodos; sin duplicados de `code` verificado (0). |
+| `Node execution failed` — task runner disconnect (OOM) | Ingest 9.5k payload + 24 nodos + self-heal excede heap del JS runner interno. Ejecuciones 1316/1317 abortan a ~6 min con `InternalTaskRunnerDisconnectAnalyzer`. > **Fix 2026-09-01:** `envs/n8n.env:5` `N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096` + `docker compose up -d n8n` (heap 4 GiB). Alternativa: `n8n-runner` externo (`N8N_RUNNERS_ENABLED=true`). Ver `docs/04` §4.5. |
+| 429 `Try spacing your requests out` en Snipe-IT assets ingest | `Create/Update` sin batching → 429 en `access.log` (219 en 18:13-18:43, 112 faltantes sin log por `Log error` silencioso). > **Fix 2026-09-01:** `batchSize:1, batchInterval:550` + `retryOnFail 4×3s` en ambos HTTP + retry en `Find asset in Snipe`; `Recover` propaga `tryton_id` y `Log error` lee `$json.*`. Snapshot 24 nodos. |

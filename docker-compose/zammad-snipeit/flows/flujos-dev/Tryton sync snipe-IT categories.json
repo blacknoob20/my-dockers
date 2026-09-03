@@ -52,7 +52,7 @@
       "credentials": {
         "httpBearerAuth": {
           "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth account"
+          "name": "Bearer Auth snipe-it"
         }
       },
       "onError": "continueRegularOutput"
@@ -180,7 +180,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -410,7 +410,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       },
       "onError": "continueRegularOutput"
@@ -460,7 +460,7 @@
       "credentials": {
         "postgres": {
           "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres account"
+          "name": "Postgres n8n account"
         }
       }
     },
@@ -560,7 +560,7 @@
       "credentials": {
         "httpBearerAuth": {
           "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth account"
+          "name": "Bearer Auth snipe-it"
         }
       },
       "onError": "continueRegularOutput"
@@ -612,6 +612,22 @@
       ],
       "id": "de8a3e3b-2802-4765-8039-4cc0c3aa38b0",
       "name": "Recovered category?"
+    },
+    {
+      "parameters": {
+        "content": "## SNIPE-IT endpoints\n**Categorias:**\n`POST: http://<snipe-host>/api/v1/categories`",
+        "height": 112,
+        "width": 480,
+        "color": "#105612"
+      },
+      "id": "f1fc390f-cecd-400c-a04e-5b7b4ab072c1",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -16,
+        336
+      ],
+      "typeVersion": 1
     }
   ],
   "pinData": {},
@@ -758,7 +774,7 @@
     "saveExecutionProgress": false,
     "executionTimeout": 3600
   },
-  "versionId": "201e5a03-0da4-4f43-91aa-fc0ccdd9f701",
+  "versionId": "d7a00a2e-cf77-4448-b4b4-bf377de1bff2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"

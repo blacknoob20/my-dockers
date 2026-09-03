@@ -370,6 +370,32 @@ docker compose logs -f n8n
 
 > Zammad puede tardar 1–2 minutos en responder la primera vez mientras migra y popula su base de datos. El contenedor `zammad-init` ejecuta las migraciones una sola vez; si se recrea, espera al estado sano de las dependencias y sale con éxito.
 
+### Paso 7 — Provisionar Snipe-IT (categorías, fabricantes, estados y custom fields)
+
+Los seeders de `scripts/` pueblan Snipe-IT vía API una vez que `http://<servidor>:8080` responde. **El orden importa:** el custom field `internal_code` debe existir antes del primer ingest de activos, o el flujo falla a propósito con mensaje accionable (ver §11 y `docs/04` §4.5).
+
+```bash
+# 1) Crear token API en Snipe-IT (Admin → Settings → API Tokens) y exportarlo.
+#    El token de laboratorio está en envs/n8n.env (SNIPEIT_TOKEN) o en scripts/* (placeholder).
+export SNIPE_URL="http://localhost:8080"
+export API_TOKEN="eyJ0..."   # o: export API_TOKEN=$(grep SNIPEIT_TOKEN envs/n8n.env | cut -d= -f2-)
+
+# 2) Seeders base (idempotentes a nivel práctico; duplicados devuelven HTTP 422 sin abortar)
+./scripts/snipe-it_categories.sh
+./scripts/snipe-it_manufacturer.sh
+./scripts/snipe-it_status_labels.sh
+
+# 3) Custom field + fieldset para activos Tryton (idempotente, verifica antes de crear)
+./scripts/snipe-it_custom_fields.sh
+# Crea: custom field "internal_code" (text, ANY) → db_column _snipeit_internal_code_2
+#       fieldset "Activos Tryton" (id 2 esperado, referenciado por models.fieldset_id=2)
+#       asociación field → fieldset vía POST /api/v1/fields/{id}/associate
+# Si el id no es 2 (p.ej. campo/fieldset borrado antes), el script advierte y explica cómo ajustar
+# el payload del workflow (Create/Update snipe-IT asset) o limpiar huérfanos en lab.
+```
+
+> **Guarda del workflow:** `Tryton sync snipe-IT assets ingest (batch)` hace pre-flight `GET /api/v1/fields` → `Has internal_code field?` (db_column `_snipeit_internal_code_2`). Si falta, el sub-workflow entra en `Fail: missing custom field` (Stop and Error, ~1 s) con el mensaje `Falta custom field 'internal_code' … Ejecute ./scripts/snipe-it_custom_fields.sh`. Tras el loop, `Has API errors?` (api_errors>0) lleva a `Fail: ingest had API errors` para que la ejecución quede en `error` en n8n en vez de `success` engañoso (caso 2026-09-01: 6314 errores pero 0 assets). Ver `docs/04` §4.5 y spec `.ai/specs/tryton-activos.md`.
+
 ---
 
 ## 8. Tokens de acceso y usuarios de integración

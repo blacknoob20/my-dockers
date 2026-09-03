@@ -243,7 +243,7 @@
       "typeVersion": 1,
       "position": [
         -304,
-        272
+        288
       ],
       "id": "36700ea4-5e70-40a3-8580-27a6f90ff412",
       "name": "Sticky Note"
@@ -306,16 +306,16 @@
       ],
       "id": "b76c1eb3-4fd0-40d9-81f3-4ad98a8af806",
       "name": "Create snipe-it model",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
           "id": "Adhjdtilu8D9eQs8",
           "name": "Bearer Auth snipe-it"
         }
       },
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 4,
-      "waitBetweenTries": 3000
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {},
@@ -398,16 +398,16 @@
       ],
       "id": "d19d5c91-be90-41fe-908c-6378e9367d89",
       "name": "Update snipe-it model",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
           "id": "Adhjdtilu8D9eQs8",
           "name": "Bearer Auth snipe-it"
         }
       },
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 4,
-      "waitBetweenTries": 3000
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -445,7 +445,7 @@
     {
       "parameters": {
         "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n## BODY obligatorio `fieldset_id`\nID del campo personalizado para el codigo barra del SGP",
-        "height": 576,
+        "height": 544,
         "width": 224,
         "color": 5
       },
@@ -879,6 +879,22 @@
       ],
       "id": "ce3efbf7-a39b-4177-a4b0-fb4d90d5d485",
       "name": "Has work?"
+    },
+    {
+      "parameters": {
+        "content": "## SNIPE-IT endpoints\n**Modelos**\n`POST: http://<snipe-host>/api/v1/models`\n`PATCH: http://<snipe-host>/api/v1/models/<:model_id>`",
+        "height": 144,
+        "width": 480,
+        "color": "#105612"
+      },
+      "id": "7f87c8a7-4268-4255-b27d-5659a5134564",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2016,
+        1168
+      ],
+      "typeVersion": 1
     }
   ],
   "pinData": {},
@@ -1098,7 +1114,7 @@
     "saveExecutionProgress": false,
     "executionTimeout": 3600
   },
-  "versionId": "fdd9e983-af89-41da-b03f-88b02dbcb611",
+  "versionId": "1c443f90-b52c-44d5-b279-11880f914841",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },

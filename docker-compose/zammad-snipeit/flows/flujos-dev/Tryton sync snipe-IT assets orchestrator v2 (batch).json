@@ -326,22 +326,6 @@
     },
     {
       "parameters": {
-        "content": "## SNIPE-IT endpoints activos\n**Categorias:**\n`POST: http://<snipe-host>/api/v1/categories`\n**Estados:**\n`POST: http://<snipe-host>/api/v1/statuslabels`\n`PATCH: http://<snipe-host>/api/v1/statuslabels/<:status_id>`\n**Modelos**\n`POST: http://<snipe-host>/api/v1/models`\n`PATCH: http://<snipe-host>/api/v1/models/<:model_id>`\n**Activos**\n`POST: http://<snipe-host>/api/v1/hardware`\n`PATCH: http://<snipe-host>/api/v1/hardware/<:asset_id>`",
-        "height": 368,
-        "width": 640,
-        "color": "#105612"
-      },
-      "id": "28904fdc-8cc1-4341-9b8e-e8be5779aab0",
-      "name": "Sticky Note1",
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        4784,
-        2160
-      ],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
         "jsCode": "const assets = $('Flatten assets').first().json.result;\nconst rows = assets.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
       },
       "id": "614f993e-71eb-465f-b95c-104e2951d0a3",
@@ -357,9 +341,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "v6K5kipkr7UKp0fE",
           "mode": "list",
-          "value": "Asse2tIngestSub01",
-          "cachedResultUrl": "/workflow/Asse2tIngestSub01",
+          "cachedResultUrl": "/workflow/v6K5kipkr7UKp0fE",
           "cachedResultName": "Tryton sync snipe-IT assets ingest (batch)"
         },
         "options": {
@@ -386,7 +370,7 @@
       "name": "Sticky v2",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        6688,
+        6432,
         1776
       ],
       "typeVersion": 1
@@ -618,9 +602,14 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "executionTimeout": 3600
   },
-  "versionId": "46c77863-6db5-459b-b96c-672e4be8b3ec",
+  "versionId": "03b317a1-18ee-4436-9a51-112515e5917d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
