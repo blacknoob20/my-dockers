@@ -1,0 +1,1916 @@
+{
+  "name": "Tryton sync titular-activo",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ok",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "id": "c29e3874-0ffd-4fd3-b390-753622538861",
+      "name": "Ejecutado por el orquestador",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        4096,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Cnq2yvzVCRTKFld5",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Cnq2yvzVCRTKFld5",
+          "cachedResultName": "Tryton login"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ok": false
+          },
+          "matchingColumns": [
+            "ok"
+          ],
+          "schema": [
+            {
+              "id": "ok",
+              "displayName": "ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "8634e5f2-1c4b-4571-8bc3-5b31d28eae14",
+      "name": "Execute login",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4272,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.TRYTON_URL || $env.TRYTON_HOST) }}/{{ $env.TRYTON_DB }}/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"id\": 0, \"method\": \"model.asset.search_read\", \"params\": [[[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]], [\"current_owner\", \"!=\", null]], 0, null, null, [\"id\", \"code\", \"current_owner\"], {}]}",
+        "options": {}
+      },
+      "id": "e2bb7742-6dd4-42b8-ba66-1effd3a48aef",
+      "name": "Leer activos con titular",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4448,
+        1312
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json.result || [];\nconst assets = [];\nconst set = new Set();\nfor (const a of result) {\n  if (a.current_owner == null) continue;\n  assets.push({ code: a.code, owner_id: a.current_owner });\n  set.add(a.current_owner);\n}\nreturn [{ json: { assets, owner_ids: [...set], n_assets: assets.length, n_owners: set.size } }];"
+      },
+      "id": "fe797b5a-8907-46e8-ac8a-731db4af51e9",
+      "name": "IDs de titulares",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT ON (pp.id)\n       pp.id AS party_id,\n       ru.login,\n       pp.last_name  AS apellidos,\n       pp.first_name AS nombres\nFROM financiero.company_employee ce\nJOIN financiero.party_party pp      ON pp.id = ce.party\nJOIN financiero.company_contract cc ON cc.employee = ce.id\nJOIN financiero.res_user ru         ON ce.id = ru.employee\nWHERE pp.last_name IS NOT NULL AND pp.first_name IS NOT NULL\n  AND cc.state IN ('done')\n  AND ru.active = true\n  AND ru.login LIKE '%.%'\n  AND pp.id = ANY($1)\nORDER BY pp.id, cc.contract_date DESC NULLS LAST;",
+        "options": {
+          "queryReplacement": "={{ [ $json.owner_ids ] }}"
+        }
+      },
+      "id": "ce89c6da-fcb0-4b6f-834a-bd952ddf7d01",
+      "name": "Empleados activos (ERP)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4800,
+        1312
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const emps = $input.all().map(i => i.json);\nconst assets = $('IDs de titulares').first().json.assets || [];\nfunction titleCase(s){\n  return String(s||'').toLowerCase().split(/\\s+/).filter(Boolean)\n    .map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');\n}\nconst byOwner = {};\nfor (const e of emps){\n  const login = String(e.login||'').trim().toLowerCase();\n  if (!login) continue;\n  byOwner[e.party_id] = { email: login+'@guayas.gob.ec', first_name: titleCase(e.nombres), last_name: titleCase(e.apellidos) };\n}\nconst rows = [];\nfor (const a of assets){\n  const o = byOwner[a.owner_id];\n  if (o && o.email) rows.push({ snipe_asset_tag: a.code, email: o.email, first_name: o.first_name, last_name: o.last_name });\n}\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
+      },
+      "id": "fb598260-6c54-42a4-ae95-09e331e0026d",
+      "name": "Estado deseado (login)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4992,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM staging_titular;",
+        "options": {}
+      },
+      "id": "36ee43fc-86ed-478e-8d22-6a4c9e80eaf5",
+      "name": "Reset staging titular",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5168,
+        1312
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO staging_titular (snipe_asset_tag, email, first_name, last_name)\nSELECT x.snipe_asset_tag, x.email, x.first_name, x.last_name\nFROM jsonb_to_recordset($1::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text);",
+        "options": {
+          "queryReplacement": "={{ [ $('Estado deseado (login)').first().json.payload ] }}"
+        }
+      },
+      "id": "f72a2992-d9c3-4290-b988-7716957f5738",
+      "name": "Cargar staging titular",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5344,
+        1312
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.snipe_asset_tag, s.email, s.first_name, s.last_name,\n       am.snipe_asset_id,\n       um.snipe_user_id AS existing_user_id,\n       tm.snipe_user_id AS current_user_id\nFROM staging_titular s\nJOIN tryton_snipe_asset_map am\n  ON am.snipe_asset_tag = s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL\nLEFT JOIN snipe_titular_map tm      ON tm.snipe_asset_tag = s.snipe_asset_tag\nLEFT JOIN snipe_titular_user_map um ON um.email = s.email\nWHERE tm.snipe_asset_tag IS NULL\n   OR tm.email IS DISTINCT FROM s.email;",
+        "options": {}
+      },
+      "id": "59150a82-3977-4eb7-95ba-979a94f89bf4",
+      "name": "Diff titular",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5648,
+        1312
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at) VALUES ($1,$2,now()) ON CONFLICT (email) DO UPDATE SET snipe_user_id=EXCLUDED.snipe_user_id, updated_at=now();",
+        "options": {
+          "queryReplacement": "={{ [ $json.email, $json.snipe_user_id ] }}"
+        }
+      },
+      "id": "782581a3-dc16-4b09-b8d2-1a9965114962",
+      "name": "Upsert user map",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        8112,
+        1280
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO snipe_titular_map(snipe_asset_tag, email, snipe_user_id, updated_at) VALUES ($1,$2,$3,now()) ON CONFLICT (snipe_asset_tag) DO UPDATE SET email=EXCLUDED.email, snipe_user_id=EXCLUDED.snipe_user_id, updated_at=now();",
+        "options": {
+          "queryReplacement": "={{ [ $json.snipe_asset_tag, $json.email, $json.snipe_user_id ] }}"
+        }
+      },
+      "id": "16fe64b9-9bfc-4b47-9951-14f9cb0a4af2",
+      "name": "Upsert titular map",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        8112,
+        1440
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*)::int AS omitidos\nFROM staging_titular s\nLEFT JOIN tryton_snipe_asset_map am\n  ON am.snipe_asset_tag = s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL\nWHERE am.snipe_asset_tag IS NULL;",
+        "options": {}
+      },
+      "id": "2ca03944-f502-4ab3-a566-a6cb0474860b",
+      "name": "Contar omitidos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5504,
+        1312
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "titular-ok",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2120e5d-bf9b-4754-bf11-4c1b09587d77",
+      "name": "¿Aplicado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7888,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, tryton_id, snipe_id, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'tryton','titular',0,$3,'titular_checkout',0,$4,$5,$6,$7,0);",
+        "options": {
+          "queryReplacement": "={{ [ String($execution.id), $workflow.name, String($json.snipe_asset_tag), Number($json.snipe_asset_id)||0, Number($json.response_status)||0, String($json.response_body||'').slice(0,2000), String($json.error_message||'').slice(0,500) ] }}"
+        }
+      },
+      "id": "ff0e0c80-8052-4842-8dd0-a2d83db46896",
+      "name": "Log error titular",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        8112,
+        1616
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const applied = $('Aplicar en Snipe-IT').all();\nconst diffCount = (()=>{ try { return $('Diff titular').all().length; } catch(e){ return 0; } })();\nconst omitidos = (()=>{ try { return $('Contar omitidos').first().json.omitidos ?? 0; } catch(e){ return 0; } })();\nconst cambios = diffCount;\nconst ok = applied.filter(i=>i.json.status==='ok').length;\nconst errores = applied.filter(i=>i.json.status==='error').length;\nconst usuarios_nuevos = applied.filter(i=>i.json.status==='ok' && i.json.created_user).length;\nconst summary = { cambios, aplicados: ok, errores, omitidos, usuarios_nuevos };\nreturn [{ json: summary }];"
+      },
+      "id": "441d464c-596a-468b-b282-33ceae92bde0",
+      "name": "Resumen titular",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7888,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'tryton','titular',0,$3,'run_summary',0,$4,$5,0);",
+        "options": {
+          "queryReplacement": "={{ [ String($execution.id), $workflow.name, 'titular-activo', String(JSON.stringify($json)).slice(0,2000), ($json.errores>0 ? 'errores='+String($json.errores)+' omitidos='+String($json.omitidos) : 'ok omitidos='+String($json.omitidos)).slice(0,500) ] }}"
+        }
+      },
+      "id": "5c960870-0d48-463b-bc94-6af4f927a735",
+      "name": "Log resumen titular",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        8112,
+        1088
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**IDs de titulares** (Code):\nfiltra `current_owner != null`, construye `assets:[{code, owner_id}]` (→ Estado deseado) y deduplica `owner_ids` via `Set` (→ Empleados ERP `= ANY($1)`). Se mantiene como Code (1 pasada) vs Set 3.4 que duplicaría filter/map y es ilegible.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4544,
+        912
+      ],
+      "id": "77bf2f37-fc17-4f62-a857-8a614f4450cf",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Tryton sync titular↔activo (v1)\nMantiene al día el TITULAR de cada activo en Snipe-IT (requisito del flujo 2.3).\n\n**Fuente autoritativa**: empleados ACTIVOS con contrato vigente del ERP (res_user.login → correo institucional login@guayas.gob.ec, que coincide con AD/Zammad).\n\n**Patrón batch/diff**: staging + diff contra los mapas (snipe_titular_map/_user_map) → solo aplica los CAMBIOS (nuevo titular o titular distinto). Idempotente.\n\nLo invoca el orquestador de assets al final; también corre manual.",
+        "height": 368,
+        "width": 464,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        912
+      ],
+      "id": "e3ab8623-da3a-4cad-9bfc-fd8dea90125c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "af7c23eb-ca51-4260-a050-75239562a0f4",
+              "leftValue": "={{ $json.existing_user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d6fe8838-4c15-4b11-92e8-946e6e19924c",
+      "name": "¿Usuario existente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5808,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "913b5271-3548-49d9-b19f-e2aed5b28385",
+              "name": "snipe_asset_tag",
+              "value": "={{ $json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "ea2dd1b7-d5ef-4064-bc16-be1c1263b206",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "761366bb-a599-4d74-9047-c88a7ddbb901",
+              "name": "first_name",
+              "value": "={{ $json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "fa7d6bec-7b25-4460-a578-32c05523a068",
+              "name": "last_name",
+              "value": "={{ $json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "87a37902-eed4-49fd-b358-1ea4240a2642",
+              "name": "snipe_asset_id",
+              "value": "={{ $json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "25822f25-9494-4459-b4b2-7f46d9789199",
+              "name": "snipe_user_id",
+              "value": "={{ $json.existing_user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "d3085f0a-5a8f-45ef-add4-620efb6cf6a0",
+              "name": "created_user",
+              "value": "={{ false }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5577f878-f6dd-4381-a8c7-5631d2e3c551",
+      "name": "Usuario existente",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5968,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users?email={{ encodeURIComponent($json.email) }}&limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "ee8637ec-8783-4635-8e65-7d95c5996516",
+      "name": "Buscar usuario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5968,
+        1472
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "82d82fe1-b792-44b8-99c0-c45723591968",
+              "leftValue": "={{ $json.body.rows?.[0]?.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0a76ae7a-a99d-4758-b30a-99ad05aa6650",
+      "name": "¿Encontrado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6128,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c8e62fe9-696a-4075-922a-812f9798661c",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "049744fd-b163-4896-84b3-f633fea7ce19",
+              "name": "email",
+              "value": "={{ $('Diff titular').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "02aed5a1-f14c-4359-bd64-61dea252b869",
+              "name": "first_name",
+              "value": "={{ $('Diff titular').item.json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "ca702ee5-9e14-49c6-9b99-bfc7dfd2feae",
+              "name": "last_name",
+              "value": "={{ $('Diff titular').item.json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "3b6e2284-b321-491d-8616-c1eefaff659e",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "f6aba2b0-52f7-406c-b24c-fe5087c77a37",
+              "name": "snipe_user_id",
+              "value": "={{ $json.body.rows[0].id }}",
+              "type": "number"
+            },
+            {
+              "id": "81793069-052f-440b-8e37-c60359f3db16",
+              "name": "created_user",
+              "value": "={{ false }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7d611c75-2f9a-4ff7-848f-6eac5b0e3270",
+      "name": "Usuario encontrado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6288,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a140f953-e762-459f-9b5d-d6f3048a47ca",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "5109a65f-1e94-48c2-8605-99403052b69f",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "23533c40-098f-421b-8995-820b1625cba6",
+              "name": "email",
+              "value": "={{ $('Diff titular').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "bebe287c-47c0-449b-beb0-54016268c36a",
+              "name": "first_name",
+              "value": "={{ $('Diff titular').item.json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "7ea4970f-d3ca-4200-8946-f2fb700a3317",
+              "name": "last_name",
+              "value": "={{ $('Diff titular').item.json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "7156c225-3e0c-439f-aeca-abf8cd6c1430",
+              "name": "username",
+              "value": "={{ $('Diff titular').item.json.email.split('@')[0].slice(0,100) }}",
+              "type": "string"
+            },
+            {
+              "id": "4cc74d87-331d-48c0-8e1c-36a81bb6eddb",
+              "name": "password",
+              "value": "={{ \"Aa9!\" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cd677f1d-f743-411b-9659-2c62a59d9fcc",
+      "name": "Preparar usuario nuevo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6288,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "first_name",
+              "value": "={{ ($json.first_name || $json.username).slice(0,80) }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ ($json.last_name || '-').slice(0,80) }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $json.username.slice(0,100) }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "activated",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "password_confirmation",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "notes",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "a48686c8-9492-4342-9dbb-04ddbdeb4021",
+      "name": "Crear usuario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6448,
+        1632
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dfc86b10-dd47-46d9-909d-f0c233e1e93b",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "80aefe4a-8fbf-4b27-9df3-11015c28a139",
+              "name": "email",
+              "value": "={{ $('Preparar usuario nuevo').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "9f6acccb-93b7-4593-83e3-32b9955b9c6f",
+              "name": "first_name",
+              "value": "={{ $('Preparar usuario nuevo').item.json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "3c052aeb-0a32-4f2c-9a30-326919f8c7fc",
+              "name": "last_name",
+              "value": "={{ $('Preparar usuario nuevo').item.json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "f9ca6112-d986-43aa-b8a7-383693701803",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "ee50ef6a-ecd6-46d3-a0b2-4e27f56a5b77",
+              "name": "snipe_user_id",
+              "value": "={{ $json.body.payload.id }}",
+              "type": "number"
+            },
+            {
+              "id": "623759b9-aed9-42dd-89a9-8d64e3e10623",
+              "name": "created_user",
+              "value": "={{ true }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "10e404a3-b0d0-4b42-ba91-47ed62008edb",
+      "name": "Usuario creado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6608,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "first_name",
+              "value": "={{ ($('Preparar usuario nuevo').item.json.first_name || $('Preparar usuario nuevo').item.json.username).slice(0,80) }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ ($('Preparar usuario nuevo').item.json.last_name || '-').slice(0,80) }}"
+            },
+            {
+              "name": "username",
+              "value": "={{ $('Preparar usuario nuevo').item.json.username.slice(0,90) + '.' + Math.random().toString(36).slice(2,6) }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Preparar usuario nuevo').item.json.email }}"
+            },
+            {
+              "name": "activated",
+              "value": "={{ false }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $('Preparar usuario nuevo').item.json.password }}"
+            },
+            {
+              "name": "password_confirmation",
+              "value": "={{ $('Preparar usuario nuevo').item.json.password }}"
+            },
+            {
+              "name": "notes",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "1aac79f5-e3aa-4bfd-a01e-296dc6dc670f",
+      "name": "Crear usuario (alt)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6608,
+        1792
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5b6dd57f-a1df-48eb-9e89-6faacdf40729",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "6e0c68ac-a7fd-462e-818a-a51ac650afe2",
+              "name": "email",
+              "value": "={{ $('Preparar usuario nuevo').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "2dcab81d-5fca-4c34-aea2-5cbdc1c50a35",
+              "name": "first_name",
+              "value": "={{ $('Preparar usuario nuevo').item.json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "bd759363-849a-4b2d-8f4f-66e3908cce03",
+              "name": "last_name",
+              "value": "={{ $('Preparar usuario nuevo').item.json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "54374a58-15fd-4d46-a69e-6f4e9ba09896",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "889d6493-45e6-4379-9c70-1231219f485b",
+              "name": "snipe_user_id",
+              "value": "={{ $json.body.payload.id }}",
+              "type": "number"
+            },
+            {
+              "id": "39ee8c46-e62d-4bf7-8a1b-c600d325b9d3",
+              "name": "created_user",
+              "value": "={{ true }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "05b6c526-9ba1-4b4b-b894-f05c9f85a726",
+      "name": "Usuario creado (alt)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6768,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb14a9e4-4339-47c4-95c2-a4326416473f",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "3d78d4fc-c3a4-436a-add2-80446c54ca24",
+              "name": "email",
+              "value": "={{ $('Diff titular').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "864d5f15-a3f9-4fac-9bca-06a13702351f",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "8ca6ba64-ffa3-423b-90fa-51e52c0c2c63",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "1673d66a-3746-43aa-8ec2-506a8095fdf9",
+              "name": "error_message",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,500) }}",
+              "type": "string"
+            },
+            {
+              "id": "43ab9997-7009-49cb-88dd-cee1f813203c",
+              "name": "response_status",
+              "value": "={{ $json.statusCode ?? $json.error?.statusCode ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "38366304-f5ad-4a37-a2fa-93b1136b6bb7",
+              "name": "response_body",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,2000) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22149e02-1b13-4e3f-86c0-cc8d1ec53d2a",
+      "name": "Error usuario",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6768,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cda60b8f-9f45-4fc5-b15a-e51b13b67f58",
+              "name": "snipe_asset_tag",
+              "value": "={{ $json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "bab400e2-02fc-4439-8fa2-a3f80d012e38",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "acd31fff-b561-4fb5-b31a-b65cd5341728",
+              "name": "first_name",
+              "value": "={{ $json.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "76d9e2fe-24ac-4438-89cf-9a472f57250d",
+              "name": "last_name",
+              "value": "={{ $json.last_name }}",
+              "type": "string"
+            },
+            {
+              "id": "0a2cfb93-7a46-498c-830a-556b9f59050d",
+              "name": "snipe_asset_id",
+              "value": "={{ $json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "57c55a19-bec9-41e4-825a-1c5fb8d2ab55",
+              "name": "snipe_user_id",
+              "value": "={{ $json.snipe_user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "91f67bb1-ef21-4b31-af01-da6a4ab4325c",
+              "name": "created_user",
+              "value": "={{ $json.created_user }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f8cdd346-62b1-425f-aba1-ec2615b12ca6",
+      "name": "Antes de checkout",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6928,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $json.snipe_asset_id }}/checkout",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "checkout_to_type",
+              "value": "user"
+            },
+            {
+              "name": "assigned_user",
+              "value": "={{ $json.snipe_user_id }}"
+            },
+            {
+              "name": "note",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "57f06ed2-9a2f-41ce-9ef9-e8b69f655482",
+      "name": "Checkout",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7088,
+        1312
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b53034a9-b4ef-4105-9226-42926d7056e4",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "1d6e59cd-83fa-4528-8349-c612a7eb9e6f",
+              "name": "email",
+              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "a41d3783-d1b9-40e6-a498-a3f77d43fd2b",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "19fa4e2a-d9e0-4435-8c1e-81e728b4820f",
+              "name": "snipe_user_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "44fc15f3-fbd5-4f61-b8d7-586546f921f4",
+              "name": "created_user",
+              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "type": "boolean"
+            },
+            {
+              "id": "e3e04b35-9cf2-4d33-8a77-40351e8905b8",
+              "name": "status",
+              "value": "ok",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e28ff80c-3153-46be-ab56-1addc14f43bf",
+      "name": "Resultado ok",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7248,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Antes de checkout').item.json.snipe_asset_id }}/checkin",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "note",
+              "value": "Reasignacion a titular activo (ERP)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "382af384-2848-428f-b4a4-a0c7d7c17211",
+      "name": "Checkin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7248,
+        1472
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Antes de checkout').item.json.snipe_asset_id }}/checkout",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "checkout_to_type",
+              "value": "user"
+            },
+            {
+              "name": "assigned_user",
+              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}"
+            },
+            {
+              "name": "note",
+              "value": "Titular activo desde ERP Tryton"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "06923754-fb5d-4fb3-a51a-53003c0227b1",
+      "name": "Checkout reintento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7408,
+        1472
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2416e0af-4989-437e-9308-52bd7518d486",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "84805e38-1be9-4f04-82b3-5e17dc76bc95",
+              "name": "email",
+              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "cd26852c-49f5-4952-8f5b-fc7dc3620a37",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "4375811b-ca35-4196-93c8-ad1c03aed4f7",
+              "name": "snipe_user_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "a976ac38-73df-4145-89da-767642aa5261",
+              "name": "created_user",
+              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "type": "boolean"
+            },
+            {
+              "id": "01db872d-9122-458a-9dfc-a40ac010b192",
+              "name": "status",
+              "value": "ok",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "825432eb-58d8-42cd-9d78-b0de75f82a3e",
+      "name": "Resultado ok reintento",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7568,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "028414cf-978b-429f-8c92-de7f9b3bca63",
+              "name": "snipe_asset_tag",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "aafe6147-4643-47d6-a011-d2b07f76d339",
+              "name": "email",
+              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "482830e3-7c7e-4f25-90f4-f6cdda9f0152",
+              "name": "snipe_asset_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "type": "number"
+            },
+            {
+              "id": "1cd43b02-62ba-45fa-8c48-49a8d8f38f44",
+              "name": "snipe_user_id",
+              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "5d08c6bf-38ab-4e50-b449-0809cba94e09",
+              "name": "created_user",
+              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "type": "boolean"
+            },
+            {
+              "id": "98f396ae-6ad2-4965-b43c-2d7a667f5960",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "1f0d30d5-c465-4457-adee-3d1c5091e1e3",
+              "name": "error_message",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,500) }}",
+              "type": "string"
+            },
+            {
+              "id": "3e728f01-827c-49b5-9be1-6c49d252258a",
+              "name": "response_status",
+              "value": "={{ $json.statusCode ?? $json.error?.statusCode ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "65c3636f-c95a-4689-a8a1-ccdfcd373e8c",
+              "name": "response_body",
+              "value": "={{ JSON.stringify($json.error ?? $json.body ?? $json).slice(0,2000) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55a534de-ef5a-4253-9ddf-fc2eab5ca287",
+      "name": "Resultado error checkout",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7568,
+        1472
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "589d8779-9fec-4db6-9850-ba855bc5f17c",
+      "name": "Aplicar en Snipe-IT",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        7728,
+        1312
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ejecutado por el orquestador": {
+      "main": [
+        [
+          {
+            "node": "Execute login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute login": {
+      "main": [
+        [
+          {
+            "node": "Leer activos con titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer activos con titular": {
+      "main": [
+        [
+          {
+            "node": "IDs de titulares",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IDs de titulares": {
+      "main": [
+        [
+          {
+            "node": "Empleados activos (ERP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empleados activos (ERP)": {
+      "main": [
+        [
+          {
+            "node": "Estado deseado (login)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estado deseado (login)": {
+      "main": [
+        [
+          {
+            "node": "Reset staging titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset staging titular": {
+      "main": [
+        [
+          {
+            "node": "Cargar staging titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargar staging titular": {
+      "main": [
+        [
+          {
+            "node": "Contar omitidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contar omitidos": {
+      "main": [
+        [
+          {
+            "node": "Diff titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diff titular": {
+      "main": [
+        [
+          {
+            "node": "¿Usuario existente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Aplicado?": {
+      "main": [
+        [
+          {
+            "node": "Upsert user map",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upsert titular map",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumen titular": {
+      "main": [
+        [
+          {
+            "node": "Log resumen titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Usuario existente?": {
+      "main": [
+        [
+          {
+            "node": "Usuario existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario existente": {
+      "main": [
+        [
+          {
+            "node": "Antes de checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar usuario": {
+      "main": [
+        [
+          {
+            "node": "¿Encontrado?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar usuario nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Encontrado?": {
+      "main": [
+        [
+          {
+            "node": "Usuario encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar usuario nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario encontrado": {
+      "main": [
+        [
+          {
+            "node": "Antes de checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar usuario nuevo": {
+      "main": [
+        [
+          {
+            "node": "Crear usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear usuario": {
+      "main": [
+        [
+          {
+            "node": "Usuario creado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear usuario (alt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario creado": {
+      "main": [
+        [
+          {
+            "node": "Antes de checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear usuario (alt)": {
+      "main": [
+        [
+          {
+            "node": "Usuario creado (alt)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario creado (alt)": {
+      "main": [
+        [
+          {
+            "node": "Antes de checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error usuario": {
+      "main": [
+        [
+          {
+            "node": "Aplicar en Snipe-IT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Antes de checkout": {
+      "main": [
+        [
+          {
+            "node": "Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout": {
+      "main": [
+        [
+          {
+            "node": "Resultado ok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Checkin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado ok": {
+      "main": [
+        [
+          {
+            "node": "Aplicar en Snipe-IT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkin": {
+      "main": [
+        [
+          {
+            "node": "Checkout reintento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout reintento": {
+      "main": [
+        [
+          {
+            "node": "Resultado ok reintento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado error checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado ok reintento": {
+      "main": [
+        [
+          {
+            "node": "Aplicar en Snipe-IT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado error checkout": {
+      "main": [
+        [
+          {
+            "node": "Aplicar en Snipe-IT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar en Snipe-IT": {
+      "main": [
+        [
+          {
+            "node": "¿Aplicado?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Resumen titular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "88b0dc78-01e3-4ed0-b0e6-53c2853e3e60",
+  "meta": {
+    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
+  },
+  "nodeGroups": [],
+  "id": "yjyUYjVEaZ9UniSs",
+  "tags": []
+}

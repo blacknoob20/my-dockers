@@ -18,6 +18,7 @@ La integración se compone de un **sub-workflow de autenticación** y **workflow
 | Tryton sync snipe-IT models | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT models.json` | `JODxuGjfCJ2wDobA` |
 | Tryton sync snipe-IT status | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT status.json` | `DFYH9aXY2QE6uJzl` |
 | Tryton sync snipe-IT assets ingest (batch) | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` | `Asse2tIngestSub01` |
+| Tryton sync titular-activo (v1) | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync titular-activo.json` | `nocNCHrMCVe36Qxr` |
 | Tryton sync snipe-IT assets orchestrator v2 | Orquestador (batch) | `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator v2 (batch).json` | `3hh7DBsrq8A1rIQg` |
 
 > **Nota:** los archivos en `flows/` son snapshots de n8n. Al modificar un workflow en la UI, re-exportarlo para mantenerlos al día.
@@ -372,6 +373,77 @@ Usado en `Status asset` (knownTypes):
 
 > **Nota archivos eliminados:** los workflows viejos en `flows/` (`Tryton sync models.json` ID `Q5X3iqntFS1etrPW`, `Tryton sync statuses.json` ID `CisxFC1TxerOtZkG` y otros) siguen dados de baja; los activos viven en `flows/flujos-dev/`.
 
+### Tryton sync titular-activo (v1)
+
+- **Archivo:** `flows/flujos-dev/Tryton sync titular-activo.json` (ID `nocNCHrMCVe36Qxr`, activo)
+- **Trigger:** `Execute Workflow Trigger` (`Ejecutado por el orquestador`, `inputSource: passthrough`) + `Manual Trigger` (también corre manual)
+- **Invocado por:** orquestador v2 vía `Sync titular activo` (`Execute Workflow` → `nocNCHrMCVe36Qxr`, `waitForSubWorkflow: true`, inputs `{ok: true}`)
+- **Credenciales:** `postgres` id `5PxGaDR3de2sou85` (`Postgres account`), `postgres` id `erpDbegob2bakRO` (`ERP dbegob2bak (lectura)`), `httpBearerAuth` id `Adhjdtilu8D9eQs8` (`Bearer Auth snipe-it` vía `$env.SNIPE_HOST`)
+- **Fuente autoritativa:** empleados ACTIVOS con contrato vigente del ERP (`res_user.login` → `login@guayas.gob.ec`). Solo activos Tryton con `asset_type_new in [6,39,40,48,61,92]` y `current_owner != null` (filtro en `model.asset.search_read`)
+
+#### Flujo
+
+```
+Ejecutado por el orquestador / Ejecutar manualmente
+       ↓
+Execute login (Tryton login → Cnq2yvzVCRTKFld5, waitForSubWorkflow: true)
+       ↓
+Leer activos con titular (POST /dbegob2bak/ model.asset.search_read — retry 3×3s)
+       ↓
+IDs de titulares (Code: filtra current_owner!=null, deduplica owner_ids → {assets:[{code, owner_id}], owner_ids, n_assets, n_owners})
+       ↓
+Empleados activos (ERP) (SELECT ce/pp/cc/ru WHERE cc.state='done' AND ru.active AND ru.login LIKE '%.%' AND pp.id=ANY($1) ORDER BY cc.contract_date DESC)
+       ↓
+Estado deseado (login) (Code: titleCase nombres, construye {snipe_asset_tag, email, first_name, last_name} por activo con owner válido → {payload: JSON.stringify(rows), total})
+       ↓
+Reset staging titular (DELETE FROM staging_titular;)
+       ↓
+Cargar staging titular (INSERT INTO staging_titular SELECT * FROM jsonb_to_recordset($1) — $1 = $('Estado deseado (login)').first().json.payload)
+       ↓
+Contar omitidos (SELECT COUNT(*) FROM staging_titular s LEFT JOIN tryton_snipe_asset_map am ON am.snipe_asset_tag=s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL WHERE am.snipe_asset_tag IS NULL)
+       ↓
+Diff titular (SELECT ... FROM staging_titular s JOIN tryton_snipe_asset_map am ON am.snipe_asset_tag=s.snipe_asset_tag AND am.snipe_asset_id IS NOT NULL LEFT JOIN snipe_titular_map tm ON tm.snipe_asset_tag=s.snipe_asset_tag LEFT JOIN snipe_titular_user_map um ON um.email=s.email WHERE tm.snipe_asset_tag IS NULL OR tm.email IS DISTINCT FROM s.email)
+        ↓
+¿Usuario existente? (IF existing_user_id notEmpty) → Usuario existente (Set, snipe_user_id=existing, created_user=false) →┐
+                                                    Buscar usuario (GET /api/v1/users?email=&limit=1, retry 3×2s, onError→Preparar) → ¿Encontrado? (IF body.rows[0].id notEmpty) → Usuario encontrado (Set, created_user=false) →┤
+                                                                                                                                   ↓ false/error → Preparar usuario nuevo (Set, username/password) → Crear usuario (POST /api/v1/users, onError→Crear alt) → Usuario creado (Set, created_user=true) →┤
+                                                                                                                                                                                                                        ↓ error → Crear usuario (alt) (POST /users, username con sufijo) → Usuario creado (alt) (Set) →┤
+                                                                                                                                                                                                                                                                  ↓ error → Error usuario (Set, status error) →┐
+                                                                                                                                                                                                                                                                                                              ↓ (fan-in 4→1)
+                                                                                                                                                                                                                                             Antes de checkout (Set) → Checkout (POST /api/v1/hardware/{id}/checkout, retry 3×2s, onError→Checkin) → Resultado ok (Set, status ok) →┐
+                                                                                                                                                                                                                                                                                                                         ↓ error → Checkin (POST /checkin) → Checkout reintento (POST /checkout, retry 3×2s) → Resultado ok reintento (Set, status ok) →┤
+                                                                                                                                                                                                                                                                                                                                                                   ↓ error → Resultado error checkout (Set, status error) →┤
+                                                                                                                                                                                                                                                                                                                                                                                                        ↓ (fan-in 4→1)
+                                                                                                                                                                                                                                                                                      Aplicar en Snipe-IT (NoOp, fan-in: ok + ok reintento + error checkout + error usuario → {snipe_asset_tag, email, snipe_user_id, snipe_asset_id, status:'ok'|'error', created_user, error_message, response_status})
+        ↓ (fan-out 1→2)
+  ┌─────┴─────┐
+  ↓           ↓
+¿Aplicado? (IF $json.status=='ok')   Resumen titular (Code: cuenta ok/error/omitidos desde $('Diff titular')/$('Contar omitidos')/$('Aplicar en Snipe-IT') → {cambios, aplicados, errores, omitidos, usuarios_nuevos})
+ ↓ true/false                        ↓
+ Upsert user map (INSERT INTO snipe_titular_user_map ON CONFLICT(email) DO UPDATE)  Log resumen titular (INSERT INTO integration_sync_log operation='run_summary', entity='titular')
+ Upsert titular map (INSERT INTO snipe_titular_map ON CONFLICT(snipe_asset_tag) DO UPDATE)
+ ↓ false
+ Log error titular (INSERT INTO integration_sync_log operation='titular_checkout', entity='titular', por cada error con response_status/response_body/error_message)
+```
+
+- `IDs de titulares` (Code, `runOnceForAllItems`): recibe 1 item cuyo `json.result` es el array completo del `search_read` (miles de activos `{id, code, current_owner}`); en una sola pasada filtra `current_owner != null`, construye `assets: [{code, owner_id}]` — consumido por `Estado deseado (login)` vía `$('IDs de titulares').first().json.assets` — y deduplica `owner_ids: [...new Set(...)]` — consumido por `Empleados activos (ERP)` como `= ANY($1)`; emite `n_assets`/`n_owners` para observabilidad. **Nota de diseño:** no es un `Set` 3.4 porque requeriría duplicar el `filter/map` en dos expresiones distintas (dos pasadas) y la dedup con `new Set(...)` en expresión es ilegible; el Code lo resuelve en una pasada y es el punto de referencia por nombre de los nodos aguas abajo. Se mantiene como `Code` intencionalmente.
+- `Execute login` usa sub-workflow `Tryton login` (`Cnq2yvzVCRTKFld5`); ambos triggers (`Ejecutado por el orquestador`, `Ejecutar manualmente`) confluyen en este nodo. Patrón staging+diff idempotente — solo aplica cambios (nuevo titular o titular distinto). No revoca checkouts (ver § Limitaciones).
+- `Leer activos con titular` con `retryOnFail 3×3s` cubre 429 agresivo de Tryton (un solo `search_read` con `offset 0, limit null`, sin paginación, sobre ~19k assets filtrados).
+- `Empleados activos (ERP)`: filtra `login LIKE '%.%'` (login debe contener punto, coincide con AD/Zammad `login@guayas.gob.ec`) y elige el contrato más reciente por `DISTINCT ON (pp.id) ORDER BY cc.contract_date DESC`.
+- `Diff titular`: captura `tm IS NULL` (activo nunca asignado en Snipe) o `email IS DISTINCT FROM s.email` (cambio de titular). Assets cuyo `snipe_asset_id IS NULL` (sin mapa de activo, aún no sincronizado por el ingest) se excluyen y se cuentan aparte como `omitidos`.
+- `¿Usuario existente?` / `Buscar usuario` / `¿Encontrado?` / `Usuario encontrado` / `Preparar usuario nuevo` / `Crear usuario` / `Crear usuario (alt)` / `Usuario creado*` / `Error usuario`: resuelven `snipe_user_id` por fila. Si `existing_user_id` existe → `Usuario existente` (cache `snipe_titular_user_map`); si no, `Buscar usuario` (`GET /api/v1/users?email=&limit=1`, `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail 3×2s`, `onError: continueErrorOutput` → `Preparar` en error de red) → `¿Encontrado?` (`body.rows[0].id` notEmpty) → `Usuario encontrado`; si no encontrado → `Preparar usuario nuevo` (genera `username` desde `email` + `password` aleatoria `Aa9!+rand`) → `Crear usuario` (`POST /api/v1/users`, `first_name/last_name` con fallback, `onError→Crear alt`) → `Usuario creado`; en colisión de `username` → `Crear usuario (alt)` (username con sufijo `.`+rand4) → `Usuario creado (alt)`; si ambos fallan → `Error usuario` (`status error`). Todos los `Set` proyectan `{snipe_asset_tag, email, snipe_asset_id, snipe_user_id, created_user}`.
+- `Antes de checkout` (Set, fan-in 4→1) checkpoint antes del checkout; `Checkout` (`POST /api/v1/hardware/{id}/checkout` `{checkout_to_type:user, assigned_user, note}`, `retryOnFail 3×2s`, `batching 20/500ms`, `onError: continueErrorOutput`) → `Resultado ok` (`status ok`); en error → `Checkin` (`POST /checkin` `{note}`, `onError: continueRegularOutput`) → `Checkout reintento` (mismo body, `retryOnFail 3×2s`) → `Resultado ok reintento` / `Resultado error checkout` (`status error` con `error_message/response_status/response_body` del `error`/`body`). Corre en proceso principal de n8n (sin límite `N8N_RUNNERS_TASK_TIMEOUT` del task runner).
+- `Aplicar en Snipe-IT` (NoOp, fan-in 4→1 de `Resultado ok` + `Resultado ok reintento` + `Resultado error checkout` + `Error usuario`) preserva contrato `{snipe_asset_tag, email, snipe_user_id, snipe_asset_id, status:'ok'|'error', created_user, error_message, response_status, response_body}` para `¿Aplicado?`/`Resumen titular`.
+- `¿Aplicado?` filtra `status=='ok'` → upserts; `error` → `Log error titular` en `integration_sync_log`.
+- `Resumen titular` → `Log resumen titular` deja siempre una fila `run_summary` (`entity='titular'`) con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}` para observabilidad (visibilidad que antes solo vivía en `staticData.lastRun` y se perdía en runs manuales o fallos tempranos).
+- Tablas del patrón (§ Tablas de mapeo): `staging_titular`, `snipe_titular_user_map`, `snipe_titular_map`.
+
+> **Fix 2026-09-01 (referencia huérfana login + SNIPE_TOKEN):** `Execute login` apuntaba a `RuVLU1TOMoOxqVE3` (Tryton login borrado; ya corregido en `Tryton sync snipe-IT status` a `Cnq2yvzVCRTKFld5` según memoria 2026-08-28). Además `Aplicar en Snipe-IT` usaba `$env.SNIPE_TOKEN` inexistente en `envs/n8n.env` (la var es `SNIPEIT_TOKEN`) → `Bearer undefined` → 401 masivo (`staticData.lastRun` 200 cambios/0 aplicados/200 errores 401). `Leer activos con titular` usaba `$env.TRYTON_HOST` (los demás workflows usan `TRYTON_URL`). Fix: repuntado a `Cnq2yvzVCRTKFld5`, alineado a `$env.SNIPEIT_TOKEN || $env.SNIPE_TOKEN` y a `($env.TRYTON_URL || $env.TRYTON_HOST)`, más `retryOnFail 3×3s` en `Leer activos con titular` y retry 2×1.5s/3s en `api()` del Code. Ver `flows/flujos-dev/Tryton sync titular-activo.json:45,89,228` y `docs/04` §4.6.
+
+> **Fix 2026-09-01 (observabilidad titular):** errores de `Aplicar en Snipe-IT` se tragaban (solo `staticData.lastRun`, que no persiste en runs manuales ni si la ejecución fallaba temprano; el workflow terminaba en `success` con 0 aplicados). Fix: `Aplicar en Snipe-IT` retorna `status:'ok'|'error'` por fila; nuevo IF `¿Aplicado?` → `Upsert *` (ok) / `Log error titular` (error, `integration_sync_log` `titular_checkout` con `response_status/response_body/error_message`); nuevos `Contar omitidos` (staging sin `asset_map`) + `Resumen titular` → `Log resumen titular` (`run_summary` `entity='titular'` siempre, con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`). `integration_sync_log` pasa a ser auditoría completa del titular; `staticData.lastRun` sigue como cache local.
+
+> **Decisión 2026-09-01 (no-revocación):** el patrón solo asigna/reasigna; si el titular deja de serlo en ERP (`current_owner = null`) o el empleado sale (`ru.active=false` o sin contrato `done`), el activo queda checkout al titular anterior en Snipe-IT. No se hace `checkin` automático de revocado. Intencional por ahora (evita des-asignaciones masivas ante lag del ERP); pendiente definir política y registrar aquí cuando cambie. Documentado como limitación.
+
 ### Tryton sync snipe-IT assets ingest (batch)
 
 - **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` (ID `Asse2tIngestSub01`, inactivo)
@@ -480,7 +552,8 @@ Auditoría de operaciones contra Snipe-IT. Esquema en `public.integration_sync_l
 - **Status flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde el output de `Recover status` (`found:false` propaga `error.message`/`status`, `desired_name`, y el JSON completo de la respuesta). **Fix 2026-08-28:** antes leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y ternario sobre nodos no ejecutados → `operation` quedaba en `"\n  "`.
 - **Models flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde el output de `Recover model` (`found:false` propaga `error.message`/`status`, `asset_model_name`, y el JSON completo de la respuesta). **Fix 2026-08-28:** antes leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y `operation` hardcodeado a `"create"` con `request_payload`/`response_body` que referenciaban `Create snipe-it model` directamente.
 - **Categories flow:** `operation` hardcodeado a `"create"`; `request_payload` es `JSON.stringify($('Create snipe-it category').params.bodyParameters.parameters[1])` (solo el segundo parámetro).
-- **Limitaciones generales:** `tryton_id` y `snipe_id` en `0` para categorías/estados; sin reconciliación de activos existentes; `SNIPE_HOST` debe ser `http://snipe-it:80` dentro de la red Docker (no `localhost`).
+- **Titular flow:** `Log error titular` mapea `operation='titular_checkout'` por cada fila con `status='error'` (`response_status/response_body/error_message` desde el Code, con `_httpStatus` si hubo HTTP); `Log resumen titular` inserta `operation='run_summary'`, `entity='titular'` con `response_body=JSON({cambios, aplicados, errores, omitidos, usuarios_nuevos})` y `error_message='ok …'` o `'errores=… omitidos=…'` (auditoría siempre, independiente de `staticData.lastRun`). **Fix 2026-09-01:** antes solo `staticData.lastRun` (no persistente en manual/early-fail).
+- **Limitaciones generales:** `tryton_id` y `snipe_id` en `0` para categorías/estados/titular; sin reconciliación de activos existentes; `SNIPE_HOST` debe ser `http://snipe-it:80` dentro de la red Docker (no `localhost`).
 
 ### `staging_tryton_assets` — orquestador v2 (batch)
 
@@ -515,6 +588,38 @@ Mapa persistente Tryton ↔ Snipe-IT. Esquema en `public.tryton_snipe_asset_map`
 | `snipe_status_id` | FK a Snipe-IT `status_labels.id` |
 | `snipe_name` | Nombre en Snipe-IT |
 | `created_at`, `updated_at`, `last_synced_at` | Fechas (DEFAULT `now()`) |
+
+### `staging_titular` — Tryton sync titular-activo (v1)
+
+Tabla efímera por ejecución. `DELETE` al inicio y `INSERT` masivo desde `jsonb_to_recordset`. Esquema en `public.staging_titular` (BD `n8n`). **Fix 2026-09-01:** no existía en `sql/init-sync-tables.sql` (solo §1-7); `Reset/Cargar staging titular` y `Contar omitidos` fallaban con `relation "staging_titular" does not exist`. Añadida a `sql/init-sync-tables.sql` §8 y aplicada; `scripts/reset-sync.sh` actualizado para truncarla.
+
+| Columna | Notas |
+|---------|-------|
+| `snipe_asset_tag` | `asset_tag` en Snipe-IT (code Tryton) |
+| `email` | `login@guayas.gob.ec` derivado de `res_user.login` |
+| `first_name` | Title-cased desde `party_party.first_name` |
+| `last_name` | Title-cased desde `party_party.last_name` |
+
+### `snipe_titular_user_map` — cache email → snipe_user_id
+
+Esquema en `public.snipe_titular_user_map` (BD `n8n`). **Fix 2026-09-01:** faltaba DDL §9; `Upsert user map` fallaba. Añadida a `sql/init-sync-tables.sql` §9.
+
+| Columna | Notas |
+|---------|-------|
+| `email` | PK — clave para `ON CONFLICT (email) DO UPDATE` |
+| `snipe_user_id` | ID en Snipe-IT |
+| `updated_at` | `now()` |
+
+### `snipe_titular_map` — titular vigente por activo
+
+Esquema en `public.snipe_titular_map` (BD `n8n`). **Fix 2026-09-01:** faltaba DDL §10; `Upsert titular map`/`Diff titular` fallaban. Añadida a `sql/init-sync-tables.sql` §10.
+
+| Columna | Notas |
+|---------|-------|
+| `snipe_asset_tag` | PK — clave para `ON CONFLICT (snipe_asset_tag) DO UPDATE` |
+| `email` | Email del titular vigente |
+| `snipe_user_id` | ID del usuario en Snipe-IT |
+| `updated_at` | `now()` |
 
 ### `sync_run_summary` — orquestador v2 (batch)
 
@@ -565,3 +670,8 @@ Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD
 | Activos huérfanos tras cancelación → 383 en Snipe-IT sin map | Cancelación a mitad de loop (upsert no ejecutado): `snipeit.assets` 5644 vs `tryton_snipe_asset_map` 5261 (383 `asset_tag` en Snipe sin map; `comm` 383/0). Re-ejecución sin self-heal reintentaba `create` → `asset_tag must be unique` perpetuo. > **Fix 2026-09-01 (self-heal assets):** añadidos en ingest `Find asset in Snipe` (GET `/api/v1/hardware?asset_tag=X`, `=`) → `Recover asset` (match exacto en `body.rows`, normaliza `body.payload`) → `Recovered asset?` → `Upsert asset map` en rama `Saved? false`; `Log error` solo si no existe. La re-ejecución corrige los 383 y crea los ~3.9k restantes. Snapshot 21→24 nodos; sin duplicados de `code` en staging verificado (0). |
 | `Node execution failed` — task runner disconnect (OOM) | `Tryton sync snipe-IT assets ingest (batch)` con 9.5k payload + 24 nodos + self-heal por item excede heap del JS runner interno (`--max-old-space-size` por defecto). Ejecuciones 1316/1317 (17:24) abortan a los ~6 min con `InternalTaskRunnerDisconnectAnalyzer` / `TaskBrokerWsServer.removeConnection`. > **Fix 2026-09-01:** `envs/n8n.env:5` `N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096` + `docker compose up -d n8n` (heap 4 GiB). Alternativa externa: descomentar `n8n-runner` en `docker-compose.yml` (`N8N_RUNNERS_ENABLED=true`, `N8N_RUNNERS_MODE=external`). Ver `docs/04` §4.5 y `docs/manual-implementacion.md` §7. |
 | 429 `Try spacing your requests out` en Snipe-IT assets ingest | `Create/Update snipe-IT asset (batch)` sin `batching` → `429` en `access.log` (219 en ventana 18:13-18:43, run 1319: 112 faltantes sin log por `Log error` silencioso). > **Fix 2026-09-01:** `options.batching.batch {batchSize:1, batchInterval:550}` + `retryOnFail:true, maxTries:4, waitBetweenTries:3000` en ambos HTTP (`flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json:187,213`) + `Find asset in Snipe` con retry 3×2s; `Recover asset` propaga `tryton_id/operation/response_*` y `Log error` lee `$json.*` (no `$('Batch changes').item` cruzado). Ver `docs/04` §4.5. |
+| `Execute login` huérfano + `SNIPE_TOKEN` vs `SNIPEIT_TOKEN` + `TRYTON_HOST` vs `TRYTON_URL` en titular-activo | `Tryton sync titular-activo (v1)` `Execute login` → `RuVLU1TOMoOxqVE3` (borrado) → falla primer nodo; `Aplicar` usaba `$env.SNIPE_TOKEN` inexistente (`SNIPEIT_TOKEN` en `envs/n8n.env`) → 401 masivo (200/0/200×401); `Leer activos` usaba `$env.TRYTON_HOST` vs `TRYTON_URL` del resto. > **Fix 2026-09-01:** repuntado `Execute login` → `Cnq2yvzVCRTKFld5` y `TOKEN = $env.SNIPEIT_TOKEN \|\| $env.SNIPE_TOKEN` + `($env.TRYTON_URL \|\| $env.TRYTON_HOST)` en `Leer activos`; `retryOnFail 3×3s` y retry 2×1.5s/3s en `api()`. Ver `flows/flujos-dev/Tryton sync titular-activo.json:45,89,228` y `docs/04` §4.6. |
+| `staging_titular`/`snipe_titular_map`/`snipe_titular_user_map` no existen en BD `n8n` | Titular-activo fallaba en `Reset/Cargar staging titular` con `relation "staging_titular" does not exist`; `Diff titular` y upserts también; DDL faltaba en `sql/init-sync-tables.sql` (solo §1-7). > **Fix 2026-09-01:** DDL añadido §8-10 a `sql/init-sync-tables.sql` y aplicado a BD `n8n` (`docker-postgres-1`); `scripts/reset-sync.sh` actualizado para truncar las 3 tablas; spec § Tablas de mapeo y `docs/04` §4.6 sincronizados. |
+| Titular-activo tragaba errores (sin logging) | `Aplicar en Snipe-IT` capturaba errores en `errs[]` solo a `staticData.lastRun` (no persiste en manual/early-fail; workflow terminaba en `success` con 0 aplicados aunque 200 errores). Sin `Log error` a `integration_sync_log`; omitidos (staging sin `asset_map`) invisibles. > **Fix 2026-09-01:** `Aplicar en Snipe-IT` retorna `{status:'ok'\|'error', error_message, response_status}` por fila; nuevo IF `¿Aplicado?` → `Upsert *` (ok) / `Log error titular` (error, `integration_sync_log` `titular_checkout`); nuevos `Contar omitidos` + `Resumen titular` → `Log resumen titular` (`run_summary` `entity='titular'` siempre con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`). `integration_sync_log` es ahora auditoría completa del titular. Snapshot 15→19 nodos (`flows/flujos-dev/Tryton sync titular-activo.json`). |
+| No-revocación de titular | Patrón solo asigna/reasigna; si `current_owner=null` o empleado sale, el activo queda checkout al titular anterior en Snipe-IT. > **Decisión 2026-09-01:** comportamiento intencional por ahora (evita des-asignaciones masivas ante lag ERP). Documentado como limitación pendiente; cambiar aquí cuando haya política de `checkin` automático. |
+| `Task execution timed out after 300 seconds` en titular-activo | `Aplicar en Snipe-IT` (Code `runOnceForAllItems`, `flows/flujos-dev/Tryton sync titular-activo.json:228`) ejecutaba `ensureUser` + `checkout` en bucle secuencial con `helpers.httpRequest` + `sleep(1500)` dentro de una sola tarea del JS task runner (límite `N8N_RUNNERS_TASK_TIMEOUT=300` por defecto, n8n 2.36.7 `TaskBroker.handleTaskTimeout`). Con N filas el `for...await` superaba 300 s → timeout. > **Fix 2026-09-02:** refactor de `Aplicar en Snipe-IT` de Code a nodos nativos (`¿Usuario existente?` → `Buscar usuario` `GET /users?email=` → `¿Encontrado?` → `Preparar usuario nuevo` → `Crear usuario` `POST /users` → `Crear usuario (alt)` (username con sufijo) → `Antes de checkout` → `Checkout` `POST /hardware/{id}/checkout` → `Checkin` `POST /checkin` → `Checkout reintento`, todos `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail 3×2s`/`onError: continueErrorOutput/continueRegularOutput`, `batching 20/500ms`, `timeout 30s`); corre en proceso principal sin límite del runner. Snapshot 19→37 nodos. Ver `docs/04` §4.6. | |
