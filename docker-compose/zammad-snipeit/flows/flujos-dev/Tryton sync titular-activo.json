@@ -58,7 +58,7 @@
         }
       },
       "id": "8634e5f2-1c4b-4571-8bc3-5b31d28eae14",
-      "name": "Execute login",
+      "name": "Iniciar sesión en Tryton",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
@@ -101,7 +101,7 @@
         "jsCode": "const result = $input.first().json.result || [];\nconst assets = [];\nconst set = new Set();\nfor (const a of result) {\n  if (a.current_owner == null) continue;\n  assets.push({ code: a.code, owner_id: a.current_owner });\n  set.add(a.current_owner);\n}\nreturn [{ json: { assets, owner_ids: [...set], n_assets: assets.length, n_owners: set.size } }];"
       },
       "id": "fe797b5a-8907-46e8-ac8a-731db4af51e9",
-      "name": "IDs de titulares",
+      "name": "Extraer activos y titulares",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -118,7 +118,7 @@
         }
       },
       "id": "ce89c6da-fcb0-4b6f-834a-bd952ddf7d01",
-      "name": "Empleados activos (ERP)",
+      "name": "Consultar empleados activos (ERP)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -134,10 +134,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const emps = $input.all().map(i => i.json);\nconst assets = $('IDs de titulares').first().json.assets || [];\nfunction titleCase(s){\n  return String(s||'').toLowerCase().split(/\\s+/).filter(Boolean)\n    .map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');\n}\nconst byOwner = {};\nfor (const e of emps){\n  const login = String(e.login||'').trim().toLowerCase();\n  if (!login) continue;\n  byOwner[e.party_id] = { email: login+'@guayas.gob.ec', first_name: titleCase(e.nombres), last_name: titleCase(e.apellidos) };\n}\nconst rows = [];\nfor (const a of assets){\n  const o = byOwner[a.owner_id];\n  if (o && o.email) rows.push({ snipe_asset_tag: a.code, email: o.email, first_name: o.first_name, last_name: o.last_name });\n}\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
+        "jsCode": "const emps = $input.all().map(i => i.json);\nconst assets = $('Extraer activos y titulares').first().json.assets || [];\nfunction titleCase(s){\n  return String(s||'').toLowerCase().split(/\\s+/).filter(Boolean)\n    .map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');\n}\nconst byOwner = {};\nfor (const e of emps){\n  const login = String(e.login||'').trim().toLowerCase();\n  if (!login) continue;\n  byOwner[e.party_id] = { email: login+'@guayas.gob.ec', first_name: titleCase(e.nombres), last_name: titleCase(e.apellidos) };\n}\nconst rows = [];\nfor (const a of assets){\n  const o = byOwner[a.owner_id];\n  if (o && o.email) rows.push({ snipe_asset_tag: a.code, email: o.email, first_name: o.first_name, last_name: o.last_name });\n}\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
       },
       "id": "fb598260-6c54-42a4-ae95-09e331e0026d",
-      "name": "Estado deseado (login)",
+      "name": "Construir titulares deseados",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -152,7 +152,7 @@
         "options": {}
       },
       "id": "36ee43fc-86ed-478e-8d22-6a4c9e80eaf5",
-      "name": "Reset staging titular",
+      "name": "Limpiar tabla temporal (staging)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -171,11 +171,11 @@
         "operation": "executeQuery",
         "query": "INSERT INTO staging_titular (snipe_asset_tag, email, first_name, last_name)\nSELECT x.snipe_asset_tag, x.email, x.first_name, x.last_name\nFROM jsonb_to_recordset($1::jsonb) AS x(snipe_asset_tag text, email text, first_name text, last_name text);",
         "options": {
-          "queryReplacement": "={{ [ $('Estado deseado (login)').first().json.payload ] }}"
+          "queryReplacement": "={{ [ $('Construir titulares deseados').first().json.payload ] }}"
         }
       },
       "id": "f72a2992-d9c3-4290-b988-7716957f5738",
-      "name": "Cargar staging titular",
+      "name": "Cargar titulares en staging",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -196,7 +196,7 @@
         "options": {}
       },
       "id": "59150a82-3977-4eb7-95ba-979a94f89bf4",
-      "name": "Diff titular",
+      "name": "Detectar cambios de titular",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -219,7 +219,7 @@
         }
       },
       "id": "782581a3-dc16-4b09-b8d2-1a9965114962",
-      "name": "Upsert user map",
+      "name": "Guardar usuario en mapa (BD)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -242,7 +242,7 @@
         }
       },
       "id": "16fe64b9-9bfc-4b47-9951-14f9cb0a4af2",
-      "name": "Upsert titular map",
+      "name": "Guardar titular en mapa (BD)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -263,7 +263,7 @@
         "options": {}
       },
       "id": "2ca03944-f502-4ab3-a566-a6cb0474860b",
-      "name": "Contar omitidos",
+      "name": "Contar activos sin mapeo",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -302,7 +302,7 @@
         "options": {}
       },
       "id": "b2120e5d-bf9b-4754-bf11-4c1b09587d77",
-      "name": "¿Aplicado?",
+      "name": "¿Asignación exitosa?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -319,7 +319,7 @@
         }
       },
       "id": "ff0e0c80-8052-4842-8dd0-a2d83db46896",
-      "name": "Log error titular",
+      "name": "Registrar error en bitácora",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -335,10 +335,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const applied = $('Aplicar en Snipe-IT').all();\nconst diffCount = (()=>{ try { return $('Diff titular').all().length; } catch(e){ return 0; } })();\nconst omitidos = (()=>{ try { return $('Contar omitidos').first().json.omitidos ?? 0; } catch(e){ return 0; } })();\nconst cambios = diffCount;\nconst ok = applied.filter(i=>i.json.status==='ok').length;\nconst errores = applied.filter(i=>i.json.status==='error').length;\nconst usuarios_nuevos = applied.filter(i=>i.json.status==='ok' && i.json.created_user).length;\nconst summary = { cambios, aplicados: ok, errores, omitidos, usuarios_nuevos };\nreturn [{ json: summary }];"
+        "jsCode": "const applied = $('Consolidar resultados').all();\nconst diffCount = (()=>{ try { return $('Detectar cambios de titular').all().length; } catch(e){ return 0; } })();\nconst omitidos = (()=>{ try { return $('Contar activos sin mapeo').first().json.omitidos ?? 0; } catch(e){ return 0; } })();\nconst cambios = diffCount;\nconst ok = applied.filter(i=>i.json.status==='ok').length;\nconst errores = applied.filter(i=>i.json.status==='error').length;\nconst usuarios_nuevos = applied.filter(i=>i.json.status==='ok' && i.json.created_user).length;\nconst summary = { cambios, aplicados: ok, errores, omitidos, usuarios_nuevos };\nreturn [{ json: summary }];"
       },
       "id": "441d464c-596a-468b-b282-33ceae92bde0",
-      "name": "Resumen titular",
+      "name": "Calcular resumen de sincronización",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -355,7 +355,7 @@
         }
       },
       "id": "5c960870-0d48-463b-bc94-6af4f927a735",
-      "name": "Log resumen titular",
+      "name": "Guardar resumen en bitácora",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
@@ -371,7 +371,7 @@
     },
     {
       "parameters": {
-        "content": "**IDs de titulares** (Code):\nfiltra `current_owner != null`, construye `assets:[{code, owner_id}]` (→ Estado deseado) y deduplica `owner_ids` via `Set` (→ Empleados ERP `= ANY($1)`). Se mantiene como Code (1 pasada) vs Set 3.4 que duplicaría filter/map y es ilegible.",
+        "content": "**Extraer activos y titulares** (Code):\nfiltra `current_owner != null`, construye `assets:[{code, owner_id}]` (→ Estado deseado) y deduplica `owner_ids` via `Set` (→ Empleados ERP `= ANY($1)`). Se mantiene como Code (1 pasada) vs Set 3.4 que duplicaría filter/map y es ilegible.",
         "height": 368
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -425,7 +425,7 @@
         "options": {}
       },
       "id": "d6fe8838-4c15-4b11-92e8-946e6e19924c",
-      "name": "¿Usuario existente?",
+      "name": "¿Titular ya mapeado en BD?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -484,7 +484,7 @@
         "options": {}
       },
       "id": "5577f878-f6dd-4381-a8c7-5631d2e3c551",
-      "name": "Usuario existente",
+      "name": "Usar usuario del mapa",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -523,7 +523,7 @@
         }
       },
       "id": "ee8637ec-8783-4635-8e65-7d95c5996516",
-      "name": "Buscar usuario",
+      "name": "Buscar usuario por email en Snipe-IT",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -567,7 +567,7 @@
         "options": {}
       },
       "id": "0a76ae7a-a99d-4758-b30a-99ad05aa6650",
-      "name": "¿Encontrado?",
+      "name": "¿Usuario existe en Snipe-IT?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -582,31 +582,31 @@
             {
               "id": "c8e62fe9-696a-4075-922a-812f9798661c",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "049744fd-b163-4896-84b3-f633fea7ce19",
               "name": "email",
-              "value": "={{ $('Diff titular').item.json.email }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.email }}",
               "type": "string"
             },
             {
               "id": "02aed5a1-f14c-4359-bd64-61dea252b869",
               "name": "first_name",
-              "value": "={{ $('Diff titular').item.json.first_name }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.first_name }}",
               "type": "string"
             },
             {
               "id": "ca702ee5-9e14-49c6-9b99-bfc7dfd2feae",
               "name": "last_name",
-              "value": "={{ $('Diff titular').item.json.last_name }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.last_name }}",
               "type": "string"
             },
             {
               "id": "3b6e2284-b321-491d-8616-c1eefaff659e",
               "name": "snipe_asset_id",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
@@ -626,7 +626,7 @@
         "options": {}
       },
       "id": "7d611c75-2f9a-4ff7-848f-6eac5b0e3270",
-      "name": "Usuario encontrado",
+      "name": "Usar usuario existente de Snipe-IT",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -641,37 +641,37 @@
             {
               "id": "a140f953-e762-459f-9b5d-d6f3048a47ca",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "5109a65f-1e94-48c2-8605-99403052b69f",
               "name": "snipe_asset_id",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
               "id": "23533c40-098f-421b-8995-820b1625cba6",
               "name": "email",
-              "value": "={{ $('Diff titular').item.json.email }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.email }}",
               "type": "string"
             },
             {
               "id": "bebe287c-47c0-449b-beb0-54016268c36a",
               "name": "first_name",
-              "value": "={{ $('Diff titular').item.json.first_name }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.first_name }}",
               "type": "string"
             },
             {
               "id": "7ea4970f-d3ca-4200-8946-f2fb700a3317",
               "name": "last_name",
-              "value": "={{ $('Diff titular').item.json.last_name }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.last_name }}",
               "type": "string"
             },
             {
               "id": "7156c225-3e0c-439f-aeca-abf8cd6c1430",
               "name": "username",
-              "value": "={{ $('Diff titular').item.json.email.split('@')[0].slice(0,100) }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.email.split('@')[0].slice(0,100) }}",
               "type": "string"
             },
             {
@@ -685,7 +685,7 @@
         "options": {}
       },
       "id": "cd677f1d-f743-411b-9659-2c62a59d9fcc",
-      "name": "Preparar usuario nuevo",
+      "name": "Preparar datos del nuevo usuario",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -765,7 +765,7 @@
         }
       },
       "id": "a48686c8-9492-4342-9dbb-04ddbdeb4021",
-      "name": "Crear usuario",
+      "name": "Crear usuario en Snipe-IT",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -790,31 +790,31 @@
             {
               "id": "dfc86b10-dd47-46d9-909d-f0c233e1e93b",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "80aefe4a-8fbf-4b27-9df3-11015c28a139",
               "name": "email",
-              "value": "={{ $('Preparar usuario nuevo').item.json.email }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.email }}",
               "type": "string"
             },
             {
               "id": "9f6acccb-93b7-4593-83e3-32b9955b9c6f",
               "name": "first_name",
-              "value": "={{ $('Preparar usuario nuevo').item.json.first_name }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.first_name }}",
               "type": "string"
             },
             {
               "id": "3c052aeb-0a32-4f2c-9a30-326919f8c7fc",
               "name": "last_name",
-              "value": "={{ $('Preparar usuario nuevo').item.json.last_name }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.last_name }}",
               "type": "string"
             },
             {
               "id": "f9ca6112-d986-43aa-b8a7-383693701803",
               "name": "snipe_asset_id",
-              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_id }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
@@ -834,7 +834,7 @@
         "options": {}
       },
       "id": "10e404a3-b0d0-4b42-ba91-47ed62008edb",
-      "name": "Usuario creado",
+      "name": "Registrar usuario creado",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -866,19 +866,19 @@
           "parameters": [
             {
               "name": "first_name",
-              "value": "={{ ($('Preparar usuario nuevo').item.json.first_name || $('Preparar usuario nuevo').item.json.username).slice(0,80) }}"
+              "value": "={{ ($('Preparar datos del nuevo usuario').item.json.first_name || $('Preparar datos del nuevo usuario').item.json.username).slice(0,80) }}"
             },
             {
               "name": "last_name",
-              "value": "={{ ($('Preparar usuario nuevo').item.json.last_name || '-').slice(0,80) }}"
+              "value": "={{ ($('Preparar datos del nuevo usuario').item.json.last_name || '-').slice(0,80) }}"
             },
             {
               "name": "username",
-              "value": "={{ $('Preparar usuario nuevo').item.json.username.slice(0,90) + '.' + Math.random().toString(36).slice(2,6) }}"
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.username.slice(0,90) + '.' + Math.random().toString(36).slice(2,6) }}"
             },
             {
               "name": "email",
-              "value": "={{ $('Preparar usuario nuevo').item.json.email }}"
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.email }}"
             },
             {
               "name": "activated",
@@ -886,11 +886,11 @@
             },
             {
               "name": "password",
-              "value": "={{ $('Preparar usuario nuevo').item.json.password }}"
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.password }}"
             },
             {
               "name": "password_confirmation",
-              "value": "={{ $('Preparar usuario nuevo').item.json.password }}"
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.password }}"
             },
             {
               "name": "notes",
@@ -914,7 +914,7 @@
         }
       },
       "id": "1aac79f5-e3aa-4bfd-a01e-296dc6dc670f",
-      "name": "Crear usuario (alt)",
+      "name": "Reintentar con username alternativo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -939,31 +939,31 @@
             {
               "id": "5b6dd57f-a1df-48eb-9e89-6faacdf40729",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "6e0c68ac-a7fd-462e-818a-a51ac650afe2",
               "name": "email",
-              "value": "={{ $('Preparar usuario nuevo').item.json.email }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.email }}",
               "type": "string"
             },
             {
               "id": "2dcab81d-5fca-4c34-aea2-5cbdc1c50a35",
               "name": "first_name",
-              "value": "={{ $('Preparar usuario nuevo').item.json.first_name }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.first_name }}",
               "type": "string"
             },
             {
               "id": "bd759363-849a-4b2d-8f4f-66e3908cce03",
               "name": "last_name",
-              "value": "={{ $('Preparar usuario nuevo').item.json.last_name }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.last_name }}",
               "type": "string"
             },
             {
               "id": "54374a58-15fd-4d46-a69e-6f4e9ba09896",
               "name": "snipe_asset_id",
-              "value": "={{ $('Preparar usuario nuevo').item.json.snipe_asset_id }}",
+              "value": "={{ $('Preparar datos del nuevo usuario').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
@@ -983,7 +983,7 @@
         "options": {}
       },
       "id": "05b6c526-9ba1-4b4b-b894-f05c9f85a726",
-      "name": "Usuario creado (alt)",
+      "name": "Registrar usuario creado (alt)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -998,19 +998,19 @@
             {
               "id": "cb14a9e4-4339-47c4-95c2-a4326416473f",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "3d78d4fc-c3a4-436a-add2-80446c54ca24",
               "name": "email",
-              "value": "={{ $('Diff titular').item.json.email }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.email }}",
               "type": "string"
             },
             {
               "id": "864d5f15-a3f9-4fac-9bca-06a13702351f",
               "name": "snipe_asset_id",
-              "value": "={{ $('Diff titular').item.json.snipe_asset_id }}",
+              "value": "={{ $('Detectar cambios de titular').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
@@ -1042,7 +1042,7 @@
         "options": {}
       },
       "id": "22149e02-1b13-4e3f-86c0-cc8d1ec53d2a",
-      "name": "Error usuario",
+      "name": "Marcar error al crear usuario",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -1101,7 +1101,7 @@
         "options": {}
       },
       "id": "f8cdd346-62b1-425f-aba1-ec2615b12ca6",
-      "name": "Antes de checkout",
+      "name": "Preparar asignación",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -1161,7 +1161,7 @@
         }
       },
       "id": "57f06ed2-9a2f-41ce-9ef9-e8b69f655482",
-      "name": "Checkout",
+      "name": "Asignar activo al titular (checkout)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -1186,31 +1186,31 @@
             {
               "id": "b53034a9-b4ef-4105-9226-42926d7056e4",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "1d6e59cd-83fa-4528-8349-c612a7eb9e6f",
               "name": "email",
-              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "value": "={{ $('Preparar asignación').item.json.email }}",
               "type": "string"
             },
             {
               "id": "a41d3783-d1b9-40e6-a498-a3f77d43fd2b",
               "name": "snipe_asset_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
               "id": "19fa4e2a-d9e0-4435-8c1e-81e728b4820f",
               "name": "snipe_user_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_user_id }}",
               "type": "number"
             },
             {
               "id": "44fc15f3-fbd5-4f61-b8d7-586546f921f4",
               "name": "created_user",
-              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "value": "={{ $('Preparar asignación').item.json.created_user }}",
               "type": "boolean"
             },
             {
@@ -1224,7 +1224,7 @@
         "options": {}
       },
       "id": "e28ff80c-3153-46be-ab56-1addc14f43bf",
-      "name": "Resultado ok",
+      "name": "Registrar asignación exitosa",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -1235,7 +1235,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Antes de checkout').item.json.snipe_asset_id }}/checkin",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Preparar asignación').item.json.snipe_asset_id }}/checkin",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendHeaders": true,
@@ -1270,7 +1270,7 @@
         }
       },
       "id": "382af384-2848-428f-b4a4-a0c7d7c17211",
-      "name": "Checkin",
+      "name": "Liberar activo (checkin)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -1288,7 +1288,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Antes de checkout').item.json.snipe_asset_id }}/checkout",
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware/{{ $('Preparar asignación').item.json.snipe_asset_id }}/checkout",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendHeaders": true,
@@ -1313,7 +1313,7 @@
             },
             {
               "name": "assigned_user",
-              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}"
+              "value": "={{ $('Preparar asignación').item.json.snipe_user_id }}"
             },
             {
               "name": "note",
@@ -1337,7 +1337,7 @@
         }
       },
       "id": "06923754-fb5d-4fb3-a51a-53003c0227b1",
-      "name": "Checkout reintento",
+      "name": "Reintentar asignación",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -1362,31 +1362,31 @@
             {
               "id": "2416e0af-4989-437e-9308-52bd7518d486",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "84805e38-1be9-4f04-82b3-5e17dc76bc95",
               "name": "email",
-              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "value": "={{ $('Preparar asignación').item.json.email }}",
               "type": "string"
             },
             {
               "id": "cd26852c-49f5-4952-8f5b-fc7dc3620a37",
               "name": "snipe_asset_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
               "id": "4375811b-ca35-4196-93c8-ad1c03aed4f7",
               "name": "snipe_user_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_user_id }}",
               "type": "number"
             },
             {
               "id": "a976ac38-73df-4145-89da-767642aa5261",
               "name": "created_user",
-              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "value": "={{ $('Preparar asignación').item.json.created_user }}",
               "type": "boolean"
             },
             {
@@ -1400,7 +1400,7 @@
         "options": {}
       },
       "id": "825432eb-58d8-42cd-9d78-b0de75f82a3e",
-      "name": "Resultado ok reintento",
+      "name": "Registrar asignación exitosa (tras reintento)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -1415,31 +1415,31 @@
             {
               "id": "028414cf-978b-429f-8c92-de7f9b3bca63",
               "name": "snipe_asset_tag",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_tag }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_tag }}",
               "type": "string"
             },
             {
               "id": "aafe6147-4643-47d6-a011-d2b07f76d339",
               "name": "email",
-              "value": "={{ $('Antes de checkout').item.json.email }}",
+              "value": "={{ $('Preparar asignación').item.json.email }}",
               "type": "string"
             },
             {
               "id": "482830e3-7c7e-4f25-90f4-f6cdda9f0152",
               "name": "snipe_asset_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_asset_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_asset_id }}",
               "type": "number"
             },
             {
               "id": "1cd43b02-62ba-45fa-8c48-49a8d8f38f44",
               "name": "snipe_user_id",
-              "value": "={{ $('Antes de checkout').item.json.snipe_user_id }}",
+              "value": "={{ $('Preparar asignación').item.json.snipe_user_id }}",
               "type": "number"
             },
             {
               "id": "5d08c6bf-38ab-4e50-b449-0809cba94e09",
               "name": "created_user",
-              "value": "={{ $('Antes de checkout').item.json.created_user }}",
+              "value": "={{ $('Preparar asignación').item.json.created_user }}",
               "type": "boolean"
             },
             {
@@ -1471,7 +1471,7 @@
         "options": {}
       },
       "id": "55a534de-ef5a-4253-9ddf-fc2eab5ca287",
-      "name": "Resultado error checkout",
+      "name": "Registrar error de asignación",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -1482,13 +1482,61 @@
     {
       "parameters": {},
       "id": "589d8779-9fec-4db6-9850-ba855bc5f17c",
-      "name": "Aplicar en Snipe-IT",
+      "name": "Consolidar resultados",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
         7728,
         1312
       ]
+    },
+    {
+      "id": "68f03e85-606c-483d-80af-70c6f993a5a1",
+      "name": "Capítulo 1: Origen ERP",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        800
+      ],
+      "parameters": {
+        "content": "## ① Obtener datos del ERP\nTitular autoritativo desde Tryton: `login@guayas.gob.ec`. Lee activos con titular, extrae owner_ids y consulta empleados activos.",
+        "height": 100,
+        "width": 1480,
+        "color": 4
+      }
+    },
+    {
+      "id": "6862f88e-1484-4414-89cd-7317ff233c40",
+      "name": "Capítulo 2: Detectar cambios",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5568,
+        800
+      ],
+      "parameters": {
+        "content": "## ② Detectar cambios (staging + diff)\nCarga el `titular deseado` en `staging_titular` y compara contra `snipe_titular_map`/`user_map`. Solo los cambios siguen.",
+        "height": 100,
+        "width": 560,
+        "color": 5
+      }
+    },
+    {
+      "id": "acd0469a-d5fb-45ca-b045-ae60af5fde4b",
+      "name": "Capítulo 3: Aplicar en Snipe-IT",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6144,
+        800
+      ],
+      "parameters": {
+        "content": "## ③ Aplicar en Snipe-IT y auditar\nResuelve `snipe_user_id` por fila (mapa → búsqueda → creación) y asigna el activo (`checkout` con `checkin` + reintento). Registra éxito/error y resumen.",
+        "height": 100,
+        "width": 2120,
+        "color": 3
+      }
     }
   ],
   "pinData": {},
@@ -1497,14 +1545,14 @@
       "main": [
         [
           {
-            "node": "Execute login",
+            "node": "Iniciar sesión en Tryton",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Execute login": {
+    "Iniciar sesión en Tryton": {
       "main": [
         [
           {
@@ -1519,381 +1567,381 @@
       "main": [
         [
           {
-            "node": "IDs de titulares",
+            "node": "Extraer activos y titulares",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "IDs de titulares": {
+    "Extraer activos y titulares": {
       "main": [
         [
           {
-            "node": "Empleados activos (ERP)",
+            "node": "Consultar empleados activos (ERP)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Empleados activos (ERP)": {
+    "Consultar empleados activos (ERP)": {
       "main": [
         [
           {
-            "node": "Estado deseado (login)",
+            "node": "Construir titulares deseados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Estado deseado (login)": {
+    "Construir titulares deseados": {
       "main": [
         [
           {
-            "node": "Reset staging titular",
+            "node": "Limpiar tabla temporal (staging)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Reset staging titular": {
+    "Limpiar tabla temporal (staging)": {
       "main": [
         [
           {
-            "node": "Cargar staging titular",
+            "node": "Cargar titulares en staging",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Cargar staging titular": {
+    "Cargar titulares en staging": {
       "main": [
         [
           {
-            "node": "Contar omitidos",
+            "node": "Contar activos sin mapeo",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Contar omitidos": {
+    "Contar activos sin mapeo": {
       "main": [
         [
           {
-            "node": "Diff titular",
+            "node": "Detectar cambios de titular",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Diff titular": {
+    "Detectar cambios de titular": {
       "main": [
         [
           {
-            "node": "¿Usuario existente?",
+            "node": "¿Titular ya mapeado en BD?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Aplicado?": {
+    "¿Asignación exitosa?": {
       "main": [
         [
           {
-            "node": "Upsert user map",
+            "node": "Guardar usuario en mapa (BD)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Upsert titular map",
+            "node": "Guardar titular en mapa (BD)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log error titular",
+            "node": "Registrar error en bitácora",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resumen titular": {
+    "Calcular resumen de sincronización": {
       "main": [
         [
           {
-            "node": "Log resumen titular",
+            "node": "Guardar resumen en bitácora",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Usuario existente?": {
+    "¿Titular ya mapeado en BD?": {
       "main": [
         [
           {
-            "node": "Usuario existente",
+            "node": "Usar usuario del mapa",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Buscar usuario",
+            "node": "Buscar usuario por email en Snipe-IT",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Usuario existente": {
+    "Usar usuario del mapa": {
       "main": [
         [
           {
-            "node": "Antes de checkout",
+            "node": "Preparar asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Buscar usuario": {
+    "Buscar usuario por email en Snipe-IT": {
       "main": [
         [
           {
-            "node": "¿Encontrado?",
+            "node": "¿Usuario existe en Snipe-IT?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Preparar usuario nuevo",
+            "node": "Preparar datos del nuevo usuario",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Encontrado?": {
+    "¿Usuario existe en Snipe-IT?": {
       "main": [
         [
           {
-            "node": "Usuario encontrado",
+            "node": "Usar usuario existente de Snipe-IT",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Preparar usuario nuevo",
+            "node": "Preparar datos del nuevo usuario",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Usuario encontrado": {
+    "Usar usuario existente de Snipe-IT": {
       "main": [
         [
           {
-            "node": "Antes de checkout",
+            "node": "Preparar asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar usuario nuevo": {
+    "Preparar datos del nuevo usuario": {
       "main": [
         [
           {
-            "node": "Crear usuario",
+            "node": "Crear usuario en Snipe-IT",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Crear usuario": {
+    "Crear usuario en Snipe-IT": {
       "main": [
         [
           {
-            "node": "Usuario creado",
+            "node": "Registrar usuario creado",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Crear usuario (alt)",
+            "node": "Reintentar con username alternativo",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Usuario creado": {
+    "Registrar usuario creado": {
       "main": [
         [
           {
-            "node": "Antes de checkout",
+            "node": "Preparar asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Crear usuario (alt)": {
+    "Reintentar con username alternativo": {
       "main": [
         [
           {
-            "node": "Usuario creado (alt)",
+            "node": "Registrar usuario creado (alt)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error usuario",
+            "node": "Marcar error al crear usuario",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Usuario creado (alt)": {
+    "Registrar usuario creado (alt)": {
       "main": [
         [
           {
-            "node": "Antes de checkout",
+            "node": "Preparar asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Error usuario": {
+    "Marcar error al crear usuario": {
       "main": [
         [
           {
-            "node": "Aplicar en Snipe-IT",
+            "node": "Consolidar resultados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Antes de checkout": {
+    "Preparar asignación": {
       "main": [
         [
           {
-            "node": "Checkout",
+            "node": "Asignar activo al titular (checkout)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Checkout": {
+    "Asignar activo al titular (checkout)": {
       "main": [
         [
           {
-            "node": "Resultado ok",
+            "node": "Registrar asignación exitosa",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Checkin",
+            "node": "Liberar activo (checkin)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resultado ok": {
+    "Registrar asignación exitosa": {
       "main": [
         [
           {
-            "node": "Aplicar en Snipe-IT",
+            "node": "Consolidar resultados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Checkin": {
+    "Liberar activo (checkin)": {
       "main": [
         [
           {
-            "node": "Checkout reintento",
+            "node": "Reintentar asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Checkout reintento": {
+    "Reintentar asignación": {
       "main": [
         [
           {
-            "node": "Resultado ok reintento",
+            "node": "Registrar asignación exitosa (tras reintento)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Resultado error checkout",
+            "node": "Registrar error de asignación",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resultado ok reintento": {
+    "Registrar asignación exitosa (tras reintento)": {
       "main": [
         [
           {
-            "node": "Aplicar en Snipe-IT",
+            "node": "Consolidar resultados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resultado error checkout": {
+    "Registrar error de asignación": {
       "main": [
         [
           {
-            "node": "Aplicar en Snipe-IT",
+            "node": "Consolidar resultados",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Aplicar en Snipe-IT": {
+    "Consolidar resultados": {
       "main": [
         [
           {
-            "node": "¿Aplicado?",
+            "node": "¿Asignación exitosa?",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Resumen titular",
+            "node": "Calcular resumen de sincronización",
             "type": "main",
             "index": 0
           }
@@ -1906,7 +1954,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "88b0dc78-01e3-4ed0-b0e6-53c2853e3e60",
+  "versionId": "d6906390-7b70-4e3a-9280-04ffc733991e",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },

@@ -333,42 +333,42 @@ Has internal_code field? (IF ($json.rows ?? []).some(f => f.db_column_name === '
 ### Flujo
 
 ```
-Execute login (Cnq2yvzVCRTKFld5) → Leer activos con titular (retry 3×3s) → IDs de titulares (dedup owner_ids)
-     → Empleados activos (ERP) (DISTINCT ON pp.id, contrato más reciente) → Estado deseado (login → {snipe_asset_tag, email})
-     → Reset staging titular → Cargar staging titular (jsonb_to_recordset) → Contar omitidos (staging sin asset_map)
-     → Diff titular (JOIN asset_map + LEFT JOIN snipe_titular_map/user_map WHERE IS DISTINCT)
-     → ¿Usuario existente? (IF existing_user_id) → Usuario existente (Set) ──┐
-                                         Buscar usuario (GET /users?email=, retry 3×2s) → ¿Encontrado? → Usuario encontrado (Set) ─┤
-                                                                                    ↓ false/error → Preparar usuario nuevo (Set) → Crear usuario (POST /users) → Usuario creado (Set) ─┤
-                                                                                                                              ↓ error → Crear usuario (alt) (POST, username sufijo) → Usuario creado (alt) ─┤
-                                                                                                                                                        ↓ error → Error usuario (Set) ──┐
+Iniciar sesión en Tryton (Cnq2yvzVCRTKFld5) → Leer activos con titular (retry 3×3s) → Extraer activos y titulares (dedup owner_ids)
+     → Consultar empleados activos (ERP) (DISTINCT ON pp.id, contrato más reciente) → Estado deseado (login → {snipe_asset_tag, email})
+     → Limpiar tabla temporal (staging) → Cargar titulares en staging (jsonb_to_recordset) → Contar activos sin mapeo (staging sin asset_map)
+     → Detectar cambios de titular (JOIN asset_map + LEFT JOIN snipe_titular_map/user_map WHERE IS DISTINCT)
+     → ¿Titular ya mapeado en BD? (IF existing_user_id) → Usar usuario del mapa (Set) ──┐
+                                         Buscar usuario por email en Snipe-IT (GET /users?email=, retry 3×2s) → ¿Usuario existe en Snipe-IT? → Usar usuario existente de Snipe-IT (Set) ─┤
+                                                                                    ↓ false/error → Preparar datos del nuevo usuario (Set) → Crear usuario en Snipe-IT (POST /users) → Registrar usuario creado (Set) ─┤
+                                                                                                                              ↓ error → Reintentar con username alternativo (POST, username sufijo) → Registrar usuario creado (alt) ─┤
+                                                                                                                                                        ↓ error → Marcar error al crear usuario (Set) ──┐
                                                                                                                                                                                      ↓ (fan-in)
-                                                                                                                                                                  Antes de checkout (Set) → Checkout (POST /checkout) → Resultado ok (Set) ──┐
-                                                                                                                                                                                                             ↓ error → Checkin (POST /checkin) → Checkout reintento → Resultado ok reintento (Set) ─┤
-                                                                                                                                                                                                                                                   ↓ error → Resultado error checkout (Set) ─┤
+                                                                                                                                                                  Preparar asignación (Set) → Asignar activo al titular (checkout) (POST /checkout) → Registrar asignación exitosa (Set) ──┐
+                                                                                                                                                                                                             ↓ error → Liberar activo (checkin) (POST /checkin) → Reintentar asignación → Registrar asignación exitosa (tras reintento) (Set) ─┤
+                                                                                                                                                                                                                                                   ↓ error → Registrar error de asignación (Set) ─┤
                                                                                                                                                                                                                                                                                           ↓ (fan-in)
-                                                                                                                                                                                                                       Aplicar en Snipe-IT (NoOp, fan-in 4→1)
-     → ¿Aplicado? (IF status==ok → Upsert user map + Upsert titular map; error → Log error titular)
-     → Resumen titular → Log resumen titular (run_summary titular siempre)
+                                                                                                                                                                                                                       Consolidar resultados (NoOp, fan-in 4→1)
+     → ¿Asignación exitosa? (IF status==ok → Guardar usuario en mapa (BD) + Guardar titular en mapa (BD); error → Registrar error en bitácora)
+     → Calcular resumen de sincronización → Guardar resumen en bitácora (run_summary titular siempre)
 ```
 
-- `IDs de titulares` (Code, `runOnceForAllItems`): recibe 1 item con `result` completo del `search_read`; en una pasada filtra `current_owner != null`, construye `assets: [{code, owner_id}]` (para `Estado deseado (login)`) y deduplica `owner_ids: [...new Set(...)]` (para `Empleados activos (ERP)` `= ANY($1)`); emite `n_assets`/`n_owners`. No es un `Set` porque requeriría duplicar `filter/map` y la dedup en expresión es ilegible — se mantiene como Code intencionalmente.
-- `Execute login` con ambos triggers confluyendo; `Leer activos` con `retryOnFail 3×3s` cubre 429 de Tryton (un solo `search_read` `0,null,null` sobre ~19k).
-- `Diff titular` filtra `tm IS NULL` o `email IS DISTINCT FROM s.email`; excluye `snipe_asset_id IS NULL` (omitidos contados aparte).
-- `¿Usuario existente?` / `Buscar usuario` (`GET /api/v1/users?email=&limit=1`, `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail 3×2s`, `onError: continueErrorOutput`) / `¿Encontrado?` (`body.rows[0].id` notEmpty) / `Usuario encontrado` / `Preparar usuario nuevo` (genera `username`+`password` `Aa9!+rand`) / `Crear usuario` (`POST /api/v1/users`, `onError→Crear alt`) / `Crear usuario (alt)` (username con sufijo `.`+rand4) / `Usuario creado*` (`created_user` true/false) / `Error usuario` (`status error`) resuelven `snipe_user_id` por fila (proceso principal, sin task runner).
-- `Antes de checkout` (Set, fan-in 4→1) → `Checkout` (`POST /api/v1/hardware/{id}/checkout` `{checkout_to_type:user, assigned_user, note}`, `retryOnFail 3×2s`, `batching 20/500ms`, `onError: continueErrorOutput` → `Resultado ok`) en error → `Checkin` (`POST /checkin`, `onError: continueRegularOutput`) → `Checkout reintento` → `Resultado ok reintento` / `Resultado error checkout` (`status error`).
-- `Aplicar en Snipe-IT` (NoOp, fan-in 4→1) preserva contrato `{snipe_asset_tag, email, snipe_user_id, snipe_asset_id, status:'ok'|'error', created_user, error_message, response_status, response_body}` para `¿Aplicado?`/`Resumen titular`.
-- `¿Aplicado?` separa ok/error para `integration_sync_log`.
-- `Contar omitidos` + `Resumen/Log resumen` dan auditoría (`entity='titular'`, `operation='run_summary'` con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`), independiente de `staticData.lastRun`.
+- `Extraer activos y titulares` (Code, `runOnceForAllItems`): recibe 1 item con `result` completo del `search_read`; en una pasada filtra `current_owner != null`, construye `assets: [{code, owner_id}]` (para `Construir titulares deseados`) y deduplica `owner_ids: [...new Set(...)]` (para `Consultar empleados activos (ERP)` `= ANY($1)`); emite `n_assets`/`n_owners`. No es un `Set` porque requeriría duplicar `filter/map` y la dedup en expresión es ilegible — se mantiene como Code intencionalmente.
+- `Iniciar sesión en Tryton` con ambos triggers confluyendo; `Leer activos` con `retryOnFail 3×3s` cubre 429 de Tryton (un solo `search_read` `0,null,null` sobre ~19k).
+- `Detectar cambios de titular` filtra `tm IS NULL` o `email IS DISTINCT FROM s.email`; excluye `snipe_asset_id IS NULL` (omitidos contados aparte).
+- `¿Titular ya mapeado en BD?` / `Buscar usuario por email en Snipe-IT` (`GET /api/v1/users?email=&limit=1`, `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail 3×2s`, `onError: continueErrorOutput`) / `¿Usuario existe en Snipe-IT?` (`body.rows[0].id` notEmpty) / `Usar usuario existente de Snipe-IT` / `Preparar datos del nuevo usuario` (genera `username`+`password` `Aa9!+rand`) / `Crear usuario en Snipe-IT` (`POST /api/v1/users`, `onError→Crear alt`) / `Reintentar con username alternativo` (username con sufijo `.`+rand4) / `Registrar usuario creado*` (`created_user` true/false) / `Marcar error al crear usuario` (`status error`) resuelven `snipe_user_id` por fila (proceso principal, sin task runner).
+- `Preparar asignación` (Set, fan-in 4→1) → `Asignar activo al titular (checkout)` (`POST /api/v1/hardware/{id}/checkout` `{checkout_to_type:user, assigned_user, note}`, `retryOnFail 3×2s`, `batching 20/500ms`, `onError: continueErrorOutput` → `Registrar asignación exitosa`) en error → `Liberar activo (checkin)` (`POST /checkin`, `onError: continueRegularOutput`) → `Reintentar asignación` → `Registrar asignación exitosa (tras reintento)` / `Registrar error de asignación` (`status error`).
+- `Consolidar resultados` (NoOp, fan-in 4→1) preserva contrato `{snipe_asset_tag, email, snipe_user_id, snipe_asset_id, status:'ok'|'error', created_user, error_message, response_status, response_body}` para `¿Asignación exitosa?`/`Calcular resumen de sincronización`.
+- `¿Asignación exitosa?` separa ok/error para `integration_sync_log`.
+- `Contar activos sin mapeo` + `Resumen/Log resumen` dan auditoría (`entity='titular'`, `operation='run_summary'` con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`), independiente de `staticData.lastRun`.
 - No revoca checkouts (intencional, ver §4.8). Tablas: `staging_titular`, `snipe_titular_user_map`, `snipe_titular_map`.
 
-> **Fix 2026-09-01 (referencia huérfana + SNIPE_TOKEN + TRYTON_HOST):** `Execute login` → `RuVLU1TOMoOxqVE3` (borrado) → `Cnq2yvzVCRTKFld5`; `Aplicar` usaba `SNIPE_TOKEN` inexistente → 401 masivo (200/0/200×401); `Leer activos` usaba `TRYTON_HOST` vs `TRYTON_URL`. Fix repuntado + alineado a `SNIPEIT_TOKEN || SNIPE_TOKEN` y `TRYTON_URL || TRYTON_HOST` + retry en Code. Ver `flows/flujos-dev/Tryton sync titular-activo.json:45,89,228`.
+> **Fix 2026-09-01 (referencia huérfana + SNIPE_TOKEN + TRYTON_HOST):** `Iniciar sesión en Tryton` → `RuVLU1TOMoOxqVE3` (borrado) → `Cnq2yvzVCRTKFld5`; `Aplicar` usaba `SNIPE_TOKEN` inexistente → 401 masivo (200/0/200×401); `Leer activos` usaba `TRYTON_HOST` vs `TRYTON_URL`. Fix repuntado + alineado a `SNIPEIT_TOKEN || SNIPE_TOKEN` y `TRYTON_URL || TRYTON_HOST` + retry en Code. Ver `flows/flujos-dev/Tryton sync titular-activo.json:45,89,228`.
 
-> **Fix 2026-09-01 (observabilidad):** antes errores solo en `staticData.lastRun` (no persistente). Fix: `status ok|error` + IF `¿Aplicado?` → `Log error titular` (`titular_checkout`) + `Contar omitidos`/`Resumen/Log resumen` (`run_summary` titular). Snapshot 15→19 nodos.
+> **Fix 2026-09-01 (observabilidad):** antes errores solo en `staticData.lastRun` (no persistente). Fix: `status ok|error` + IF `¿Asignación exitosa?` → `Registrar error en bitácora` (`titular_checkout`) + `Contar activos sin mapeo`/`Resumen/Log resumen` (`run_summary` titular). Snapshot 15→19 nodos.
 
 > **Decisión 2026-09-01 (no-revocación):** solo asigna/reasigna; si `current_owner=null` el activo queda con titular anterior. Pendiente política de `checkin` automático.
 
-> **Fix 2026-09-02 (task runner timeout 300s):** `Aplicar en Snipe-IT` (Code `runOnceForAllItems` con `helpers.httpRequest` + `sleep(1500)` en bucle `for...await` sobre N filas) superaba `N8N_RUNNERS_TASK_TIMEOUT=300s` (n8n 2.36.7 `TaskBroker.handleTaskTimeout`). Refactor a nodos nativos (ver flujo arriba, 19→37 nodos, todos `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail`/`onError` nativos, `batching 20/500ms`); corre en proceso principal sin límite del runner. Snapshot `flows/flujos-dev/Tryton sync titular-activo.json`.
+> **Fix 2026-09-02 (task runner timeout 300s):** `Consolidar resultados` (Code `runOnceForAllItems` con `helpers.httpRequest` + `sleep(1500)` en bucle `for...await` sobre N filas) superaba `N8N_RUNNERS_TASK_TIMEOUT=300s` (n8n 2.36.7 `TaskBroker.handleTaskTimeout`). Refactor a nodos nativos (ver flujo arriba, 19→37 nodos, todos `httpBearerAuth` `Adhjdtilu8D9eQs8`, `retryOnFail`/`onError` nativos, `batching 20/500ms`); corre en proceso principal sin límite del runner. Snapshot `flows/flujos-dev/Tryton sync titular-activo.json`.
 
 ---
 
@@ -413,7 +413,7 @@ Auditoría en `public.integration_sync_log` (BD `n8n`).
 - **Status flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde `Recover status` (propaga error context). **Fix 2026-08-28** corrigió lecturas vacías sobre `{found:false}`.
 - **Models flow:** `Log error` mapea `operation`/`request_payload`/`response_status`/`response_body`/`error_message` desde `Recover model` (propaga error context). **Fix 2026-08-28:** antes leía `$json.statusCode`/`$json.body.messages` sobre `{found:false}` y `operation` hardcodeado a `"create"` con `request_payload`/`response_body` que referenciaban `Create snipe-it model` directamente.
 - **Categories flow:** `operation` hardcodeado a `"create"`; `request_payload` es `JSON.stringify(params.bodyParameters.parameters[1])`.
-- **Titular flow:** `Log error titular` (`titular_checkout` por cada `status=error`) y `Log resumen titular` (`run_summary` `entity='titular'` con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`) — auditoría siempre. **Fix 2026-09-01:** antes solo `staticData.lastRun`.
+- **Titular flow:** `Registrar error en bitácora` (`titular_checkout` por cada `status=error`) y `Guardar resumen en bitácora` (`run_summary` `entity='titular'` con `{cambios, aplicados, errores, omitidos, usuarios_nuevos}`) — auditoría siempre. **Fix 2026-09-01:** antes solo `staticData.lastRun`.
 - **General:** `tryton_id`/`snipe_id` en `0` para categorías/estados/titular; sin mapa de activos ni reconciliación.
 
 ### `staging_tryton_assets` — orquestador v2 (batch)
