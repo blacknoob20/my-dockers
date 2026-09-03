@@ -1311,7 +1311,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at)\nSELECT LOWER(x.email), x.id, now()\nFROM jsonb_to_recordset($1::jsonb) AS x(email text, id int)\nWHERE x.email IS NOT NULL AND x.email <> ''\nON CONFLICT (email) DO UPDATE SET snipe_user_id = EXCLUDED.snipe_user_id, updated_at = now();",
+        "query": "INSERT INTO snipe_titular_user_map(email, snipe_user_id, updated_at)\nSELECT DISTINCT ON (LOWER(x.email)) LOWER(x.email), x.id, now()\nFROM jsonb_to_recordset($1::jsonb) AS x(email text, id int)\nWHERE x.email IS NOT NULL AND x.email <> ''\nORDER BY LOWER(x.email), x.id\nON CONFLICT (email) DO UPDATE SET snipe_user_id = EXCLUDED.snipe_user_id, updated_at = now();",
         "options": {
           "queryReplacement": "={{ [ JSON.stringify($('Preload Snipe Users').first().json.body.rows.map(r => ({ email: String(r.email||'').toLowerCase(), id: r.id })).filter(r => r.email)) ] }}"
         }
@@ -2042,7 +2042,7 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
-  "versionId": "47ec26a3-e55b-4412-a8b1-2450856bc5de",
+  "versionId": "6411e14b-09fb-4419-991d-208c29b81af3",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
