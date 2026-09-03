@@ -14,7 +14,8 @@
 #   2. n8n (PostgreSQL): trunca tryton_snipe_model_map,
 #      tryton_snipe_category_map, tryton_snipe_status_map,
 #      staging_tryton_assets, tryton_snipe_asset_map,
-#      sync_run_summary e integration_sync_log (reinicia secuencias).
+#      sync_run_summary, staging_titular, snipe_titular_map,
+#      snipe_titular_user_map e integration_sync_log (reinicia secuencias).
 #
 # NO toca: usuarios, assets, ni la categoría por defecto (id 1).
 #
@@ -57,6 +58,9 @@ LOG_COUNT=$(psql_q "SELECT COUNT(*) FROM integration_sync_log;")
 STAGING_COUNT=$(psql_q "SELECT COUNT(*) FROM staging_tryton_assets;")
 MAP_ASSETS=$(psql_q "SELECT COUNT(*) FROM tryton_snipe_asset_map;")
 SUMMARY_COUNT=$(psql_q "SELECT COUNT(*) FROM sync_run_summary;")
+STAGING_TITULAR_COUNT=$(psql_q "SELECT COUNT(*) FROM staging_titular;")
+MAP_TITULAR_COUNT=$(psql_q "SELECT COUNT(*) FROM snipe_titular_map;")
+MAP_TITULAR_USER_COUNT=$(psql_q "SELECT COUNT(*) FROM snipe_titular_user_map;")
 
 STATUS_NAMES=()
 while IFS= read -r name; do
@@ -84,6 +88,9 @@ echo "    - n8n:       $MAP_STATUS fila(s) en tryton_snipe_status_map"
 echo "    - n8n:       $STAGING_COUNT fila(s) en staging_tryton_assets"
 echo "    - n8n:       $MAP_ASSETS fila(s) en tryton_snipe_asset_map"
 echo "    - n8n:       $SUMMARY_COUNT fila(s) en sync_run_summary"
+echo "    - n8n:       $STAGING_TITULAR_COUNT fila(s) en staging_titular"
+echo "    - n8n:       $MAP_TITULAR_COUNT fila(s) en snipe_titular_map"
+echo "    - n8n:       $MAP_TITULAR_USER_COUNT fila(s) en snipe_titular_user_map"
 echo "    - n8n:       $LOG_COUNT fila(s) en integration_sync_log"
 
 if [[ "${1:-}" != "-y" ]]; then
@@ -149,6 +156,9 @@ psql_q "TRUNCATE TABLE tryton_snipe_status_map RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE staging_tryton_assets RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE tryton_snipe_asset_map RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE sync_run_summary RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE staging_titular RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE snipe_titular_map RESTART IDENTITY;" >/dev/null
+psql_q "TRUNCATE TABLE snipe_titular_user_map RESTART IDENTITY;" >/dev/null
 psql_q "TRUNCATE TABLE integration_sync_log RESTART IDENTITY;" >/dev/null
 echo "==> n8n: tablas truncadas, secuencias reiniciadas."
 
@@ -160,6 +170,9 @@ echo "    Map status:     $(psql_q "SELECT COUNT(*) FROM tryton_snipe_status_map
 echo "    Staging:        $(psql_q "SELECT COUNT(*) FROM staging_tryton_assets;")"
 echo "    Asset map:      $(psql_q "SELECT COUNT(*) FROM tryton_snipe_asset_map;")"
 echo "    Run summary:    $(psql_q "SELECT COUNT(*) FROM sync_run_summary;")"
+echo "    Staging titular: $(psql_q "SELECT COUNT(*) FROM staging_titular;")"
+echo "    Titular map:    $(psql_q "SELECT COUNT(*) FROM snipe_titular_map;")"
+echo "    Titular user map: $(psql_q "SELECT COUNT(*) FROM snipe_titular_user_map;")"
 echo "    Log rows:       $(psql_q "SELECT COUNT(*) FROM integration_sync_log;")"
 echo "    Snipe models:   $(mysql_q "SELECT COUNT(*) FROM models;")"
 echo "    Snipe cats:     $(mysql_q "SELECT COUNT(*) FROM categories;")"

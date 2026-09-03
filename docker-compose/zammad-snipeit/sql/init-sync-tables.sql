@@ -158,3 +158,37 @@ CREATE TABLE IF NOT EXISTS public.sync_run_summary (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_srs_run_id
     ON public.sync_run_summary (run_id);
+
+-- -----------------------------------------------------------------
+-- 8. staging_titular — Tryton sync titular-activo (v1)
+--    Tabla efímera por ejecución. La usa: Reset staging titular
+--    (DELETE), Cargar staging titular (jsonb_to_recordset), Diff
+--    titular y Contar omitidos. Sin PK; se trunca al inicio.
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.staging_titular (
+    snipe_asset_tag TEXT,
+    email           TEXT,
+    first_name      TEXT,
+    last_name       TEXT
+);
+
+-- -----------------------------------------------------------------
+-- 9. snipe_titular_user_map — cache email → snipe_user_id
+--    Matching column para upsert: email (PK)
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.snipe_titular_user_map (
+    email         TEXT PRIMARY KEY,
+    snipe_user_id INTEGER NOT NULL,
+    updated_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- -----------------------------------------------------------------
+-- 10. snipe_titular_map — titular vigente por activo
+--     Matching column para upsert: snipe_asset_tag (PK)
+-- -----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.snipe_titular_map (
+    snipe_asset_tag TEXT PRIMARY KEY,
+    email           TEXT NOT NULL,
+    snipe_user_id   INTEGER NOT NULL,
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
