@@ -1952,9 +1952,14 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "executionTimeout": 3600
   },
-  "versionId": "d6906390-7b70-4e3a-9280-04ffc733991e",
+  "versionId": "b1c19eeb-6591-4fd1-85f1-f19246e661eb",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
