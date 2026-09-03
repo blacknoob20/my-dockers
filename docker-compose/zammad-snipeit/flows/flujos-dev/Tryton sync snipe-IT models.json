@@ -473,7 +473,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.SNIPE_HOST + '/api/v1/models?limit=50&search=' + encodeURIComponent($json.asset_model_name) }}",
+        "url": "={{ $env.SNIPE_HOST + '/api/v1/models?limit=50&search=' + encodeURIComponent($('Prepare items').item.json.asset_model_name) }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendHeaders": true,
