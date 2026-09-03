@@ -1,17 +1,17 @@
 {
-  "name": "Tryton sync snipe-IT assets ingest (batch)",
+  "name": "Tryton sync snipe-IT assets",
   "nodes": [
     {
       "parameters": {},
       "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "name": "Tryton sync snipe-IT assets orchestrator",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
       "position": [
-        -64,
+        -48,
         240
       ],
-      "notesInFlow": false
+      "notesInFlow": false,
+      "typeVersion": 1
     },
     {
       "parameters": {
@@ -47,7 +47,7 @@
       "name": "Load staging (bulk)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        672,
+        640,
         144
       ],
       "typeVersion": 2.6,
@@ -69,7 +69,7 @@
       "name": "Diff assets (batch)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        848,
+        800,
         144
       ],
       "typeVersion": 2.6,
@@ -111,7 +111,7 @@
       "name": "Any changes?",
       "type": "n8n-nodes-base.if",
       "position": [
-        992,
+        944,
         144
       ],
       "typeVersion": 2.3
@@ -124,8 +124,8 @@
       "name": "Batch changes",
       "type": "n8n-nodes-base.splitInBatches",
       "position": [
-        1296,
-        -656
+        1152,
+        128
       ],
       "typeVersion": 3
     },
@@ -157,8 +157,8 @@
       "name": "Create or update?",
       "type": "n8n-nodes-base.if",
       "position": [
-        1392,
-        -240
+        1312,
+        272
       ],
       "typeVersion": 2.3
     },
@@ -201,13 +201,13 @@
       "id": "abb2d313-07f9-4d12-9707-0b43b4fef35a",
       "name": "Create snipe-IT asset (batch)",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        1568,
-        -320
-      ],
-      "typeVersion": 4.4,
-      "retryOnFail": true,
       "maxTries": 4,
+      "position": [
+        1488,
+        192
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
       "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
@@ -256,13 +256,13 @@
       "id": "1b1ee1bd-22e3-435a-b835-07e4cf03ddd5",
       "name": "Update snipe-IT asset (batch)",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        1568,
-        -144
-      ],
-      "typeVersion": 4.4,
-      "retryOnFail": true,
       "maxTries": 4,
+      "position": [
+        1488,
+        368
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.4,
       "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
@@ -301,8 +301,8 @@
       "name": "Saved?",
       "type": "n8n-nodes-base.if",
       "position": [
-        1728,
-        -224
+        1664,
+        192
       ],
       "typeVersion": 2.3
     },
@@ -318,8 +318,8 @@
       "name": "Log error (batch)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        2368,
-        48
+        2288,
+        352
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
@@ -343,8 +343,8 @@
       "name": "Upsert asset map",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        1904,
-        -304
+        2288,
+        176
       ],
       "typeVersion": 2.6,
       "alwaysOutputData": true,
@@ -368,8 +368,8 @@
       "name": "Run summary",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        3280,
-        160
+        2608,
+        112
       ],
       "executeOnce": true,
       "typeVersion": 2.6,
@@ -400,12 +400,12 @@
       "id": "520e7d89-6b73-4621-abf6-9779179b8b61",
       "name": "Check custom field internal_code",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
       "position": [
-        112,
+        128,
         240
       ],
       "notesInFlow": true,
+      "typeVersion": 4.4,
       "credentials": {
         "httpBearerAuth": {
           "id": "Adhjdtilu8D9eQs8",
@@ -442,11 +442,11 @@
       "id": "c92db313-6fb9-4451-9d19-6e603879eb33",
       "name": "Has internal_code field?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
       "position": [
-        304,
+        320,
         240
-      ]
+      ],
+      "typeVersion": 2.3
     },
     {
       "parameters": {
@@ -455,11 +455,11 @@
       "id": "5f4bfcb1-a667-4669-a511-3b12e28de3b8",
       "name": "Fail: missing custom field",
       "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
       "position": [
         496,
         336
-      ]
+      ],
+      "typeVersion": 1
     },
     {
       "parameters": {
@@ -489,11 +489,11 @@
       "id": "5f73e59f-1c84-4ce8-a8b9-97fdbf112606",
       "name": "Has API errors?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
       "position": [
-        3424,
-        160
-      ]
+        2752,
+        112
+      ],
+      "typeVersion": 2.3
     },
     {
       "parameters": {
@@ -502,47 +502,48 @@
       "id": "4d222d7c-c4cb-4f0a-bf6d-ad4076c7d4ce",
       "name": "Fail: ingest had API errors",
       "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
       "position": [
-        3600,
-        80
-      ]
+        2944,
+        96
+      ],
+      "typeVersion": 1
     },
     {
       "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        3600,
-        256
-      ],
       "id": "5c43e36f-8f29-4e3f-a713-23a8d12dcc16",
-      "name": "Finish"
+      "name": "Finish",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        2928,
+        272
+      ],
+      "typeVersion": 1
     },
     {
       "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "name": "Loop",
-      "typeVersion": 1,
-      "position": [
-        2512,
-        0
-      ],
       "id": "c7b60e7a-b7ce-4a44-9192-6deb70ab09d2",
-      "placeholder": true
+      "name": "Loop",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        2448,
+        352
+      ],
+      "placeholder": true,
+      "typeVersion": 1
     },
     {
       "parameters": {
         "content": "## SNIPE-IT endpoints\n**Activos**\n`POST: http://<snipe-host>/api/v1/hardware`\n`PATCH: http://<snipe-host>/api/v1/hardware/<:asset_id>`",
-        "width": 496,
+        "height": 142,
+        "width": 504,
         "color": "#105612"
       },
       "id": "3fa8e435-a4f2-469a-a690-1d96f0292d96",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -96,
-        48
+        -80,
+        416
       ],
       "typeVersion": 1
     },
@@ -571,14 +572,14 @@
       "id": "362aa6d8-7865-46dc-812c-4a849066c7b1",
       "name": "Find asset in Snipe",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "maxTries": 3,
       "position": [
-        1904,
-        -128
+        1824,
+        272
       ],
       "notesInFlow": false,
       "retryOnFail": true,
-      "maxTries": 3,
+      "typeVersion": 4.4,
       "waitBetweenTries": 2000,
       "credentials": {
         "httpBearerAuth": {
@@ -597,11 +598,11 @@
       "id": "77efd1b5-629f-467b-8a30-7e2db21f7c8c",
       "name": "Recover asset",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
       "position": [
-        2048,
-        -80
-      ]
+        1984,
+        272
+      ],
+      "typeVersion": 2
     },
     {
       "parameters": {
@@ -632,20 +633,122 @@
       "id": "afb12d2e-ed9f-41be-b03c-5fdc8de1841c",
       "name": "Recovered asset?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
       "position": [
-        2192,
-        -48
-      ]
+        2128,
+        272
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {},
+      "id": "78a951ad-73db-42f6-8f5c-9dea5dd73a9a",
+      "name": "Without changes",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        1120,
+        560
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "56fa56fd-4335-463e-9c26-93367ae56972",
+      "name": "Continue",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        2512,
+        560
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "`Recover asset` normaliza el `body.payload` del asset encontrado (`asset_tag` exacto, `deleted_at is null`) y propaga `tryton_id/operation` del lote. `Log error` solo si `found==false` (evita falsos `asset_tag must be unique`).",
+        "height": 256,
+        "width": 256,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        400
+      ],
+      "id": "b22fe664-6a6d-4329-81aa-673363c8306b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## ① Guardas de Snipe-IT\nPre-flight contra 6,314 api_errors: verifica `GET /api/v1/fields → db_column `_snipeit_internal_code_2``. Si falta → `StopAndError` con instrucción `scripts/snipe-it_custom_fields.sh`.\n**Contrato:** `fields[].db_column_name` / `rows` paginado; sin `snipe_host` nada entra al staging.",
+        "height": 176,
+        "width": 688,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -96
+      ],
+      "id": "37cfac12-12d0-46a4-9640-474c3f89196d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## ② Preparación local · staging + diff\nTrunca `staging_tryton_assets` → carga masiva `jsonb_to_recordset($1)` (`DISTINCT ON tryton_asset_id`, `ON CONFLICT DO NOTHING`) → diff `staging ⨝ model_map ⨝ status_map ⟕ asset_map` (`action ∈ {create,update}`) → `¿Cambios?`/`Sin cambios(→Continuar)`.\n**Contrato:** `action` notEmpty; `stage.payload` es `JSON.stringify(rows)` de `payload/total`.",
+        "height": 176,
+        "width": 736,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -96
+      ],
+      "id": "c6385b39-f527-435c-8dfd-9b41d4093584",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## ③ Sincronización por lote (1×1) y self-heal\n`Batch changes` (splitInBatches, *batchSize 1* secuencial para no disparar 429 `api-throttle:api` 60/min) → `¿Crear o actualizar?` → `POST/PATCH /hardware` (`batch 1/550ms`, `retry 4×3s`, `fullResponse`, `continueRegularOutput`) → `Saved?` → `Upsert asset map` / `Find→Recover→Recovered asset?→Upsert/Log`. *Self-heal:* `GET ?asset_tag=X` re-mapea huérfanos tras cancelación a mitad de loop.\n**Contrato:** `body.status == 'success'` ; `body.payload.id/asset_tag/name`.",
+        "height": 176,
+        "width": 1024,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -96
+      ],
+      "id": "0a017d4c-ce63-4971-a7ab-ab02947ed9d3",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## ④ Auditoría del lote\n`Run summary` (`executeOnce`) cuenta `api_errors` desde `integration_sync_log WHERE execution_id = run_id` y renderea `sync_run_summary` → `¿API errors?` → `Fail` vs `Finish`. Loop `Loop` puentea al split.\n**Contrato:** `api_errors == 0` → `Finish`; `>0` → `StopAndError` (visible en orquestador).",
+        "height": 176,
+        "width": 640,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -96
+      ],
+      "id": "f578759d-18dc-49f6-a1d8-01a3e45e7595",
+      "name": "Sticky Note5"
     }
   ],
   "pinData": {},
   "connections": {
-    "Tryton sync snipe-IT assets orchestrator": {
+    "Loop": {
       "main": [
         [
           {
-            "node": "Check custom field internal_code",
+            "node": "Batch changes",
             "type": "main",
             "index": 0
           }
@@ -670,6 +773,28 @@
         ]
       ]
     },
+    "Continue": {
+      "main": [
+        [
+          {
+            "node": "Run summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run summary": {
+      "main": [
+        [
+          {
+            "node": "Has API errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Any changes?": {
       "main": [
         [
@@ -681,7 +806,7 @@
         ],
         [
           {
-            "node": "Run summary",
+            "node": "Without changes",
             "type": "main",
             "index": 0
           }
@@ -706,11 +831,69 @@
         ]
       ]
     },
+    "Recover asset": {
+      "main": [
+        [
+          {
+            "node": "Recovered asset?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Reset staging": {
       "main": [
         [
           {
             "node": "Load staging (bulk)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has API errors?": {
+      "main": [
+        [
+          {
+            "node": "Fail: ingest had API errors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Without changes": {
+      "main": [
+        [
+          {
+            "node": "Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recovered asset?": {
+      "main": [
+        [
+          {
+            "node": "Upsert asset map",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error (batch)",
             "type": "main",
             "index": 0
           }
@@ -768,11 +951,40 @@
         ]
       ]
     },
+    "Find asset in Snipe": {
+      "main": [
+        [
+          {
+            "node": "Recover asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Load staging (bulk)": {
       "main": [
         [
           {
             "node": "Diff assets (batch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has internal_code field?": {
+      "main": [
+        [
+          {
+            "node": "Reset staging",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail: missing custom field",
             "type": "main",
             "index": 0
           }
@@ -812,98 +1024,11 @@
         ]
       ]
     },
-    "Has internal_code field?": {
+    "Tryton sync snipe-IT assets orchestrator": {
       "main": [
         [
           {
-            "node": "Reset staging",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fail: missing custom field",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Run summary": {
-      "main": [
-        [
-          {
-            "node": "Has API errors?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has API errors?": {
-      "main": [
-        [
-          {
-            "node": "Fail: ingest had API errors",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Finish",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Loop": {
-      "main": [
-        [
-          {
-            "node": "Batch changes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Find asset in Snipe": {
-      "main": [
-        [
-          {
-            "node": "Recover asset",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Recover asset": {
-      "main": [
-        [
-          {
-            "node": "Recovered asset?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Recovered asset?": {
-      "main": [
-        [
-          {
-            "node": "Upsert asset map",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log error (batch)",
+            "node": "Check custom field internal_code",
             "type": "main",
             "index": 0
           }
@@ -921,7 +1046,7 @@
     "saveExecutionProgress": false,
     "executionTimeout": 3600
   },
-  "versionId": "82c2d0f1-b3ce-41fa-8f49-b1a0bf5457b1",
+  "versionId": "28557487-1275-4f1a-9f04-4cc98ed1bbe2",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
