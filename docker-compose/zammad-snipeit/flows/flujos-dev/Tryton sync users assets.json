@@ -42,7 +42,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
         5264,
-        2528
+        2544
       ],
       "typeVersion": 1.3
     },
@@ -70,7 +70,7 @@
       "maxTries": 3,
       "position": [
         5424,
-        2528
+        2544
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -85,7 +85,7 @@
       "type": "n8n-nodes-base.code",
       "position": [
         5600,
-        2528
+        2544
       ],
       "typeVersion": 2
     },
@@ -102,7 +102,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         5792,
-        2528
+        2544
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -121,7 +121,7 @@
       "type": "n8n-nodes-base.code",
       "position": [
         5968,
-        2528
+        2544
       ],
       "typeVersion": 2
     },
@@ -136,7 +136,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         6112,
-        2528
+        2544
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -159,7 +159,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         6256,
-        2528
+        2544
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -179,8 +179,8 @@
       "name": "Detect Changes",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        8288,
-        2544
+        8880,
+        2560
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -202,8 +202,8 @@
       "name": "Upsert Users (bulk)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        10016,
-        2560
+        10576,
+        2656
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -225,8 +225,8 @@
       "name": "Upsert Owners (bulk)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        10016,
-        2384
+        10576,
+        2480
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -246,8 +246,8 @@
       "name": "Count Unmapped",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        8128,
-        2544
+        8720,
+        2560
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -269,8 +269,8 @@
       "name": "Log Errors (bulk)",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        10016,
-        2736
+        10576,
+        2832
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -288,8 +288,8 @@
       "name": "Build Summary",
       "type": "n8n-nodes-base.code",
       "position": [
-        9824,
-        2816
+        10432,
+        2400
       ],
       "typeVersion": 2
     },
@@ -305,8 +305,8 @@
       "name": "Save Summary",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        10016,
-        2912
+        10576,
+        2304
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -352,22 +352,22 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 3
           },
-          "combinator": "and",
           "conditions": [
             {
               "id": "af7c23eb-ca51-4260-a050-75239562a0f4",
               "operator": {
-                "type": "string",
+                "type": "number",
                 "operation": "notEmpty",
                 "singleValue": true
               },
               "leftValue": "={{ $json.existing_user_id }}",
               "rightValue": ""
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
@@ -375,8 +375,8 @@
       "name": "Owner Mapped?",
       "type": "n8n-nodes-base.if",
       "position": [
-        8432,
-        2496
+        9024,
+        2560
       ],
       "typeVersion": 2.3
     },
@@ -384,77 +384,6 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "913b5271-3548-49d9-b19f-e2aed5b28385",
-              "name": "snipe_asset_tag",
-              "type": "string",
-              "value": "={{ $json.snipe_asset_tag }}"
-            },
-            {
-              "id": "ea2dd1b7-d5ef-4064-bc16-be1c1263b206",
-              "name": "email",
-              "type": "string",
-              "value": "={{ $json.email }}"
-            },
-            {
-              "id": "761366bb-a599-4d74-9047-c88a7ddbb901",
-              "name": "first_name",
-              "type": "string",
-              "value": "={{ $json.first_name }}"
-            },
-            {
-              "id": "fa7d6bec-7b25-4460-a578-32c05523a068",
-              "name": "last_name",
-              "type": "string",
-              "value": "={{ $json.last_name }}"
-            },
-            {
-              "id": "87a37902-eed4-49fd-b358-1ea4240a2642",
-              "name": "snipe_asset_id",
-              "type": "number",
-              "value": "={{ $json.snipe_asset_id }}"
-            },
-            {
-              "id": "25822f25-9494-4459-b4b2-7f46d9789199",
-              "name": "snipe_user_id",
-              "type": "number",
-              "value": "={{ $json.existing_user_id }}"
-            },
-            {
-              "id": "d3085f0a-5a8f-45ef-add4-620efb6cf6a0",
-              "name": "created_user",
-              "type": "boolean",
-              "value": "={{ false }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b28a9321-d646-4c48-a7d8-4c13d0073471",
-      "name": "Use Mapped User",
-      "type": "n8n-nodes-base.set",
-      "position": [
-        8624,
-        2480
-      ],
-      "typeVersion": 3.4
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a140f953-e762-459f-9b5d-d6f3048a47ca",
-              "name": "snipe_asset_tag",
-              "type": "string",
-              "value": "={{ $json.snipe_asset_tag || '' }}"
-            },
-            {
-              "id": "5109a65f-1e94-48c2-8605-99403052b69f",
-              "name": "snipe_asset_id",
-              "type": "number",
-              "value": "={{ $json.snipe_asset_id || 0 }}"
-            },
             {
               "id": "23533c40-098f-421b-8995-820b1625cba6",
               "name": "email",
@@ -494,7 +423,7 @@
       "type": "n8n-nodes-base.set",
       "position": [
         7200,
-        2384
+        2432
       ],
       "typeVersion": 3.4
     },
@@ -557,7 +486,8 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 5
+              "batchSize": 1,
+              "batchInterval": 1200
             }
           },
           "response": {
@@ -574,7 +504,7 @@
       "maxTries": 3,
       "position": [
         7344,
-        2384
+        2432
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -629,8 +559,8 @@
       "name": "Tag New User",
       "type": "n8n-nodes-base.set",
       "position": [
-        7520,
-        2176
+        7504,
+        2288
       ],
       "typeVersion": 3.4
     },
@@ -693,7 +623,8 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 5
+              "batchSize": 1,
+              "batchInterval": 1200
             }
           },
           "response": {
@@ -709,8 +640,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 3,
       "position": [
-        7520,
-        2400
+        7504,
+        2448
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -765,8 +696,8 @@
       "name": "Tag New User (Alt)",
       "type": "n8n-nodes-base.set",
       "position": [
-        7712,
-        2256
+        7696,
+        2368
       ],
       "typeVersion": 3.4
     },
@@ -812,8 +743,8 @@
       "name": "Mark Create Failed",
       "type": "n8n-nodes-base.set",
       "position": [
-        7712,
-        2416
+        8368,
+        2464
       ],
       "typeVersion": 3.4
     },
@@ -823,14 +754,14 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 3
           },
           "conditions": [
             {
               "id": "has-id",
               "operator": {
-                "type": "string",
+                "type": "number",
                 "operation": "notEmpty",
                 "singleValue": true
               },
@@ -846,8 +777,8 @@
       "name": "Has User ID?",
       "type": "n8n-nodes-base.if",
       "position": [
-        7872,
-        2280
+        8032,
+        2368
       ],
       "typeVersion": 2.3
     },
@@ -893,8 +824,8 @@
       "name": "Mark Missing ID",
       "type": "n8n-nodes-base.set",
       "position": [
-        8000,
-        2336
+        8368,
+        2320
       ],
       "typeVersion": 3.4
     },
@@ -936,13 +867,19 @@
               "id": "57c55a19-bec9-41e4-825a-1c5fb8d2ab55",
               "name": "snipe_user_id",
               "type": "number",
-              "value": "={{ $json.snipe_user_id }}"
+              "value": "={{ $json.existing_user_id ?? $json.snipe_user_id }}"
             },
             {
               "id": "91f67bb1-ef21-4b31-af01-da6a4ab4325c",
               "name": "created_user",
               "type": "boolean",
-              "value": "={{ $json.created_user }}"
+              "value": "={{ false }}"
+            },
+            {
+              "id": "2366a223-96d7-4dd5-b50a-eab97988d1c3",
+              "name": "current_user_id",
+              "type": "number",
+              "value": "={{ $json.current_user_id }}"
             }
           ]
         },
@@ -952,8 +889,8 @@
       "name": "Prep Assignment",
       "type": "n8n-nodes-base.set",
       "position": [
-        8784,
-        2480
+        9200,
+        2544
       ],
       "typeVersion": 3.4
     },
@@ -996,7 +933,8 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 5
+              "batchSize": 1,
+              "batchInterval": 1200
             }
           },
           "response": {
@@ -1012,8 +950,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 3,
       "position": [
-        8944,
-        2480
+        9536,
+        2672
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -1074,8 +1012,8 @@
       "name": "Checkout OK",
       "type": "n8n-nodes-base.set",
       "position": [
-        9440,
-        2208
+        10064,
+        2624
       ],
       "typeVersion": 3.4
     },
@@ -1120,8 +1058,8 @@
       "name": "Checkin Asset",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        9136,
-        2496
+        9712,
+        2528
       ],
       "typeVersion": 4.4,
       "credentials": {
@@ -1171,7 +1109,8 @@
         "options": {
           "batching": {
             "batch": {
-              "batchSize": 5
+              "batchSize": 1,
+              "batchInterval": 1200
             }
           },
           "response": {
@@ -1187,8 +1126,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 3,
       "position": [
-        9280,
-        2496
+        9872,
+        2528
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -1249,8 +1188,8 @@
       "name": "Checkout OK (Retry)",
       "type": "n8n-nodes-base.set",
       "position": [
-        9440,
-        2368
+        10064,
+        2304
       ],
       "typeVersion": 3.4
     },
@@ -1320,8 +1259,8 @@
       "name": "Checkout Failed",
       "type": "n8n-nodes-base.set",
       "position": [
-        9440,
-        2544
+        10064,
+        2464
       ],
       "typeVersion": 3.4
     },
@@ -1333,57 +1272,26 @@
       "name": "Package Results",
       "type": "n8n-nodes-base.code",
       "position": [
-        9648,
+        10272,
         2656
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
-        "url": "={{ $env.SNIPE_HOST }}/api/v1/users?limit=500",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 0
-            }
-          },
-          "response": {
-            "response": {
-              "fullResponse": true
-            }
-          },
-          "timeout": 30000
-        }
+        "jsCode": "const baseUrl = `${$env.SNIPE_HOST}/api/v1/users?limit=500`;\nconst allRows = [];\nfor (let offset = 0; offset < 3000; offset += 500) {\n  const url = `${baseUrl}&offset=${offset}`;\n  try {\n    const resp = await this.helpers.httpRequestWithAuthentication.call(this, 'httpBearerAuth', {\n      url,\n      headers: { Accept: 'application/json' },\n      returnFullResponse: true,\n    }, { nodeCredentialType: 'httpBearerAuth' });\n    const body = resp.body;\n    const rows = (body && body.rows) ? body.rows : [];\n    allRows.push(...rows);\n    if (rows.length < 500) break;\n  } catch (e) {\n    break;\n  }\n}\nreturn [{ json: { body: { rows: allRows } } }];"
       },
       "id": "1774b2d9-3a88-4d9e-8320-781d34a3af1c",
       "name": "Preload Snipe Users",
-      "type": "n8n-nodes-base.httpRequest",
+      "type": "n8n-nodes-base.code",
       "maxTries": 3,
       "position": [
         6416,
-        2528
+        2544
       ],
       "retryOnFail": true,
-      "typeVersion": 4.4,
-      "waitBetweenTries": 2000,
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
-        }
-      }
+      "typeVersion": 2,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -1398,7 +1306,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         6576,
-        2528
+        2544
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -1419,7 +1327,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         6736,
-        2528
+        2544
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -1435,7 +1343,7 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 3
           },
           "conditions": [
@@ -1459,7 +1367,7 @@
       "type": "n8n-nodes-base.if",
       "position": [
         6896,
-        2528
+        2544
       ],
       "typeVersion": 2.3
     },
@@ -1472,7 +1380,7 @@
       "type": "n8n-nodes-base.code",
       "position": [
         7056,
-        2384
+        2432
       ],
       "typeVersion": 2
     },
@@ -1484,8 +1392,8 @@
       "name": "Users Ready",
       "type": "n8n-nodes-base.code",
       "position": [
-        7968,
-        2416
+        8544,
+        2320
       ],
       "typeVersion": 2
     },
@@ -1539,7 +1447,7 @@
               "id": "nd-error_message",
               "name": "error_message",
               "type": "string",
-              "value": "snipe_user_id no resuelto (precarga + creación de usuario no cubren email='{{$json.email}}')"
+              "value": "={{ 'snipe_user_id no resuelto (precarga + creación de usuario no cubren email=' + $json.email + ')' }}"
             },
             {
               "id": "nd-response_status",
@@ -1567,8 +1475,8 @@
       "name": "Mark No User",
       "type": "n8n-nodes-base.set",
       "position": [
-        8624,
-        2656
+        10064,
+        2784
       ],
       "typeVersion": 3.4
     },
@@ -1584,8 +1492,8 @@
       "name": "Save New User",
       "type": "n8n-nodes-base.postgres",
       "position": [
-        8032,
-        2176
+        8368,
+        2160
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -1607,7 +1515,7 @@
       "type": "n8n-nodes-base.stickyNote",
       "position": [
         5056,
-        2016
+        1984
       ],
       "typeVersion": 1
     },
@@ -1627,7 +1535,7 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "position": [
         5088,
-        2528
+        2544
       ],
       "typeVersion": 1.2
     },
@@ -1643,7 +1551,7 @@
       "type": "n8n-nodes-base.stickyNote",
       "position": [
         6704,
-        2016
+        1984
       ],
       "typeVersion": 1
     },
@@ -1651,7 +1559,7 @@
       "parameters": {
         "content": "## ③ Precarga bulk + aplicar en Snipe-IT y auditar\nPrecarga 500 usuarios (1 GET → mapa bulk) y crea usuarios faltantes (1 por email distinto). Luego resuelve `snipe_user_id` desde el mapa (sin búsquedas per-item) y asigna el activo (`checkout` con `checkin` + reintento). Registra éxito/error y resumen.",
         "height": 112,
-        "width": 2048,
+        "width": 2000,
         "color": 3
       },
       "id": "1ddab119-36cd-4979-b142-784dcac8f7f0",
@@ -1659,9 +1567,155 @@
       "type": "n8n-nodes-base.stickyNote",
       "position": [
         8048,
-        2016
+        1984
       ],
       "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Reasignación: Checkout → Checkin → Retry\n\nSnipe-IT rechaza el checkout si el activo ya está asignado.\nComo el diff solo emite cambios de titular, el activo casi\nsiempre está en manos del titular anterior.\n\n1. **Checkout Asset** — intento optimista directo al nuevo\n   titular. Lo que falla sale por la rama de error\n   (`onError: continueErrorOutput`), no tumba el flujo.\n2. **Checkin Asset** — libera el activo\n   (`POST /checkin`, nota \"Reasignacion a titular activo\").\n   `onError: continueRegularOutput`: aunque falle\n   (ej. no estaba asignado), igual sigue al reintento.\n3. **Retry Checkout** — mismo checkout con el activo libre.\n   Éxito → `Checkout OK (Retry)`; fallo → `Checkout Failed`\n   (auditado en `integration_sync_log`).",
+        "height": 400,
+        "width": 480
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        9488,
+        2112
+      ],
+      "id": "161226a1-c00b-4e87-af45-1f0887594cf5",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4f13a4b6-71cc-417d-9f81-c4717d6deb69",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.current_user_id }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "48b75b08-6b7f-4c22-a6f3-4f507fb4cac0",
+      "name": "Needs Checkin?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        9360,
+        2544
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c5f7c8ed-b67a-43d7-8569-c7fac5be5d43",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.body?.status }}",
+              "rightValue": "error"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "93870e52-172d-4e2c-b62b-902bef7bf44b",
+      "name": "Is Duplicate Error?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        7856,
+        2288
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users?email={{ encodeURIComponent($('Prep New User').item.json.email) }}&limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "db4de91d-2f58-4901-8ddd-36c367605281",
+      "name": "Find User in Snipe",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        8032,
+        2128
+      ],
+      "typeVersion": 4.4,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $('Prep New User').item.json.email;\nconst rows = ($json.body?.rows || []);\nconst match = rows.find(r => String(r.email||'').toLowerCase() === String(email||'').toLowerCase());\nif (match && match.id) {\n  return [{ json: {\n    email,\n    first_name: $('Prep New User').item.json.first_name,\n    last_name: $('Prep New User').item.json.last_name,\n    snipe_user_id: match.id,\n    created_user: false,\n  }}];\n}\nreturn [{ json: {\n  email,\n  first_name: $('Prep New User').item.json.first_name,\n  last_name: $('Prep New User').item.json.last_name,\n  snipe_user_id: '',\n  created_user: false,\n}}];"
+      },
+      "id": "92599478-de1b-445f-a5ea-f9665173bd49",
+      "name": "Recover User",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        8176,
+        2128
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        9216,
+        2784
+      ],
+      "id": "8387191a-2310-48fd-b30d-c07bc470c600",
+      "name": "No mapped"
     }
   ],
   "pinData": {},
@@ -1681,18 +1735,7 @@
       "main": [
         [
           {
-            "node": "Checkout Asset",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Use Mapped User": {
-      "main": [
-        [
-          {
-            "node": "Prep Assignment",
+            "node": "Needs Checkin?",
             "type": "main",
             "index": 0
           }
@@ -1754,7 +1797,7 @@
       "main": [
         [
           {
-            "node": "Has User ID?",
+            "node": "Is Duplicate Error?",
             "type": "main",
             "index": 0
           }
@@ -1867,14 +1910,14 @@
       "main": [
         [
           {
-            "node": "Use Mapped User",
+            "node": "Prep Assignment",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Mark No User",
+            "node": "No mapped",
             "type": "main",
             "index": 0
           }
@@ -1951,7 +1994,7 @@
       "main": [
         [
           {
-            "node": "Has User ID?",
+            "node": "Is Duplicate Error?",
             "type": "main",
             "index": 0
           }
@@ -2136,6 +2179,75 @@
           }
         ]
       ]
+    },
+    "Needs Checkin?": {
+      "main": [
+        [
+          {
+            "node": "Checkin Asset",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Checkout Asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate Error?": {
+      "main": [
+        [
+          {
+            "node": "Find User in Snipe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has User ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find User in Snipe": {
+      "main": [
+        [
+          {
+            "node": "Recover User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recover User": {
+      "main": [
+        [
+          {
+            "node": "Save New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No mapped": {
+      "main": [
+        [
+          {
+            "node": "Mark No User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -2148,7 +2260,7 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
-  "versionId": "441955a2-a840-4a56-acf8-599c46797435",
+  "versionId": "62654947-f9fe-43e0-8076-9ee8b2b34924",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
