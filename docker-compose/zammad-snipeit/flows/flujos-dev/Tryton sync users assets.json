@@ -203,7 +203,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         10576,
-        2656
+        2624
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -226,7 +226,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         10576,
-        2480
+        2464
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -270,7 +270,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         10576,
-        2832
+        2784
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -288,7 +288,7 @@
       "name": "Build Summary",
       "type": "n8n-nodes-base.code",
       "position": [
-        10432,
+        10416,
         2400
       ],
       "typeVersion": 2
@@ -777,7 +777,7 @@
       "name": "Has User ID?",
       "type": "n8n-nodes-base.if",
       "position": [
-        8032,
+        8192,
         2368
       ],
       "typeVersion": 2.3
@@ -825,7 +825,7 @@
       "type": "n8n-nodes-base.set",
       "position": [
         8368,
-        2320
+        2304
       ],
       "typeVersion": 3.4
     },
@@ -951,7 +951,7 @@
       "maxTries": 3,
       "position": [
         9536,
-        2672
+        2640
       ],
       "retryOnFail": true,
       "typeVersion": 4.4,
@@ -1273,7 +1273,7 @@
       "type": "n8n-nodes-base.code",
       "position": [
         10272,
-        2656
+        2624
       ],
       "typeVersion": 2
     },
@@ -1393,7 +1393,7 @@
       "type": "n8n-nodes-base.code",
       "position": [
         8544,
-        2320
+        2304
       ],
       "typeVersion": 2
     },
@@ -1493,7 +1493,7 @@
       "type": "n8n-nodes-base.postgres",
       "position": [
         8368,
-        2160
+        2128
       ],
       "typeVersion": 2.6,
       "credentials": {
@@ -1626,7 +1626,7 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
+            "typeValidation": "strict",
             "version": 3
           },
           "conditions": [
@@ -1682,7 +1682,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "position": [
         8032,
-        2128
+        2208
       ],
       "typeVersion": 4.4,
       "credentials": {
@@ -1701,7 +1701,7 @@
       "name": "Recover User",
       "type": "n8n-nodes-base.code",
       "position": [
-        8176,
+        8192,
         2128
       ],
       "typeVersion": 2
@@ -2260,7 +2260,7 @@
     "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
-  "versionId": "62654947-f9fe-43e0-8076-9ee8b2b34924",
+  "versionId": "7123dd69-12d0-46c3-8d82-64c9ecbdfa7f",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
