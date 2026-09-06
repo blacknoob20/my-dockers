@@ -1,14 +1,14 @@
 {
-  "name": "Tryton sync snipe-IT assets orchestrator v2 (batch)",
+  "name": "Tryton sync snipe-IT assets orchestrator",
   "nodes": [
     {
       "parameters": {},
-      "id": "13086e17-965c-4e1f-9dc2-4922e7f152a9",
+      "id": "fc7b2bd0-1567-4c16-a1d1-b72547137ea8",
       "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "position": [
-        4848,
-        1984
+        64,
+        368
       ],
       "typeVersion": 1
     },
@@ -16,29 +16,29 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "QHc2NJoBedOUJaPp",
           "mode": "list",
-          "value": "Cnq2yvzVCRTKFld5",
-          "cachedResultUrl": "/workflow/Cnq2yvzVCRTKFld5",
+          "cachedResultUrl": "/workflow/QHc2NJoBedOUJaPp",
           "cachedResultName": "Tryton login"
         },
         "workflowInputs": {
+          "mappingMode": "defineBelow",
           "value": {
             "ok": false
           },
+          "matchingColumns": [
+            "ok"
+          ],
           "schema": [
             {
               "id": "ok",
-              "type": "boolean",
-              "display": true,
-              "required": false,
               "displayName": "ok",
+              "required": false,
               "defaultMatch": false,
-              "canBeUsedToMatch": true
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
             }
-          ],
-          "mappingMode": "defineBelow",
-          "matchingColumns": [
-            "ok"
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
@@ -47,12 +47,12 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "f85e7582-5acb-4699-8e21-22e109dde77e",
+      "id": "52b83314-e1b0-4729-8e7f-b15576715a38",
       "name": "Execute login",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        5008,
-        1984
+        368,
+        368
       ],
       "typeVersion": 1.3
     },
@@ -60,15 +60,15 @@
       "parameters": {
         "content": "# Docs de los nodos\n**Buscar activos TRYTON: (asset_type: Informatica)**\n\n`ID` · `Descripción`\n`06` · `141.01.07 Equipos y Sistemas Informáticos (Corriente)`\n`39` · `191.01.02 Licencias Computacionales (Corriente)`\n`40` · `191.01.03 Sistemas de Información (Corriente)`\n`48` · `634.45.07 Equipos, Sistemas y Paquetes Informáticos`\n`61` · `151.45.07 Equipos, Sistemas y Paquetes Informáticos (no Depreciables)`\n`92` · `151.41.07 Equipos, Sistemas y Paquetes Informáticos`\n",
         "height": 304,
-        "width": 656,
+        "width": 768,
         "color": "#105612"
       },
-      "id": "d10fb7c6-1a0e-4ad7-a965-b9c239a3365c",
+      "id": "8694852e-106a-4528-9d6f-b73585f78275",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        4784,
-        1648
+        32,
+        32
       ],
       "typeVersion": 1
     },
@@ -87,15 +87,17 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"id\": 0,\n  \"method\": \"model.asset.search_read\",\n  \"params\": [\n    [\n      [\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]\n    ],\n    0, null, null,\n    [\n      \"id\",\n      \"code\",\n      \"internal_code\", \n      \"name\", \n      \"asset_state\", \n      \"asset_type_new.rec_name\",\n      \"actual_value\", \n      \"category.rec_name\", \n      \"company.rec_name\",\n      \"current_owner.rec_name\", \n      \"asset_model.rec_name\"\n    ],\n    {}\n  ]\n}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ \"id\": 0, \"method\": \"model.asset.search_read\", \"params\": [ ((since) => (since && $env.TRYTON_FULL_SYNC !== \"true\") ? [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]], [\"OR\", [\"write_date\", \">=\", since], [\"create_date\", \">=\", since]]] : [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]])($('Get last sync').first().json.since), 0, null, null, [\"id\", \"code\", \"internal_code\", \"name\", \"asset_state\", \"asset_type_new.rec_name\", \"actual_value\", \"category.rec_name\", \"company.rec_name\", \"current_owner.rec_name\", \"asset_model.rec_name\"], {} ] }) }}",
+        "options": {
+          "timeout": 120000
+        }
       },
-      "id": "0ed65c05-5444-4fca-beeb-8ed4990b4cc7",
+      "id": "8f730304-c953-4ddf-a15b-6da9139a3701",
       "name": "Search assets",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        5168,
-        1984
+        528,
+        368
       ],
       "typeVersion": 4.4
     },
@@ -113,12 +115,12 @@
         },
         "options": {}
       },
-      "id": "fb7223c2-32f5-48ee-8181-973f8ec27f96",
+      "id": "4865b9f1-4ac2-4e6c-b333-4016a2c26dc1",
       "name": "Flatten assets",
       "type": "n8n-nodes-base.set",
       "position": [
-        5328,
-        1984
+        864,
+        352
       ],
       "typeVersion": 3.4
     },
@@ -136,12 +138,12 @@
         },
         "options": {}
       },
-      "id": "4f9e2cb4-a54f-403a-8a0c-7aa4d92875e3",
+      "id": "d19716fa-bb54-4569-9433-3d22040c8899",
       "name": "Category list",
       "type": "n8n-nodes-base.set",
       "position": [
-        5488,
-        2064
+        1040,
+        240
       ],
       "typeVersion": 3.4
     },
@@ -150,12 +152,12 @@
         "fieldToSplitOut": "category",
         "options": {}
       },
-      "id": "606471ee-f20c-4c4e-aefe-58716aa6540f",
+      "id": "0320e535-1e73-4e00-bf5d-8232d7aeb861",
       "name": "Split Out categories",
       "type": "n8n-nodes-base.splitOut",
       "position": [
-        5632,
-        2064
+        1184,
+        240
       ],
       "typeVersion": 1
     },
@@ -173,12 +175,12 @@
         },
         "options": {}
       },
-      "id": "292e1129-0371-475e-a161-c648a9343c8d",
+      "id": "3fbc5abe-c3ea-42a0-8af1-1f21711b8ba0",
       "name": "Model list",
       "type": "n8n-nodes-base.set",
       "position": [
-        6144,
-        2016
+        1696,
+        352
       ],
       "typeVersion": 3.4
     },
@@ -196,12 +198,12 @@
         },
         "options": {}
       },
-      "id": "c11381b3-1f99-4056-8eb7-108c749a4ee1",
+      "id": "357dabc1-cebb-45ef-ae51-055dc73f6203",
       "name": "Status list",
       "type": "n8n-nodes-base.set",
       "position": [
-        5488,
-        2240
+        1040,
+        448
       ],
       "typeVersion": 3.4
     },
@@ -210,26 +212,27 @@
         "fieldToSplitOut": "status",
         "options": {}
       },
-      "id": "9eec525d-5bb8-48c2-ba9a-ac0e8ae438f6",
+      "id": "0564acfe-51e6-494a-a3bf-daa258fa95f2",
       "name": "Split Out statuses",
       "type": "n8n-nodes-base.splitOut",
       "position": [
-        5632,
-        2240
+        1184,
+        448
       ],
       "typeVersion": 1
     },
     {
       "parameters": {
         "mode": "chooseBranch",
-        "numberInputs": 3
+        "numberInputs": 3,
+        "useDataOfInput": 2
       },
-      "id": "1638bba0-dfec-43b6-a861-345a59982928",
+      "id": "d05f95cb-48a8-47ae-9b0a-c838f78421fa",
       "name": "Wait categories & statuses",
       "type": "n8n-nodes-base.merge",
       "position": [
-        6000,
-        2000
+        1536,
+        336
       ],
       "typeVersion": 3.2
     },
@@ -237,30 +240,28 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "5OesIemPhyWJrGFZ",
           "mode": "list",
-          "value": "DFYH9aXY2QE6uJzl",
-          "cachedResultUrl": "/workflow/DFYH9aXY2QE6uJzl",
+          "cachedResultUrl": "/workflow/5OesIemPhyWJrGFZ",
           "cachedResultName": "Tryton sync snipe-IT status"
         },
         "workflowInputs": {
-          "value": {},
-          "schema": [],
           "mappingMode": "defineBelow",
-          "matchingColumns": [
-            "status"
-          ],
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
         "mode": "each",
         "options": {}
       },
-      "id": "d06a9f54-c95c-430f-bcce-fc9635e1059c",
+      "id": "2f08ca0d-bd51-477b-9256-4e4dc1ab5d0e",
       "name": "Execute Tryton sync snipeIT status",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        5792,
-        2240
+        1344,
+        448
       ],
       "typeVersion": 1.3
     },
@@ -268,28 +269,28 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "aOaoZvxNM7LCjvVS",
           "mode": "list",
-          "value": "Ps2wicy3xI4n37nD",
-          "cachedResultUrl": "/workflow/Ps2wicy3xI4n37nD",
+          "cachedResultUrl": "/workflow/aOaoZvxNM7LCjvVS",
           "cachedResultName": "Tryton sync snipe-IT categories"
         },
         "workflowInputs": {
-          "value": {},
-          "schema": [],
           "mappingMode": "defineBelow",
+          "value": {},
           "matchingColumns": [],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
         "mode": "each",
         "options": {}
       },
-      "id": "c99c1ddb-cdfa-42e2-8376-eea5a3b9c2ee",
+      "id": "ad288432-f6ea-4bd8-83b0-d0615c7f066e",
       "name": "Execute Tryton sync snipeIT categories",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        5792,
-        2064
+        1344,
+        240
       ],
       "typeVersion": 1.3
     },
@@ -297,16 +298,16 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "S87XSGgQ9vGDmbcy",
           "mode": "list",
-          "value": "JODxuGjfCJ2wDobA",
-          "cachedResultUrl": "/workflow/JODxuGjfCJ2wDobA",
+          "cachedResultUrl": "/workflow/S87XSGgQ9vGDmbcy",
           "cachedResultName": "Tryton sync snipe-IT models"
         },
         "workflowInputs": {
-          "value": {},
-          "schema": [],
           "mappingMode": "defineBelow",
+          "value": {},
           "matchingColumns": [],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
@@ -314,95 +315,151 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "7f463778-0f4b-4d1a-a503-feab151376e8",
+      "id": "f28dc2b7-1751-404d-90fc-9e732bae10a8",
       "name": "Execute Tryton sync snipeIT models",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        6304,
-        2016
+        1856,
+        352
       ],
       "typeVersion": 1.3,
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const assets = $('Flatten assets').first().json.result;\nconst rows = assets.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length } }];"
+        "jsCode": "const flat = (() => { try { return $('Flatten assets').first().json.result || []; } catch (e) { return []; } })();\nconst rows = flat.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nconst since = (() => { try { return $('Get last sync').first().json.since || null; } catch (e) { return null; } })();\nconst is_full = !since || $env.TRYTON_FULL_SYNC === 'true';\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length, is_full, since } }];"
       },
-      "id": "614f993e-71eb-465f-b95c-104e2951d0a3",
+      "id": "62a66b53-a9a2-4f7a-b392-b0abc1fa630f",
       "name": "Prepare staging payload",
       "type": "n8n-nodes-base.code",
       "position": [
-        6496,
-        2016
+        2048,
+        352
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "v6K5kipkr7UKp0fE",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/v6K5kipkr7UKp0fE",
-          "cachedResultName": "Tryton sync snipe-IT assets ingest (batch)"
-        },
-        "options": {
-          "waitForSubWorkflow": true
-        }
-      },
-      "id": "18bd450e-8de2-4d30-9a9c-d637d13f5942",
-      "name": "Execute ingest (batch)",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.1,
-      "position": [
-        6688,
-        2016
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (sync_run_summary).",
+        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (sync_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL/TRYTON_FULL_SYNC=true = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.",
         "height": 220,
         "width": 420,
         "color": 4
       },
-      "id": "b1e2561e-26be-4b57-8601-347c6e90de43",
+      "id": "ff3fb198-cbab-453c-b5a9-81017d73d6e0",
       "name": "Sticky v2",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        6432,
-        1776
+        2080,
+        112
       ],
       "typeVersion": 1
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM sync_run_summary;",
+        "options": {}
+      },
+      "id": "a107dc09-d336-4599-a507-9b5eece70c9a",
+      "name": "Get last sync",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        224,
+        368
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "v2-hasassets",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ ($json.result || []).length > 0 }}",
+              "rightValue": true
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "000a9294-6362-435d-ac1d-e1ac249c07a4",
+      "name": "Has assets?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        688,
+        368
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "ym0zaIpEj3J8xg2l",
           "mode": "list",
-          "value": "nocNCHrMCVe36Qxr",
-          "cachedResultUrl": "/workflow/nocNCHrMCVe36Qxr",
-          "cachedResultName": "Tryton sync titular-activo (v1)"
+          "cachedResultUrl": "/workflow/ym0zaIpEj3J8xg2l",
+          "cachedResultName": "Tryton sync snipe-IT assets"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "27ae1476-ee28-4f8c-81b2-cdcf8f50f51a",
+      "name": "Execute Tryton sync snipe-IT assets",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Yv8AlEkGEdwzRJrJ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Yv8AlEkGEdwzRJrJ",
+          "cachedResultName": "Tryton sync users assets"
         },
         "workflowInputs": {
+          "mappingMode": "defineBelow",
           "value": {
-            "ok": true
+            "ok": false
           },
+          "matchingColumns": [
+            "ok"
+          ],
           "schema": [
             {
               "id": "ok",
-              "type": "boolean",
-              "display": true,
-              "removed": false,
-              "required": false,
               "displayName": "ok",
+              "required": false,
               "defaultMatch": false,
-              "canBeUsedToMatch": true
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
             }
-          ],
-          "mappingMode": "defineBelow",
-          "matchingColumns": [
-            "ok"
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
@@ -411,14 +468,36 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "ca8beb84-fa96-47b9-adec-aa21cc9ecbc2",
-      "name": "Sync titular activo",
+      "id": "8cfafe1a-2e95-4fb9-811e-29b7a085e6e5",
+      "name": "Execute Tryton sync users assets",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        6896,
-        2016
+        2432,
+        352
       ],
       "typeVersion": 1.3
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        864,
+        560
+      ],
+      "id": "0da0d591-4e0e-4198-94f1-21f20a2c116d",
+      "name": "No assets"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        560
+      ],
+      "id": "0b2d428d-e55d-4252-b376-78aab338abd4",
+      "name": "Continue"
     }
   ],
   "pinData": {},
@@ -471,7 +550,7 @@
       "main": [
         [
           {
-            "node": "Flatten assets",
+            "node": "Has assets?",
             "type": "main",
             "index": 0
           }
@@ -482,11 +561,6 @@
       "main": [
         [
           {
-            "node": "Wait categories & statuses",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Category list",
             "type": "main",
             "index": 0
@@ -495,6 +569,11 @@
             "node": "Status list",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Wait categories & statuses",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -558,7 +637,7 @@
       "main": [
         [
           {
-            "node": "Execute login",
+            "node": "Get last sync",
             "type": "main",
             "index": 0
           }
@@ -571,7 +650,7 @@
           {
             "node": "Wait categories & statuses",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -580,18 +659,69 @@
       "main": [
         [
           {
-            "node": "Execute ingest (batch)",
+            "node": "Execute Tryton sync snipe-IT assets",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Execute ingest (batch)": {
+    "Get last sync": {
       "main": [
         [
           {
-            "node": "Sync titular activo",
+            "node": "Execute login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has assets?": {
+      "main": [
+        [
+          {
+            "node": "Flatten assets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Tryton sync snipe-IT assets": {
+      "main": [
+        [
+          {
+            "node": "Execute Tryton sync users assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No assets": {
+      "main": [
+        [
+          {
+            "node": "Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue": {
+      "main": [
+        [
+          {
+            "node": "Prepare staging payload",
             "type": "main",
             "index": 0
           }
@@ -599,22 +729,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": false,
-    "executionTimeout": 3600
+    "binaryMode": "separate"
   },
-  "versionId": "03b317a1-18ee-4436-9a51-112515e5917d",
+  "versionId": "cd4cbdf6-0b72-426b-85fd-ddda06010548",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
+    "instanceId": "984367b661ca03c1a155308c4c58e94cc2d45366a1839956b94d6328b90afa24"
   },
   "nodeGroups": [],
-  "id": "3hh7DBsrq8A1rIQg",
+  "id": "BFfvossXQY8Ck5zh",
   "tags": []
 }

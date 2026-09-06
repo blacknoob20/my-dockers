@@ -19,11 +19,11 @@ La integración se compone de un **sub-workflow de autenticación** y **workflow
 | Tryton sync snipe-IT status | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT status.json` | `DFYH9aXY2QE6uJzl` |
 | Tryton sync snipe-IT assets | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync snipe-IT assets.json` | `v6K5kipkr7UKp0fE` |
 | Tryton sync users assets (titular-activo v1) | Sub-workflow de negocio | `flows/flujos-dev/Tryton sync users assets.json` | `yjyUYjVEaZ9UniSs` |
-| Tryton sync snipe-IT assets orchestrator v2 | Orquestador (batch) | `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator v2 (batch).json` | `3hh7DBsrq8A1rIQg` |
+| Tryton sync snipe-IT assets orchestrator | Orquestador (batch) | `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator.json` | `BFfvossXQY8Ck5zh` |
 
 > **Nota:** los archivos en `flows/` son snapshots de n8n. Al modificar un workflow en la UI, re-exportarlo para mantenerlos al día.
 
-> **Archivos eliminados:** `flows/Tryton sync assets.json`, `flows/Tryton sync categories.json`, `flows/Tryton sync models.json`, `flows/Tryton sync snipe-IT assets orchestrator.json`, `flows/Tryton sync snipe-IT models.json`, `flows/Tryton sync snipe-IT status.json`, `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` (`Asse2tIngestSub01`, snapshot stale del mismo workflow `v6K5kipkr7UKp0fE`) — todos con IDs muertos o duplicados.
+> **Archivos eliminados:** `flows/Tryton sync assets.json`, `flows/Tryton sync categories.json`, `flows/Tryton sync models.json`, `flows/Tryton sync snipe-IT assets orchestrator.json`, `flows/Tryton sync snipe-IT models.json`, `flows/Tryton sync snipe-IT status.json`, `flows/flujos-dev/Tryton sync snipe-IT assets ingest (batch).json` (`Asse2tIngestSub01`, snapshot stale del mismo workflow `v6K5kipkr7UKp0fE`), `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator v2 (batch).json` (duplicado del orquestador vivo `BFfvossXQY8Ck5zh`, dado de baja 2026-09-06) — todos con IDs muertos o duplicados.
 
 ---
 
@@ -195,10 +195,11 @@ Authorization: Session <base64(user:uid:session)>
 
 ## Workflows de sincronización
 
-### Tryton sync snipe-IT assets orchestrator v2 (batch)
+### Tryton sync snipe-IT assets orchestrator
 
+- **Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator.json` (antes `... orchestrator v2 (batch).json`, dado de baja: mismo workflow-ID `BFfvossXQY8Ck5zh` en dos archivos)
 - **Trigger:** manual (`When clicking 'Execute workflow'`)
-- **ID:** `3hh7DBsrq8A1rIQg` — inactivo, se dispara manualmente
+- **ID:** `BFfvossXQY8Ck5zh` — activo, se dispara manualmente
 - **Nota:** los workflows viejos `flows/Tryton sync snipe-IT models.json` y `flows/Tryton sync snipe-IT status.json` (IDs muertos) fueron reemplazados por los sub-workflows en `flows/flujos-dev/` listados arriba
 - **Orquesta (fase 1 — catálogos):** `Execute login` → `Search assets` → `Flatten assets` → `Category list`/`Status list` → `Split Out` por entidad → `Execute Tryton sync snipe-IT categories` / `Execute Tryton sync snipe-IT status` → `Wait categories & statuses` → `Model list` → `Execute Tryton sync snipe-IT models` (sub-workflows vía `Execute Workflow`; models sin `Split Out`: recibe el lote completo en 1 item y corre en modo once — ver Fix 2026-08-28 batch models)
 - **Orquesta (fase 2 — batch PG activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (Code, `const assets = $('Flatten assets').first().json.result` → `payload: JSON.stringify(rows), total`) → `Execute ingest (batch)` (sub-workflow `Tryton sync snipe-IT assets ingest (batch)` vía `Execute Workflow`, inputs `{payload, total}`, `waitForSubWorkflow: true`) → `Sync titular activo` (sub-workflow `Tryton sync titular-activo (v1)` vía `Execute Workflow`). Ver detalle de `Execute ingest (batch)` en § Tryton sync snipe-IT assets ingest (batch).

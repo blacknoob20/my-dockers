@@ -15,9 +15,11 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 
 ---
 
-## 4.1 Workflow principal: Tryton sync snipe-IT assets orchestrator v2
+## 4.1 Workflow principal: Tryton sync snipe-IT assets orchestrator
 
-**ID:** `3hh7DBsrq8A1rIQg`
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets orchestrator.json` (antes `... orchestrator v2 (batch).json`, dado de baja: duplicado con el mismo workflow-ID)
+
+**ID:** `BFfvossXQY8Ck5zh` — activo
 
 ### Ejecucion
 
