@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # snipe-it_custom_fields.sh — provisioning de custom field y fieldset para activos Tryton
 # Requisito del workflow: custom field "internal_code" con db_column _snipeit_internal_code_2
 # y fieldset id 2 ("Activos Tryton" o similar) asociado. El ingest usa POST /api/v1/hardware con
@@ -37,6 +37,11 @@ if [[ -z "${API_TOKEN:-}" ]]; then
   exit 1
 fi
 
+# Sanitizar: tolerar CRLF/espacios si el valor vino de un .env con CRLF
+# (un \r en el header Authorization hace que Apache responda 400 HTML).
+API_TOKEN="$(printf '%s' "$API_TOKEN" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+SNIPE_URL="$(printf '%s' "$SNIPE_URL" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
 EXPECTED_DB_COLUMN="_snipeit_internal_code_2"
 FIELD_NAME="internal_code"
 FIELDSET_NAME="Activos Tryton"
@@ -59,9 +64,24 @@ api_post() {
     -d "$body" "$SNIPE_URL$path"
 }
 
+# Valida que la API haya devuelto JSON; si no, aborta con diagnóstico claro
+# (antes esto reventaba con un críptico "jq: parse error").
+require_json() {
+  local what="$1" resp="$2"
+  local first
+  first=$(printf '%s' "$resp" | sed -e 's/^[[:space:]]*//' | cut -c1)
+  if [[ "$first" != "{" && "$first" != "[" ]]; then
+    echo "  ✖ $what: la API no devolvió JSON (¿Snipe-IT caído, URL mal o token inválido?)." >&2
+    echo "    Respuesta (300 chars): $(printf '%s' "$resp" | tr -d '\r\n' | cut -c1-300)" >&2
+    echo "    Revisa SNIPE_URL=$SNIPE_URL y API_TOKEN (longitud ${#API_TOKEN}, sin retornos ni espacios)." >&2
+    exit 1
+  fi
+}
+
 # ── 1) Custom field internal_code ─────────────────────────────
 echo "→ Verificando custom field '$FIELD_NAME' ($EXPECTED_DB_COLUMN)..."
 fields_json=$(api_get "/api/v1/fields")
+require_json "GET /api/v1/fields" "$fields_json"
 # detectar si ya existe por db_column_name o name (case-insensitive)
 existing_field_id=""
 existing_db_col=""
@@ -135,6 +155,7 @@ fi
 # ── 2) Fieldset ───────────────────────────────────────────────
 echo "→ Verificando fieldset id $EXPECTED_FIELDSET_ID / nombre '$FIELDSET_NAME'..."
 fieldsets_json=$(api_get "/api/v1/fieldsets")
+require_json "GET /api/v1/fieldsets" "$fieldsets_json"
 fieldset_exists="false"
 if command -v jq >/dev/null 2>&1; then
   fieldset_exists=$(echo "$fieldsets_json" | jq -r --argjson id "$EXPECTED_FIELDSET_ID" --arg name "$FIELDSET_NAME" 'if (.rows[] | select(.id==$id or .name==$name)) then "true" else "false" end' 2>/dev/null | head -1)
@@ -194,6 +215,7 @@ echo "→ Asociando campo '$FIELD_NAME' al fieldset $fieldset_id..."
 field_id=""
 if command -v jq >/dev/null 2>&1; then
   fields_json2=$(api_get "/api/v1/fields")
+  require_json "GET /api/v1/fields" "$fields_json2"
   field_id=$(echo "$fields_json2" | jq -r --arg name "$FIELD_NAME" '.rows[] | select((.name|ascii_downcase)==($name|ascii_downcase)) | .id' | head -1)
   if [[ -z "$field_id" || "$field_id" == "null" ]]; then
     field_id=$(echo "$fields_json2" | jq -r --arg col "$EXPECTED_DB_COLUMN" '.rows[] | select(.db_column_name==$col) | .id' | head -1)
@@ -210,6 +232,7 @@ fi
 
 # verificar si ya está asociado
 fs_detail=$(api_get "/api/v1/fieldsets/$fieldset_id")
+require_json "GET /api/v1/fieldsets/$fieldset_id" "$fs_detail"
 already="false"
 if command -v jq >/dev/null 2>&1; then
   if echo "$fs_detail" | jq -e --argjson fid "$field_id" '.fields.rows[] | select(.id==$fid)' >/dev/null 2>&1; then

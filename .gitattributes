@@ -1,0 +1,3 @@
+# Forzar LF en scripts shell: evita "bad interpreter: /bin/bash^M" en Linux/macOS
+# aunque el clon se haga con core.autocrlf=true (Windows).
+*.sh text eol=lf
