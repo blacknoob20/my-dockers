@@ -219,15 +219,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -208,
-        848
+        96,
+        560
       ],
-      "id": "91e89e56-1462-495b-9ad9-197c7458316a",
+      "id": "64bbdedb-aa5a-4016-9d17-65cb75c0d200",
       "name": "Log error",
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       },
       "onError": "continueRegularOutput"
@@ -242,10 +242,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -304,
-        288
+        0,
+        0
       ],
-      "id": "36700ea4-5e70-40a3-8580-27a6f90ff412",
+      "id": "090d5272-1a70-4d25-8892-6041636c9465",
       "name": "Sticky Note"
     },
     {
@@ -288,31 +288,32 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 550
+              "batchInterval": 1200
             }
           },
           "response": {
             "response": {
               "fullResponse": true
             }
-          }
+          },
+          "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -1104,
-        528
+        -800,
+        240
       ],
-      "id": "b76c1eb3-4fd0-40d9-81f3-4ad98a8af806",
+      "id": "9cdc69a7-22f4-4362-a1af-f2da61f33ed9",
       "name": "Create snipe-it model",
       "retryOnFail": true,
       "maxTries": 4,
       "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
+          "id": "PipxV96bF9YxckC4",
+          "name": "Bearer Auth account"
         }
       },
       "onError": "continueRegularOutput"
@@ -322,10 +323,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        16,
-        1008
+        320,
+        720
       ],
-      "id": "029c3378-b534-4119-98d4-ff33e00361e5",
+      "id": "6fb969e3-78b7-48e4-94e1-1330a4df26eb",
       "name": "Finish models"
     },
     {
@@ -338,10 +339,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -2000,
-        784
+        -1696,
+        496
       ],
-      "id": "2d7ae1fb-245b-4169-8009-af045b1e6bf1",
+      "id": "6888cc69-c0b6-4adb-bfa2-47137744eda1",
       "name": "Sticky Note1"
     },
     {
@@ -380,31 +381,32 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 550
+              "batchInterval": 1200
             }
           },
           "response": {
             "response": {
               "fullResponse": true
             }
-          }
+          },
+          "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -1104,
-        688
+        -800,
+        400
       ],
-      "id": "d19d5c91-be90-41fe-908c-6378e9367d89",
+      "id": "cc54c25f-0483-4efb-8247-d8fa047ff965",
       "name": "Update snipe-it model",
       "retryOnFail": true,
       "maxTries": 4,
       "waitBetweenTries": 3000,
       "credentials": {
         "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
+          "id": "PipxV96bF9YxckC4",
+          "name": "Bearer Auth account"
         }
       },
       "onError": "continueRegularOutput"
@@ -436,10 +438,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -928,
-        608
+        -624,
+        320
       ],
-      "id": "a452998c-396d-4a4f-8bf5-df0424198147",
+      "id": "62439109-1899-4453-97bf-00db29ba6010",
       "name": "Is SnipeIT Saved?"
     },
     {
@@ -452,10 +454,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -1168,
-        496
+        -864,
+        208
       ],
-      "id": "1492a505-2d15-4846-8dd3-fd77a8493851",
+      "id": "2d4dcb90-c13b-46f5-92ba-1d5e178e5fbf",
       "name": "Sticky Note2"
     },
     {
@@ -465,10 +467,10 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1984,
-        992
+        -1680,
+        704
       ],
-      "id": "1fd89266-d4ec-42a7-8415-c1b96bb02ed2",
+      "id": "652d051c-7291-40fd-b7b8-921028dcc2e2",
       "name": "Tryton sync snipe-IT assets orchestrator"
     },
     {
@@ -490,21 +492,28 @@
             "response": {
               "fullResponse": true
             }
-          }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1200
+            }
+          },
+          "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -752,
-        752
+        -448,
+        464
       ],
-      "id": "bdf52097-1252-455d-bcf1-ab33aead9dc6",
+      "id": "4a5417eb-184a-4972-b9e4-0e2f2827a69f",
       "name": "Find model in Snipe",
       "credentials": {
         "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
+          "id": "PipxV96bF9YxckC4",
+          "name": "Bearer Auth account"
         }
       },
       "onError": "continueRegularOutput"
@@ -517,10 +526,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -592,
-        752
+        -288,
+        464
       ],
-      "id": "ef1fd0e0-f7f7-41bc-9e78-9fa10872021c",
+      "id": "7455c16c-5edb-422f-a5c7-5544ee359f6f",
       "name": "Recover model"
     },
     {
@@ -551,10 +560,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -432,
-        752
+        -128,
+        464
       ],
-      "id": "1bb58d55-ac9e-4a8d-a256-1d7fef9ecf5b",
+      "id": "f0d0bf15-2e4b-485c-8314-3ebc2535566a",
       "name": "Recovered model?"
     },
     {
@@ -568,16 +577,16 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1808,
-        992
+        -1504,
+        704
       ],
-      "id": "0f16c864-8d3a-4ad2-bfbc-2b127cc5f9ac",
+      "id": "b65c86f8-9cc2-474f-b5a7-41fe50cbcb69",
       "name": "Resolve batch models",
       "executeOnce": true,
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       }
     },
@@ -588,10 +597,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1648,
-        992
+        -1344,
+        704
       ],
-      "id": "bbf8db6a-1a7b-46c7-8278-9dbf28bd64e0",
+      "id": "c8b5cfb6-c474-47be-929a-c6ba778e76f5",
       "name": "Prepare items"
     },
     {
@@ -621,10 +630,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1312,
-        896
+        -1008,
+        608
       ],
-      "id": "ab465d31-31b6-4b68-9c08-de0107692515",
+      "id": "1c92c73b-a9da-40bb-ae79-97fd490dbf21",
       "name": "Create or update?"
     },
     {
@@ -680,10 +689,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -752,
-        592
+        -448,
+        304
       ],
-      "id": "38f549da-cb07-497d-9751-0da8e4961a4b",
+      "id": "53589a7e-2c56-4e82-ab81-ef91c6522854",
       "name": "Tag for save"
     },
     {
@@ -693,10 +702,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -592,
-        592
+        -288,
+        304
       ],
-      "id": "4d58c1d6-73ee-484b-a915-f0dc8f9b4160",
+      "id": "f0b8b078-9bbf-43db-9f3b-f74b35a1edcb",
       "name": "Build save payload"
     },
     {
@@ -710,16 +719,16 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -208,
-        480
+        96,
+        192
       ],
-      "id": "0c820a0b-dab7-4398-8814-358e4ef983f2",
+      "id": "a5d5c7fd-469e-4917-a991-9b9ff04ae6de",
       "name": "Save models (bulk)",
       "executeOnce": true,
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       }
     },
@@ -835,15 +844,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -208,
-        656
+        96,
+        368
       ],
-      "id": "68965767-22ed-453e-8f4a-3b426513b37b",
+      "id": "150e1195-5889-4898-a1bc-be6984480b41",
       "name": "Save model (self-heal)",
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       }
     },
@@ -874,10 +883,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1488,
-        992
+        -1184,
+        704
       ],
-      "id": "ce3efbf7-a39b-4177-a4b0-fb4d90d5d485",
+      "id": "82eacaa9-60dd-41b3-8731-80d1d44f6969",
       "name": "Has work?"
     },
     {
@@ -887,12 +896,12 @@
         "width": 480,
         "color": "#105612"
       },
-      "id": "7f87c8a7-4268-4255-b27d-5659a5134564",
+      "id": "a7ffd369-a8f1-4b60-8970-1e360363e7f1",
       "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -2016,
-        1168
+        -1712,
+        880
       ],
       "typeVersion": 1
     }
@@ -1107,18 +1116,13 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": false,
-    "executionTimeout": 3600
+    "binaryMode": "separate"
   },
   "versionId": "1c443f90-b52c-44d5-b279-11880f914841",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
   "nodeGroups": [],
-  "id": "JODxuGjfCJ2wDobA",
+  "id": "S87XSGgQ9vGDmbcy",
   "tags": []
 }

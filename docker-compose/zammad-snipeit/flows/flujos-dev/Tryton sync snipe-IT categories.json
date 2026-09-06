@@ -38,24 +38,34 @@
             "response": {
               "fullResponse": true
             }
-          }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1200
+            }
+          },
+          "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
         544,
-        240
+        224
       ],
-      "id": "63a952ef-274c-48fb-83d6-1095cd8b2c9d",
+      "id": "225d9a55-aa9b-4d14-8c18-0c34b5b31e65",
       "name": "Create snipe-it category",
       "credentials": {
         "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
+          "id": "PipxV96bF9YxckC4",
+          "name": "Bearer Auth account"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -85,9 +95,9 @@
       "typeVersion": 2.3,
       "position": [
         736,
-        240
+        224
       ],
-      "id": "5836ca4d-5531-4545-92ca-96f0b98f3fe2",
+      "id": "5ba57515-56b7-4212-b5c5-d46d97b3bda7",
       "name": "Is SnipeIT Created?"
     },
     {
@@ -173,14 +183,14 @@
       "typeVersion": 2.6,
       "position": [
         1456,
-        224
+        208
       ],
-      "id": "28b6f2f2-6f82-4add-a318-c3782086fad2",
+      "id": "44403795-d3b9-49d6-b061-81580577a80e",
       "name": "Save SnipeIT Category",
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       }
     },
@@ -403,14 +413,14 @@
       "typeVersion": 2.6,
       "position": [
         1456,
-        384
+        368
       ],
-      "id": "07879565-262d-4ffd-b792-07a5bcc61cf6",
+      "id": "97d9826a-784f-42bd-a364-bb237f1a7e7c",
       "name": "Log error",
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       },
       "onError": "continueRegularOutput"
@@ -421,9 +431,9 @@
       "typeVersion": 1,
       "position": [
         1664,
-        160
+        144
       ],
-      "id": "7a4bbdb0-625b-46c7-b960-adba41363ce1",
+      "id": "73d262ed-8dce-474a-9748-70e715477c90",
       "name": "Finish categories"
     },
     {
@@ -437,9 +447,9 @@
       "typeVersion": 1,
       "position": [
         1360,
-        32
+        16
       ],
-      "id": "596d730f-0524-47b3-9e7f-4cad5523b32d",
+      "id": "4ca20249-d36a-4fdc-a873-8f90774c8cb0",
       "name": "Sticky Note"
     },
     {
@@ -452,15 +462,15 @@
       "typeVersion": 2.6,
       "position": [
         208,
-        176
+        160
       ],
-      "id": "4c786747-d4f2-456e-a179-7ad0019ede11",
+      "id": "d884d78a-ef63-4ac0-8d2d-30983d74e94d",
       "name": "Search category",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "qJJfZl7PuKahcYb0",
-          "name": "Postgres n8n account"
+          "id": "vJtGvptYH9m03zLH",
+          "name": "Postgres account"
         }
       }
     },
@@ -493,9 +503,9 @@
       "typeVersion": 2.3,
       "position": [
         368,
-        176
+        160
       ],
-      "id": "e5fbccbb-c55c-4cce-ae99-854d131d075a",
+      "id": "28af20a7-ec1b-4b90-b7b8-80838537203b",
       "name": "Exists category?"
     },
     {
@@ -509,9 +519,9 @@
       "typeVersion": 1,
       "position": [
         0,
-        16
+        0
       ],
-      "id": "2e8a75ec-0909-4b5b-a4d8-68046aafbdec",
+      "id": "65a59fcf-2dd6-43d7-bc28-ad35f98cbbb9",
       "name": "Sticky Note1"
     },
     {
@@ -522,9 +532,9 @@
       "typeVersion": 1.2,
       "position": [
         32,
-        176
+        160
       ],
-      "id": "c7d65b63-97fe-4f23-a9f3-9da750b7f674",
+      "id": "494f479e-7e8f-4501-8af9-a05dbb7ae20f",
       "name": "Tryton sync snipe-IT assets orchestrator"
     },
     {
@@ -546,21 +556,28 @@
             "response": {
               "fullResponse": true
             }
-          }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1200
+            }
+          },
+          "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
         896,
-        320
+        304
       ],
-      "id": "043fa3f4-cf44-4886-92b1-3a7afbe4ea35",
+      "id": "7299291c-1665-41be-a83e-0f061c70d05c",
       "name": "Find category in Snipe",
       "credentials": {
         "httpBearerAuth": {
-          "id": "Adhjdtilu8D9eQs8",
-          "name": "Bearer Auth snipe-it"
+          "id": "PipxV96bF9YxckC4",
+          "name": "Bearer Auth account"
         }
       },
       "onError": "continueRegularOutput"
@@ -574,9 +591,9 @@
       "typeVersion": 2,
       "position": [
         1072,
-        320
+        304
       ],
-      "id": "287aba33-b063-435c-98bd-751d6f8b68f1",
+      "id": "e67bfb98-0ab8-45e9-9bf3-73e2ead3cc5a",
       "name": "Recover category"
     },
     {
@@ -608,9 +625,9 @@
       "typeVersion": 2.3,
       "position": [
         1248,
-        320
+        304
       ],
-      "id": "de8a3e3b-2802-4765-8039-4cc0c3aa38b0",
+      "id": "aab26b32-b497-40be-8a27-fe26f43166b5",
       "name": "Recovered category?"
     },
     {
@@ -620,12 +637,12 @@
         "width": 480,
         "color": "#105612"
       },
-      "id": "f1fc390f-cecd-400c-a04e-5b7b4ab072c1",
+      "id": "d94392fb-1342-464a-8160-ab1c85bf410b",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
         -16,
-        336
+        320
       ],
       "typeVersion": 1
     }
@@ -767,12 +784,7 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": false,
-    "executionTimeout": 3600
+    "binaryMode": "separate"
   },
   "versionId": "d7a00a2e-cf77-4448-b4b4-bf377de1bff2",
   "meta": {
@@ -780,6 +792,6 @@
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
   "nodeGroups": [],
-  "id": "Ps2wicy3xI4n37nD",
+  "id": "aOaoZvxNM7LCjvVS",
   "tags": []
 }
