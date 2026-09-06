@@ -155,24 +155,26 @@ El stack **no utiliza Dockerfiles propios**: todos los servicios corren con las 
 
 ### 4.1 Servicios y puertos
 
-Toda la infraestructura corre en una única VM con Docker Compose. Los contenedores se comunican entre sí por una red bridge interna (`net`); solo se publican al host los puertos de las interfaces web y (en laboratorio) los de las bases de datos.
+Toda la infraestructura corre en una única VM con Docker Compose. Los contenedores se comunican entre sí por una red bridge interna (`net`) y por la red externa `docker_net` hacia las bases de datos compartidas; solo se publican al host los puertos de las interfaces web y (en laboratorio) los de las bases de datos.
+
+> **Bases de datos externas:** desde `refactor(zammad-snipeit): use external databases`, `snipe-db`/`zammad-db`/`n8n-db` ya no existen en este compose. Las DBs viven en contenedores externos `dbs-postgres` y `dbs-mariadb` definidos en `/Volumes/CRGS-1T/Docker/docker-compose.yml` (red `docker_net`, volumenes `/Volumes/CRGS-1T/Docker/data/*`). Crear roles/DBs con `./scripts/init-external-dbs.sh` antes del primer `up`.
 
 **Snipe-IT — Gestión de activos (puerto `8080`)**
 
 | Servicio | Imagen | Puerto publicado | Base de datos |
 |----------|--------|------------------|---------------|
-| `snipe-db` | `mariadb` | `3307:3306` | MySQL (snipeit) |
-| `snipe-it` | `snipe/snipe-it:latest-alpine` | `8080:80` | Conecta a `snipe-db` |
+| `dbs-mariadb` (externo, `docker_net`, alias `mariadb`) | `mariadb:lts-ubi` | `3306:3306` | MySQL `snipeit` (`snipe_user`/`snipe_password_123`, creado por `init-external-dbs.sh`) |
+| `snipe-it` | `snipe/snipe-it:latest-alpine` | `8080:80` | Conecta a `mariadb` (alias de `dbs-mariadb` en `docker_net`) |
 
 **Zammad — Mesa de ayuda (puerto `8000`)**
 
 | Servicio | Imagen | Puerto publicado | Rol |
 |----------|--------|------------------|-----|
-| `zammad-db` | `postgres:17-alpine` | — | PostgreSQL (zammad_production) |
+| `dbs-postgres` (externo, `docker_net`, alias `postgres`) | `postgres:17-alpine` | `5432:5432` | PostgreSQL `zammad_production` (`zammad_user`, creado por `init-external-dbs.sh`) |
 | `zammad-search` | `elasticsearch-wolfi:8.16.0` | — | Índices de búsqueda |
 | `zammad-redis` | `redis:7-alpine` | — | Caché/sesiones |
 | `zammad-memcached` | `memcached:1.6.42-alpine` | — | Caché de objetos (256M) |
-| `zammad-init` | `ghcr.io/zammad/zammad:latest` | — | Inicializacion de la base |
+| `zammad-init` | `ghcr.io/zammad/zammad:latest` | — | Inicializacion de la base (requiere DB externa existente; no crea rol/DB) |
 | `zammad-railsserver` | `ghcr.io/zammad/zammad:latest` | — | Aplicacion principal |
 | `zammad-scheduler` | `ghcr.io/zammad/zammad:latest` | — | Tareas programadas |
 | `zammad-websocket` | `ghcr.io/zammad/zammad:latest` | — | Notificaciones en tiempo real |
@@ -183,31 +185,30 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 
 | Servicio | Imagen | Puerto publicado | Base de datos |
 |----------|--------|------------------|---------------|
-| `n8n-db` | `postgres:17-alpine` | `5432:5432` | PostgreSQL (n8n) |
-| `n8n` | `docker.n8n.io/n8nio/n8n` | `5678:5678` | Conecta a `n8n-db` |
+| `dbs-postgres` (externo, `docker_net`, alias `postgres`) | `postgres:17-alpine` | `5432:5432` | PostgreSQL `n8n` (`n8n_user`, creado por `init-external-dbs.sh`) |
+| `n8n` | `docker.n8n.io/n8nio/n8n` | `5678:5678` | Conecta a `postgres` (alias de `dbs-postgres` en `docker_net`) |
 
 ### 4.2 Orden de arranque (dependencias)
 
 ```
-snipe-db ──► snipe-it
-zammad-db ─────┐
-zammad-search ─┼─► zammad-init ──► zammad-railsserver ─┐
-zammad-redis ──┘                    zammad-scheduler ──┼──► zammad-nginx
-zammad-memcached                     zammad-websocket ─┘
-n8n-db ──► n8n
+dbs-mariadb (externo) ──► snipe-it
+dbs-postgres (externo) ─────┐
+zammad-search ───────────────┼─► zammad-init ──► zammad-railsserver ─┐
+zammad-redis ────────────────┘                    zammad-scheduler ──┼──► zammad-nginx
+zammad-memcached                               zammad-websocket ─┘
+dbs-postgres (externo) ──► n8n
 ```
 
-El orden se garantiza con `depends_on` + healthchecks (los servicios dependientes esperan a que la base esté sana antes de arrancar).
+El orden se garantiza con `depends_on` + healthchecks para `zammad-search`/`redis`/`memcached`; las DBs externas deben existir previamente (`./scripts/init-external-dbs.sh` crea `snipeit`/`zammad_production`/`n8n` + roles antes del primer `docker compose up`). `zammad-init` no crea el rol/DB, solo migra.
 
 ### 4.3 Persistencia de datos
 
 | Volumen | Destino en contenedor | Contenido |
 |---------|------------------------|-----------|
-| `./snipe-data/db` (bind) | `/var/lib/mysql` | Datos MariaDB (Snipe-IT) |
-| `./snipe-data/uploads` (bind) | `/var/www/html/public/uploads` | Uploads de activos |
-| `./snipe-data/snipeit` (bind) | `/var/lib/snipeit` | Datos internos (incl. llaves Passport) |
-| `./zammad-data/db` (bind) | `/var/lib/postgresql/data` | Datos PostgreSQL (Zammad) |
-| `./n8n-data/db` (bind) | `/var/lib/postgresql/data` | Datos PostgreSQL (n8n) |
+| `/Volumes/CRGS-1T/Docker/data/mariadb` (externo, host) | `/var/lib/mysql` en `dbs-mariadb` | Datos MariaDB `snipeit` |
+| `/Volumes/CRGS-1T/Docker/data/postgres` (externo, host) | `/var/lib/postgresql/data` en `dbs-postgres` | Datos PostgreSQL `zammad_production` + `n8n` |
+| `./snipe-data/uploads` (bind) | `/var/www/html/public/uploads` en `snipe-it` | Uploads de activos |
+| `./snipe-data/snipeit` (bind) | `/var/lib/snipeit` en `snipe-it` | Datos internos (incl. llaves Passport) |
 | `zammad-search-data` (named) | `/usr/share/elasticsearch/data` | Índices Elasticsearch |
 | `zammad-var-data` (named) | `/opt/zammad/var` | Archivos internos Zammad |
 | `zammad-storage` (named) | `/opt/zammad/storage` | Adjuntos de tickets |
@@ -305,24 +306,27 @@ cd /opt/zammad-snipe
 
 ### Paso 2 — Revisar y ajustar las variables de entorno
 
-Todas las credenciales están en `envs/*.env` (una por servicio). **En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
+Todas las credenciales están en `envs/*.env` (una por servicio) + el `.env` externo de DBs. **En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
 
 | Archivo | Servicio(s) | Contenido |
 |---------|-------------|-----------|
-| `envs/snipe-db.env` | `snipe-db` | MariaDB: root password, DB name, user/password |
-| `envs/snipe-it.env` | `snipe-it` | APP_URL, APP_KEY, conexión DB, mail |
-| `envs/zammad-db.env` | `zammad-db` | PostgreSQL: user/password, DB name |
+| `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `changeme_*`) |
+| `envs/snipe-db.env` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
+| `envs/snipe-it.env` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
+| `envs/zammad-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
 | `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, heap |
-| `envs/zammad-app.env` | servicios Zammad | Conexiones PostgreSQL, ES, Redis, Memcached |
-| `envs/n8n-db.env` | `n8n-db` | PostgreSQL: user/password, DB name |
-| `envs/n8n.env` | `n8n` | Timezone, entorno |
+| `envs/zammad-app.env` | servicios Zammad | Conexiones PostgreSQL (`POSTGRESQL_HOST=postgres` → `dbs-postgres`), ES, Redis, Memcached |
+| `envs/n8n-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `n8n`/`n8n_user` (debe coincidir con `n8n.env`) |
+| `envs/n8n.env` | `n8n` | Timezone, DB (`DB_POSTGRESDB_HOST=postgres` → `dbs-postgres`), entorno |
 
 Ajustes clave en producción:
 
 ```bash
 # 1) Contraseñas de bases de datos (los valores de laboratorio NO son seguros)
-#    En envs/snipe-db.env, envs/zammad-db.env, envs/n8n-db.env
-#    Las contraseñas de DB deben coincidir entre el env de la DB y el env de la app.
+#    - Superusuarios: /Volumes/CRGS-1T/Docker/.env (POSTGRES_PASSWORD, MYSQL_ROOT_PASSWORD)
+#    - App users: envs/snipe-it.env / envs/zammad-app.env / envs/n8n.env
+#      + envs/snipe-db.env / envs/zammad-db.env / envs/n8n-db.env (referencia, usados por init-external-dbs.sh)
+#    Las contraseñas de app (snipe_user/zammad_user/n8n_user) deben coincidir entre el env de la app y la DB creada por init-external-dbs.sh.
 
 # 2) APP_URL de Snipe-IT (envs/snipe-it.env) → apuntar al FQDN o IP de producción
 APP_URL=https://snipe.midominio.gob.ec
@@ -340,10 +344,13 @@ docker compose config --quiet   # valida el compose; sin salida = OK
 ### Paso 4 — Levantar toda la infraestructura
 
 ```bash
+# Prerrequisito externo (una vez, idempotente): crea roles/DBs en dbs-postgres/dbs-mariadb
+./scripts/init-external-dbs.sh   # lee POSTGRES_PASSWORD/MYSQL_ROOT_PASSWORD de /Volumes/CRGS-1T/Docker/.env
+
 docker compose up -d
 ```
 
-Esto levanta los 17 servicios (2 Snipe-IT + 10 Zammad + 2 n8n + red + volúmenes) en el orden de dependencias correcto. El primer arranque descarga las imágenes (varios minutos).
+Esto levanta los 14 servicios del compose (`snipe-it` + 9 Zammad + `n8n` + 3 infra `search/redis/memcached` + red/volúmenes) más las 2 DBs externas ya corriendo (`dbs-postgres`/`dbs-mariadb`), en el orden de dependencias correcto. El primer arranque descarga las imágenes (varios minutos). Sin `init-external-dbs.sh` previo, `zammad-init` falla con `role does not exist` y `n8n`/`snipe-it` con `Access denied` — no crean el rol/DB, solo migran.
 
 ### Paso 5 — Verificar que todo esté sano
 
@@ -513,6 +520,14 @@ docker compose exec zammad-railsserver zammad run rails db:migrate
 docker compose restart zammad-railsserver
 ```
 
+### 9.3 Sincronización Tryton → Snipe-IT (incremental)
+
+Desde 2026-09-06 el orquestador (`Tryton sync snipe-IT assets orchestrator v2`) es **incremental**: `Get last sync` lee `MAX(finished_at) - 2h` de `sync_run_summary` y `Search assets` / `Read Owned Assets` filtran `OR(write_date, create_date) >= since`. Sin cambios, el run completo tarda segundos (7.5s medidos) y `Run summary` registra `total_tryton=0`. Con `Has assets?` se saltan los sub-workflows de catálogos cuando no hay filas.
+
+- **Operación normal:** programar el orquestador a diario en horario nocturno (ej. 02:00, trigger Schedule en n8n). Solo los deltas generan llamadas a Snipe-IT (techo 50/min por el throttle 1/1200ms).
+- **Full semanal:** una vez por semana (ej. domingo) forzar barrido completo para recalcular `deleted_in_tryton` (el incremental lo reporta en 0) y reconciliar derivas: fijar `TRYTON_FULL_SYNC=true` en `envs/n8n.env`, recrear n8n (`docker compose up -d n8n`), ejecutar el orquestador, y volver a `false` + recrear. Un full de 9518 assets tarda ~3.2h por el cap de Snipe-IT.
+- **Primera ejecución** (tabla `sync_run_summary` vacía): hace full automáticamente.
+
 ### 9.3 Actualización de versiones
 
 Al publicar una nueva versión oficial de un vendor:
@@ -536,9 +551,9 @@ docker compose up -d
 
 | Componente | Ubicación | Método |
 |------------|-----------|--------|
-| Snipe-IT (DB + uploads + llaves Passport) | `./snipe-data/` | Copia de archivos o dump SQL |
-| Zammad (DB + adjuntos) | `./zammad-data/db` + `zammad-storage` | Servicio `zammad-backup` o dump SQL |
-| n8n (DB + config/workflows) | `./n8n-data/db` + `n8n-home-data` | Copia de archivos o dump SQL |
+| Snipe-IT (DB + uploads + llaves Passport) | `/Volumes/CRGS-1T/Docker/data/mariadb` + `./snipe-data/uploads` + `./snipe-data/snipeit` | `mariadb-dump` desde `dbs-mariadb` + copia de bind mounts |
+| Zammad (DB + adjuntos) | `/Volumes/CRGS-1T/Docker/data/postgres` (`zammad_production`) + `zammad-storage` | `zammad-backup` o `pg_dump` desde `dbs-postgres` |
+| n8n (DB + config/workflows) | `/Volumes/CRGS-1T/Docker/data/postgres` (`n8n`) + `n8n-home-data` | `pg_dump` desde `dbs-postgres` + copia de volume |
 
 ### 10.2 Backup automático de Zammad
 
@@ -549,19 +564,17 @@ El stack incluye el servicio `zammad-backup` (imagen oficial, corre como root), 
 docker run --rm -v zammad-snipe_zammad-backup:/backup alpine ls -la /backup
 ```
 
-### 10.3 Dumps manuales de bases de datos
+### 10.3 Dumps manuales de bases de datos (DBs externas `dbs-*` en red `docker_net`)
 
 ```bash
-# Snipe-IT (MariaDB)
-docker exec zammad-snipe-snipe-db-1 sh -c \
-  'mariadb-dump -u snipe_user -p"$MYSQL_PASSWORD" snipeit' > snipeit_$(date +%F).sql
+# Snipe-IT (MariaDB en dbs-mariadb)
+docker exec dbs-mariadb mariadb-dump -u snipe_user -p'snipe_password_123' snipeit > snipeit_$(date +%F).sql
 
-# Zammad (PostgreSQL)
-docker exec zammad-snipe-zammad-db-1 pg_dump -U zammad_user zammad_production \
-  > zammad_$(date +%F).sql
+# Zammad (PostgreSQL en dbs-postgres)
+docker exec dbs-postgres pg_dump -U zammad_user zammad_production > zammad_$(date +%F).sql
 
-# n8n (PostgreSQL)
-docker exec zammad-snipe-n8n-db-1 pg_dump -U n8n_user n8n > n8n_$(date +%F).sql
+# n8n (PostgreSQL en dbs-postgres)
+docker exec dbs-postgres pg_dump -U n8n_user n8n > n8n_$(date +%F).sql
 ```
 
 > Los nombres de contenedor pueden variar; verificar con `docker compose ps`.

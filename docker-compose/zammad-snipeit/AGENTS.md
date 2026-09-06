@@ -7,7 +7,7 @@
 - Al iniciar sesión o tras compactación: `mem_context` primero; antes de abrir `flows/*.json` (2000+ líneas), `sql/`, `docs/04*` o `execution_data`, hacer `mem_search` con 2-3 keywords (ej. `Users Ready timeout`, `Bulk Save DISTINCT ON`, `execution pruning`).
 - Tras cada decisión/bugfix/descubrimiento/config: `mem_save` inmediato con formato **What / Why / Where / Learned**, `scope: project`, y `topic_key` estable para upsert (no duplicar).
 - Al cerrar o decir "listo": `mem_session_summary` obligatorio con Goal / Instructions / Discoveries / Accomplished / Next Steps / Relevant Files.
-- **Prohibición total de secretos:** nunca guardar valores de `TRYTON_PASS`, `SNIPEIT_TOKEN`, `MAIL_TOKEN`, `DB_*_PASSWORD`, llaves Passport ni emails de titulares; referenciar solo por nombre (`envs/n8n.env`, `httpBearerAuth Adhjdtilu8D9eQs8`).
+- **Prohibición total de secretos:** nunca guardar valores de `TRYTON_PASS`, `SNIPEIT_TOKEN`, `MAIL_TOKEN`, `DB_*_PASSWORD`, llaves Passport ni emails de titulares; referenciar solo por nombre (`envs/n8n.env`, `httpBearerAuth PipxV96bF9YxckC4`).
 - Specs canónicos siguen en `.ai/specs/tryton-activos.md` + espejo `docs/04-workflows-sincronizacion.md` (regla raíz `AGENTS.md` intacta); Engram es índice/cache, no sustituto. No guardar runs exitosos sin aprendizaje ni dumps de `execution_data`.
 
 ---
@@ -20,7 +20,7 @@ Este repositorio contiene un entorno Docker Compose con tres pilas de servicios 
 
 | Servicio        | Imagen                        | Puerto | Base de datos        |
 |-----------------|-------------------------------|--------|----------------------|
-| `snipe-it`      | `snipe/snipe-it:latest-alpine` | 8080  | `docker-mariadb-1` (externo) |
+| `snipe-it`      | `snipe/snipe-it:latest-alpine` | 8080  | `dbs-mariadb` (externo) |
 
 ### 2. Zammad — Mesa de Ayuda (Puerto `8000`)
 
@@ -29,7 +29,7 @@ Este repositorio contiene un entorno Docker Compose con tres pilas de servicios 
 | `zammad-search`       | `elasticsearch-wolfi:8.16.0`                        | —      | Elasticsearch        |
 | `zammad-redis`        | `redis:7-alpine`                                    | —      | Redis                |
 | `zammad-memcached`    | `memcached:1.6.42-alpine`                           | —      | Caché de objetos     |
-| `zammad-init`         | `ghcr.io/zammad/zammad:latest`                     | —      | `docker-postgres-1` (externo) |
+| `zammad-init`         | `ghcr.io/zammad/zammad:latest`                     | —      | `dbs-postgres` (externo) |
 | `zammad-railsserver`  | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
 | `zammad-scheduler`    | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
 | `zammad-websocket`    | `ghcr.io/zammad/zammad:latest`                     | —      | —                    |
@@ -40,21 +40,21 @@ Este repositorio contiene un entorno Docker Compose con tres pilas de servicios 
 
 | Servicio   | Imagen                             | Puerto | Base de datos      |
 |------------|------------------------------------|--------|--------------------|
-| `n8n`      | `docker.n8n.io/n8nio/n8n`        | 5678   | `docker-postgres-1` (externo) |
+| `n8n`      | `docker.n8n.io/n8nio/n8n`        | 5678   | `dbs-postgres` (externo) |
 
 ### Redes
 
 | Red | Tipo | Propósito |
 |-----|------|-----------|
 | `net` | bridge | Comunicación entre servicios del stack |
-| `docker_net` | externa | Conexión con contenedores de DB externos (`docker-postgres-1`, `docker-mariadb-1`) |
+| `docker_net` | externa | Conexión con contenedores de DB externos (`dbs-postgres`, `dbs-mariadb`) |
 
 ### Bases de Datos Externas
 
 | Contenedor | Puerto | DBs alojadas |
 |------------|--------|--------------|
-| `docker-postgres-1` | `5432` | `zammad_production`, `n8n` |
-| `docker-mariadb-1` | `3306` | `snipeit` |
+| `dbs-postgres` | `5432` | `zammad_production`, `n8n` |
+| `dbs-mariadb` | `3306` | `snipeit` |
 
 > **Nota:** Ejecutar `./scripts/init-external-dbs.sh` una vez antes del primer `docker compose up` para crear las bases de datos y usuarios.
 
@@ -92,10 +92,10 @@ Los scripts `.sh` en la raíz del repositorio son **seeders de datos iniciales**
 
 | Archivo | Qué hace |
 |---------|----------|
-| `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`docker-postgres-1`, `docker-mariadb-1`). Ejecutar una vez antes del primer `docker compose up`. |
+| `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`dbs-postgres`, `dbs-mariadb` en red `docker_net`). Lee el password de superusuario desde `/Volumes/CRGS-1T/Docker/.env` (`POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD`) con fallback `changeme_*`; aliases `postgres`/`mariadb` resuelven a `dbs-*`. Ejecutar una vez antes del primer `docker compose up` (idempotente). |
 | `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: borra modelos, categorías y status labels creados en Snipe-IT (MySQL, `models` y `categories`; los modelos se identifican por su `category_id` del map, capturando también huérfanos de corridas fallidas; los status labels por su `snipe_name` en `tryton_snipe_status_map`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `sync_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. Preserva los 3 status labels built-in de Snipe-IT (Pending, Ready to Deploy, Archived; `AUTO_INCREMENT` a 4) y no toca la categoría por defecto, usuarios ni assets. Uso: `./scripts/reset-sync.sh -y` |
 
-> **Nota Passport Snipe-IT:** las llaves RSA de Laravel Passport (`oauth-*.key`) viven en `./snipe-data/snipeit/keys/` (bind mount desde `docker-compose.yml`). Si el contenedor se recrea sin ese volumen, toda la API responde 500 `Invalid key supplied`. Si el volumen se regenera con `php artisan passport:keys` como root, corregir permisos con `chown apache:apache /var/lib/snipeit/keys/*`. Los API tokens quedan inválidos tras regenerar llaves (regenerarlos en Admin → API Tokens y actualizar la credencial `Bearer Auth snipe-it` / `httpBearerAuth` id `Adhjdtilu8D9eQs8` en n8n).
+> **Nota Passport Snipe-IT:** las llaves RSA de Laravel Passport (`oauth-*.key`) viven en `./snipe-data/snipeit/keys/` (bind mount desde `docker-compose.yml`). Si el contenedor se recrea sin ese volumen, toda la API responde 500 `Invalid key supplied`. Si el volumen se regenera con `php artisan passport:keys` como root, corregir permisos con `chown apache:apache /var/lib/snipeit/keys/*`. Los API tokens quedan inválidos tras regenerar llaves (regenerarlos en Admin → API Tokens y actualizar la credencial `Bearer Auth account` / `httpBearerAuth` id `PipxV96bF9YxckC4` en n8n).
 
 Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API retorna un error HTTP que el script imprime sin abortar el resto.
 
@@ -118,7 +118,7 @@ Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API
 
 > **Nota:** Elasticsearch, Zammad y n8n corren como uid 1000 y usan named volumes para evitar problemas de permisos (los bind mounts se crean como root → `Permission denied`/`EACCES`). Docker gestiona el ownership automáticamente con named volumes.
 
-> **Nota DBs externas:** Los datos de bases de datos viven en los contenedores externos (`docker-postgres-1`, `docker-mariadb-1`), no en este compose.
+> **Nota DBs externas:** Los datos de bases de datos viven en los contenedores externos (`dbs-postgres`, `dbs-mariadb` en red `docker_net` desde `/Volumes/CRGS-1T/Docker/docker-compose.yml`), no en este compose. Volumenes en `/Volumes/CRGS-1T/Docker/data/postgres` y `/data/mariadb`.
 
 ---
 
@@ -130,10 +130,10 @@ Las credenciales y variables de entorno están en archivos **`.env`** por servic
 
 ### Contenedores externos (DBs)
 
-| Contenedor | Credenciales |
+| Contenedor | Credenciales (definidas en `/Volumes/CRGS-1T/Docker/.env`) |
 |------------|--------------|
-| `docker-postgres-1` | User: `postgres`, Password: `postgres_root_2024` |
-| `docker-mariadb-1` | Root: `mariadb_root_2024` |
+| `dbs-postgres` (`postgres`) | User: `postgres`, Password: `POSTGRES_PASSWORD` (lab: `changeme_root_pg`) |
+| `dbs-mariadb` (`mariadb`) | Root: `MYSQL_ROOT_PASSWORD` (lab: `changeme_root`) |
 
 ### Archivos .env del compose
 
@@ -142,7 +142,7 @@ Las credenciales y variables de entorno están en archivos **`.env`** por servic
 | `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config |
 | `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
 | `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=5`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
+| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
 ### Archivos .env de DBs (no usados actualmente, referenciados por init-external-dbs.sh)
 
@@ -158,15 +158,15 @@ Cámbialo antes de producción.
 
 ## Puntos Clave
 
-- Las bases de datos corren en contenedores externos compartidos (`docker-postgres-1`, `docker-mariadb-1`).
-- Ejecutar `./scripts/init-external-dbs.sh` antes del primer `docker compose up`.
-- Snipe-IT se conecta a `mariadb` (red `docker_net`).
-- Zammad y n8n se conectan a `postgres` (red `docker_net`).
+- Las bases de datos corren en contenedores externos compartidos (`dbs-postgres`, `dbs-mariadb` con alias `postgres`/`mariadb` en red `docker_net` desde `/Volumes/CRGS-1T/Docker/docker-compose.yml`).
+- Ejecutar `./scripts/init-external-dbs.sh` antes del primer `docker compose up` (lee `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` de `/Volumes/CRGS-1T/Docker/.env`).
+- Snipe-IT se conecta a `mariadb` (alias de `dbs-mariadb`, red `docker_net`).
+- Zammad y n8n se conectan a `postgres` (alias de `dbs-postgres`, red `docker_net`).
 - Zammad tiene una cadena de dependencias: `zammad-search` + `zammad-redis` + `zammad-memcached` → `zammad-init` → `zammad-railsserver` / `zammad-scheduler` / `zammad-websocket` → `zammad-nginx`.
 - Elasticsearch arranca con `xpack.security.enabled=false` y 1GB de heap (`-Xms1g -Xmx1g`).
 - La zona horaria de n8n está configurada a `America/Guayaquil`.
 - Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (igual que `executionTimeout:3600` del workflow).
-- `execution_data` con `jsonSizeBytes` 35 MB (1497) + 197 `rejected by Runner` + 14 `timeout exceeded when trying to connect` colgaban UI y host. Fix 2026-09-03: `EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168`, `MAX_COUNT=500`, `PRUNE_HARD_DELETE_INTERVAL=15`, `PRUNE_INTERVAL=60`, `DB_POSTGRESDB_POOL_SIZE=5` en `envs/n8n.env`; poda manual `DELETE FROM execution_data WHERE octet_length(data::text)>5MB` (36→152 kB) + `VACUUM`. Sin esto el navegador intenta renderizar 35 MB y el pool PG se satura.
+- `execution_data` con `jsonSizeBytes` 35 MB (1497) + 197 `rejected by Runner` + 14 `timeout exceeded when trying to connect` colgaban UI y host. Fix 2026-09-03: `EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168`, `MAX_COUNT=500`, `PRUNE_HARD_DELETE_INTERVAL=15`, `PRUNE_INTERVAL=60`, `DB_POSTGRESDB_POOL_SIZE=5` en `envs/n8n.env` (subido a 10 el 2026-09-05 con la unificación de throttle 1/1200); poda manual `DELETE FROM execution_data WHERE octet_length(data::text)>5MB` (36→152 kB) + `VACUUM`. Sin esto el navegador intenta renderizar 35 MB y el pool PG se satura.
 - El manual de implementación para producción está en `docs/manual-implementacion.md` (hardware, despliegue, tokens de integración, backups).
 - Para volver a usar las DBs internas del compose, ver `.ai/specs/external-databases.md`.
 
