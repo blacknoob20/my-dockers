@@ -344,7 +344,7 @@
     },
     {
       "parameters": {
-        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (sync_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL/TRYTON_FULL_SYNC=true = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.",
+        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (tryton_snipe_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL/TRYTON_FULL_SYNC=true = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.",
         "height": 220,
         "width": 420,
         "color": 4
@@ -361,7 +361,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM sync_run_summary;",
+        "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM tryton_snipe_run_summary;",
         "options": {}
       },
       "id": "a107dc09-d336-4599-a507-9b5eece70c9a",
@@ -444,7 +444,7 @@
           "value": "Yv8AlEkGEdwzRJrJ",
           "mode": "list",
           "cachedResultUrl": "/workflow/Yv8AlEkGEdwzRJrJ",
-          "cachedResultName": "Tryton sync users assets"
+          "cachedResultName": "Tryton sync snipe-IT users assets"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -473,7 +473,7 @@
         }
       },
       "id": "8cfafe1a-2e95-4fb9-811e-29b7a085e6e5",
-      "name": "Execute Tryton sync users assets",
+      "name": "Execute Tryton sync snipe-IT users assets",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
         2432,
@@ -703,7 +703,7 @@
       "main": [
         [
           {
-            "node": "Execute Tryton sync users assets",
+            "node": "Execute Tryton sync snipe-IT users assets",
             "type": "main",
             "index": 0
           }

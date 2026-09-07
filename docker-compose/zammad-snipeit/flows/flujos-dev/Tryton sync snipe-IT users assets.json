@@ -1,5 +1,5 @@
 {
-  "name": "Tryton sync users assets",
+  "name": "Tryton sync snipe-IT users assets",
   "nodes": [
     {
       "parameters": {
@@ -38,7 +38,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM sync_run_summary;",
+        "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM tryton_snipe_run_summary;",
         "options": {}
       },
       "id": "fe6f8494-8fea-46f0-ab65-c8925e590860",
