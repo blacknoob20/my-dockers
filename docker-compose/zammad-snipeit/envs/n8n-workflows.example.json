@@ -1,0 +1,26 @@
+{
+  "assets": {
+    "id": "EJEMPLO_ID_ASSETS",
+    "name": "Tryton sync snipe-IT assets"
+  },
+  "categories": {
+    "id": "EJEMPLO_ID_CATEGORIES",
+    "name": "Tryton sync snipe-IT categories"
+  },
+  "login": {
+    "id": "EJEMPLO_ID_LOGIN",
+    "name": "Tryton login"
+  },
+  "models": {
+    "id": "EJEMPLO_ID_MODELS",
+    "name": "Tryton sync snipe-IT models"
+  },
+  "status": {
+    "id": "EJEMPLO_ID_STATUS",
+    "name": "Tryton sync snipe-IT status"
+  },
+  "users": {
+    "id": "EJEMPLO_ID_USERS",
+    "name": "Tryton sync users assets"
+  }
+}

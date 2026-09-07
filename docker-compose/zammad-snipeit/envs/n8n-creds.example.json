@@ -1,0 +1,14 @@
+{
+  "pg_n8n": {
+    "id": "EJEMPLO_ID_PG_N8N",
+    "name": "Postgres n8n account"
+  },
+  "pg_tryton": {
+    "id": "EJEMPLO_ID_PG_TRYTON",
+    "name": "Postgres tryton account"
+  },
+  "bearer_snipe": {
+    "id": "EJEMPLO_ID_BEARER",
+    "name": "Bearer Auth account"
+  }
+}
