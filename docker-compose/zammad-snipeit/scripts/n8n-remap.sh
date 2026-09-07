@@ -21,7 +21,7 @@
 
 set -u
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 
 print_usage() {
   cat <<USAGE
@@ -62,6 +62,7 @@ Reglas de mapeo (solo IDs):
 
 NODOS_WF (nombre exacto -> clave del mapa n8n-workflows):
   "Execute login"                          -> login
+  "Tryton Login"                           -> login (alias en subflujo users)
   "Execute Tryton sync snipeIT categories" -> categories
   "Execute Tryton sync snipeIT status"     -> status
   "Execute Tryton sync snipeIT models"     -> models
@@ -279,7 +280,7 @@ remap_wf() {
      --arg users_id "$TGT_WF_USERS_ID" --arg users_name "$TGT_WF_USERS_NAME" \
     '.nodes |= map(
        if (.parameters.workflowId.value? // null) == null then .
-       elif .name == "Execute login" then
+       elif .name == "Execute login" or .name == "Tryton Login" then
          .parameters.workflowId.value = $login_id
          | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $login_id)
          | .parameters.workflowId.cachedResultName = $login_name
@@ -313,6 +314,7 @@ count_wf() {
   jq '[.nodes[]?
        | select((.parameters.workflowId.value? // null) != null)
        | select(.name == "Execute login"
+             or .name == "Tryton Login"
              or .name == "Execute Tryton sync snipeIT categories"
              or .name == "Execute Tryton sync snipeIT status"
              or .name == "Execute Tryton sync snipeIT models"
@@ -474,7 +476,8 @@ for SRC in "$@"; do
     --arg assets "$TGT_WF_ASSETS_ID" --arg users "$TGT_WF_USERS_ID" \
     '[.nodes[]? | select((.parameters.workflowId.value? // null) != null)
       | select(.name == "Execute login"
-            or .name == "Execute Tryton sync snipeIT categories"
+           or .name == "Tryton Login"
+           or .name == "Execute Tryton sync snipeIT categories"
             or .name == "Execute Tryton sync snipeIT status"
             or .name == "Execute Tryton sync snipeIT models"
             or .name == "Execute Tryton sync snipe-IT assets"
