@@ -140,10 +140,10 @@ CREATE INDEX IF NOT EXISTS ix_tsam_snipe_asset_id
     ON public.tryton_snipe_asset_map (snipe_asset_id);
 
 -- -----------------------------------------------------------------
--- 7. sync_run_summary — orquestador v2 (batch)
+-- 7. tryton_snipe_run_summary — orquestador v2 (batch)
 --    Resumen por ejecución. run_id = $execution.id.
 -- -----------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.sync_run_summary (
+CREATE TABLE IF NOT EXISTS public.tryton_snipe_run_summary (
     id                BIGSERIAL PRIMARY KEY,
     run_id            TEXT NOT NULL,
     total_tryton      INTEGER,
@@ -156,8 +156,8 @@ CREATE TABLE IF NOT EXISTS public.sync_run_summary (
     finished_at       TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_srs_run_id
-    ON public.sync_run_summary (run_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_tsrs_run_id
+    ON public.tryton_snipe_run_summary (run_id);
 
 -- -----------------------------------------------------------------
 -- 8. staging_titular — Tryton sync titular-activo (v1)

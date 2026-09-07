@@ -21,6 +21,8 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 
 **ID:** `BFfvossXQY8Ck5zh` — activo
 
+> **Fix 2026-09-07 (fase 3 — workflowIds por ambiente):** snapshot sabor casa con IDs huérfanos en trabajo; `n8n-remap.sh` v1.2.0 remapea los 6 `Execute` por nombre de nodo (mapas con clave `orchestrator`: casa `BFfvossXQY8Ck5zh`, trabajo `3hh7DBsrq8A1rIQg`). En trabajo se archivó `PFlL1vCJhhGR6qAr` (IDs mezclados) y `3hh7DBsrq8A1rIQg` pasó a nombre canónico + push incremental (22 nodos). Espejo de `.ai/specs/tryton-activos.md`.
+
 ### Ejecucion
 
 - Trigger: **manual** (`When clicking 'Execute workflow'`). No es un webhook.
@@ -334,7 +336,9 @@ Has internal_code field? (IF ($json.rows ?? []).some(f => f.db_column_name === '
 
 ## 4.6 Tryton sync titular-activo (v1)
 
-**Archivo:** `flows/flujos-dev/Tryton sync users assets.json` (ID `Yv8AlEkGEdwzRJrJ`, activo) — invocado por el orquestador vía `Sync titular activo` (`waitForSubWorkflow: true`). También corre manual.
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT users assets.json` (ID `Yv8AlEkGEdwzRJrJ`, activo) — invocado por el orquestador vía `Execute Tryton sync snipe-IT users assets` (`waitForSubWorkflow: true`). También corre manual.
+
+> **Fix 2026-09-07 (rename snipe-IT):** ver spec canónico. Espejo de `.ai/specs/tryton-activos.md`.
 
 **Fuente autoritativa:** empleados activos con contrato vigente (`res_user.login` → `login@guayas.gob.ec`).
 
@@ -515,9 +519,11 @@ Esquema en `public.snipe_titular_map` (BD `n8n`). **Fix 2026-09-01:** faltaba DD
 | `snipe_user_id` | ID en Snipe-IT |
 | `updated_at` | `now()` |
 
-### `sync_run_summary` — orquestador v2 (batch)
+### `tryton_snipe_run_summary` — orquestador v2 (batch)
 
-Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD `n8n`). **Fix 2026-08-28:** no existía; `Run summary` fallaba. Añadida a `sql/init-sync-tables.sql` §7.
+Resumen por ejecución del orquestador. Esquema en `public.tryton_snipe_run_summary` (BD `n8n`). **Fix 2026-08-28:** no existía; `Run summary` fallaba. Añadida a `sql/init-sync-tables.sql` §7.
+
+> **Fix 2026-09-07:** renombrada `sync_run_summary` → `tryton_snipe_run_summary` por estándar `tryton_*` (watermark incremental, no mapa de assets). Rename puro sin `VIEW`; ver spec canónico.
 
 | Columna | Notas |
 |---------|-------|
@@ -588,3 +594,4 @@ Resumen por ejecución del orquestador. Esquema en `public.sync_run_summary` (BD
 | Cap 120/min de Snipe-IT → 429s con n8n a 50/min | Límite por usuario/token (`api_throttle_per_minute`, default 120). > **Fix 2026-09-06:** `API_THROTTLE_PER_MINUTE=600` en `envs/snipe-it.env` + `config:cache` en caliente (header verificado 600, sin downtime). Pendiente: n8n a 1/300ms tras FIN de 506 → full ≈2h. Espejo de `.ai/specs/tryton-activos.md`. |
 | Titular 0/8816: preload mudo + Tag sin body + Recover ''→crash | > **Fix 2026-09-06:** preload a `httpRequest`+Bearer env con retry; `body` preservado en Tags; Recover→`Has User ID?`; `Is Duplicate` loose. `user_map` 0→710 en ~2min. Espejo de `.ai/specs/tryton-activos.md`. |
 | Muerte súbita CLI mid-titular (Mac 73MB libres, mapa bulk-at-end) | > **Fix 2026-09-06:** backfill `snipe_titular_map` desde Snipe (2289 certificados) → re-runs convergen; Zammad detenido; heap 2048; `caffeinate`. Espejo de `.ai/specs/tryton-activos.md`. |
+| `sync_run_summary` fuera del estándar `tryton_*` | `Get last sync` lee watermark `MAX(finished_at)`, no el mapa (`tryton_snipe_asset_map`). > **Fix 2026-09-07:** rename puro → `tryton_snipe_run_summary` (sin `VIEW`); actualizados SQL, 3 flujos y `reset-sync.sh`. Espejo de `.ai/specs/tryton-activos.md`. |

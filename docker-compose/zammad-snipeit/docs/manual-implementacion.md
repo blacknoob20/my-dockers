@@ -529,11 +529,11 @@ docker compose restart zammad-railsserver
 
 ### 9.3 Sincronización Tryton → Snipe-IT (incremental)
 
-Desde 2026-09-06 el orquestador (`Tryton sync snipe-IT assets orchestrator v2`) es **incremental**: `Get last sync` lee `MAX(finished_at) - 2h` de `sync_run_summary` y `Search assets` / `Read Owned Assets` filtran `OR(write_date, create_date) >= since`. Sin cambios, el run completo tarda segundos (7.5s medidos) y `Run summary` registra `total_tryton=0`. Con `Has assets?` se saltan los sub-workflows de catálogos cuando no hay filas.
+Desde 2026-09-06 el orquestador (`Tryton sync snipe-IT assets orchestrator v2`) es **incremental**: `Get last sync` lee `MAX(finished_at) - 2h` de `tryton_snipe_run_summary` y `Search assets` / `Read Owned Assets` filtran `OR(write_date, create_date) >= since`. Sin cambios, el run completo tarda segundos (7.5s medidos) y `Run summary` registra `total_tryton=0`. Con `Has assets?` se saltan los sub-workflows de catálogos cuando no hay filas.
 
 - **Operación normal:** programar el orquestador a diario en horario nocturno (ej. 02:00, trigger Schedule en n8n). Solo los deltas generan llamadas a Snipe-IT (techo 50/min por el throttle 1/1200ms).
 - **Full semanal:** una vez por semana (ej. domingo) forzar barrido completo para recalcular `deleted_in_tryton` (el incremental lo reporta en 0) y reconciliar derivas: fijar `TRYTON_FULL_SYNC=true` en `envs/n8n.env`, recrear n8n (`docker compose up -d n8n`), ejecutar el orquestador, y volver a `false` + recrear. Un full de 9518 assets tarda ~3.2h por el cap de Snipe-IT.
-- **Primera ejecución** (tabla `sync_run_summary` vacía): hace full automáticamente.
+- **Primera ejecución** (tabla `tryton_snipe_run_summary` vacía): hace full automáticamente.
 
 ### 9.3 Actualización de versiones
 
