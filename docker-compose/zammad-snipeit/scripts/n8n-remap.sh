@@ -6,12 +6,13 @@
 # mktemp, diff, uname, docker (+ uuidgen o python3 solo en modo push).
 # No usa arrays asociativos, mapfile ni sed -i.
 #
-# Modo remap (default): solo reescribe credentials.{postgres,httpBearerAuth}.
-#   {id,name} en copias bajo /tmp (el repo no se modifica).
+# Modo remap (default): reescribe credentials.{postgres,httpBearerAuth}.
+#   {id,name} y los workflowId del orquestador en copias bajo /tmp
+#   (el repo no se modifica).
 # Modo push: remapea + UPDATE workflow_entity (nodes/connections/settings)
 #   + INSERT workflow_history + bump versionId, con backup previo a /tmp.
-#   No toca queries, workflowIds del orquestador (fase 3) ni secretos
-#   (viven cifrados en cada ambiente). Nunca ejecuta sudo.
+#   No toca queries ni secretos (viven cifrados en cada ambiente).
+#   Nunca ejecuta sudo.
 #
 # Mapas (solo IDs, seguros para git): envs/n8n-creds.example.json
 #                                     envs/n8n-workflows.example.json (plantillas).
@@ -20,14 +21,14 @@
 
 set -u
 
-VERSION="1.1.0"
+VERSION="1.2.1"
 
 print_usage() {
   cat <<USAGE
 Uso remap: $(basename "$0") --to {casa|trabajo} [opciones] <flujo.json> [...]
 Uso push:  $(basename "$0") push --to {casa|trabajo} [opciones] <flujo.json> [...]
 
-Remapea los IDs de credenciales de snapshots de n8n al ambiente destino.
+Remapea los IDs de credenciales y workflowIds del orquestador al ambiente destino.
 En modo push ademas publica el resultado en el n8n vivo (DB directa).
 
 Opciones remap:
@@ -54,7 +55,18 @@ Reglas de mapeo (solo IDs):
   postgres (todos los nodos)  -> pg_n8n del destino,
     salvo "Query Active Employees" -> pg_tryton del destino.
   httpBearerAuth              -> bearer_snipe del destino.
-  Otros tipos de credencial no se tocan. workflowIds no se tocan (fase 3).
+  workflowId (6 Execute del orquestador, por nombre de nodo)
+                              -> id del sub-workflow destino
+    (ver NODOS_WF abajo); actualiza value, cachedResultUrl y
+    cachedResultName. Otros tipos de credencial no se tocan.
+
+NODOS_WF (nombre exacto -> clave del mapa n8n-workflows):
+  "Execute login"                          -> login
+  "Execute Tryton sync snipeIT categories" -> categories
+  "Execute Tryton sync snipeIT status"     -> status
+  "Execute Tryton sync snipeIT models"     -> models
+  "Execute Tryton sync snipe-IT assets"    -> assets
+  "Execute Tryton sync snipe-IT users assets" -> users
 
 Seguridad push: backup del row vivo a /tmp/n8n-push/ENV antes de cada
 UPDATE; se niega si el live-ID no existe, el nombre no coincide o el
@@ -195,6 +207,23 @@ TGT_TRYTON_NAME="$(jq -r '.pg_tryton.name' "$TGT_CREDS")"
 TGT_BEARER_ID="$(jq -r '.bearer_snipe.id' "$TGT_CREDS")"
 TGT_BEARER_NAME="$(jq -r '.bearer_snipe.name' "$TGT_CREDS")"
 
+# ---------- mapa de workflows destino (fase 3: workflowIds) ----------
+[ -f "$TGT_WF" ] || fail "no existe $TGT_WF (mapa de workflows destino)"
+jq -e '.login.id and .categories.id and .status.id and .models.id and .assets.id and .users.id' "$TGT_WF" >/dev/null 2>&1 \
+  || fail "mapa invalido (faltan claves login/categories/status/models/assets/users): $TGT_WF"
+TGT_WF_LOGIN_ID="$(jq -r '.login.id' "$TGT_WF")"
+TGT_WF_LOGIN_NAME="$(jq -r '.login.name' "$TGT_WF")"
+TGT_WF_CATEGORIES_ID="$(jq -r '.categories.id' "$TGT_WF")"
+TGT_WF_CATEGORIES_NAME="$(jq -r '.categories.name' "$TGT_WF")"
+TGT_WF_STATUS_ID="$(jq -r '.status.id' "$TGT_WF")"
+TGT_WF_STATUS_NAME="$(jq -r '.status.name' "$TGT_WF")"
+TGT_WF_MODELS_ID="$(jq -r '.models.id' "$TGT_WF")"
+TGT_WF_MODELS_NAME="$(jq -r '.models.name' "$TGT_WF")"
+TGT_WF_ASSETS_ID="$(jq -r '.assets.id' "$TGT_WF")"
+TGT_WF_ASSETS_NAME="$(jq -r '.assets.name' "$TGT_WF")"
+TGT_WF_USERS_ID="$(jq -r '.users.id' "$TGT_WF")"
+TGT_WF_USERS_NAME="$(jq -r '.users.name' "$TGT_WF")"
+
 # Reescribe credenciales del snapshot $1 al ambiente destino en $2.
 remap_creds() {
   jq --arg casa_pg "$CASA_PG" --arg trabajo_pg "$TRABAJO_PG" \
@@ -239,6 +268,58 @@ count_cred() {
   esac
 }
 
+# Reescribe los workflowId de los 6 Execute del orquestador ($1) al
+# ambiente destino en $2 (por nombre exacto de nodo, ver NODOS_WF).
+remap_wf() {
+  jq --arg login_id "$TGT_WF_LOGIN_ID" --arg login_name "$TGT_WF_LOGIN_NAME" \
+     --arg categories_id "$TGT_WF_CATEGORIES_ID" --arg categories_name "$TGT_WF_CATEGORIES_NAME" \
+     --arg status_id "$TGT_WF_STATUS_ID" --arg status_name "$TGT_WF_STATUS_NAME" \
+     --arg models_id "$TGT_WF_MODELS_ID" --arg models_name "$TGT_WF_MODELS_NAME" \
+     --arg assets_id "$TGT_WF_ASSETS_ID" --arg assets_name "$TGT_WF_ASSETS_NAME" \
+     --arg users_id "$TGT_WF_USERS_ID" --arg users_name "$TGT_WF_USERS_NAME" \
+    '.nodes |= map(
+       if (.parameters.workflowId.value? // null) == null then .
+       elif .name == "Execute login" then
+         .parameters.workflowId.value = $login_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $login_id)
+         | .parameters.workflowId.cachedResultName = $login_name
+       elif .name == "Execute Tryton sync snipeIT categories" then
+         .parameters.workflowId.value = $categories_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $categories_id)
+         | .parameters.workflowId.cachedResultName = $categories_name
+       elif .name == "Execute Tryton sync snipeIT status" then
+         .parameters.workflowId.value = $status_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $status_id)
+         | .parameters.workflowId.cachedResultName = $status_name
+       elif .name == "Execute Tryton sync snipeIT models" then
+         .parameters.workflowId.value = $models_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $models_id)
+         | .parameters.workflowId.cachedResultName = $models_name
+       elif .name == "Execute Tryton sync snipe-IT assets" then
+         .parameters.workflowId.value = $assets_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $assets_id)
+         | .parameters.workflowId.cachedResultName = $assets_name
+       elif .name == "Execute Tryton sync snipe-IT users assets" then
+         .parameters.workflowId.value = $users_id
+         | .parameters.workflowId.cachedResultUrl = ("/workflow/" + $users_id)
+         | .parameters.workflowId.cachedResultName = $users_name
+       else .
+       end
+     )' "$1" > "$2"
+}
+
+count_wf() {
+  # $1=archivo -> numero de Execute con nombre conocido (NODOS_WF)
+  jq '[.nodes[]?
+       | select((.parameters.workflowId.value? // null) != null)
+       | select(.name == "Execute login"
+             or .name == "Execute Tryton sync snipeIT categories"
+             or .name == "Execute Tryton sync snipeIT status"
+             or .name == "Execute Tryton sync snipeIT models"
+             or .name == "Execute Tryton sync snipe-IT assets"
+             or .name == "Execute Tryton sync snipe-IT users assets")] | length' "$1"
+}
+
 # ================= MODO REMAP =================
 if [ "$MODE" = "remap" ]; then
   if [ -z "$OUT_DIR" ]; then
@@ -257,22 +338,26 @@ if [ "$MODE" = "remap" ]; then
     PG_N="$(count_cred "$SRC" pg_n8n)"
     TRYTON_N="$(count_cred "$SRC" pg_tryton)"
     BEARER_N="$(count_cred "$SRC" bearer)"
+    WF_N="$(count_wf "$SRC")"
 
     TMP_OUT="$(mktemp "${TMPDIR:-/tmp}/n8n-remap.XXXXXX")" || fail "no se pudo crear temporal"
-    remap_creds "$SRC" "$TMP_OUT" || { rm -f "$TMP_OUT"; fail "jq fallo con: $SRC"; }
+    TMP_MID="$(mktemp "${TMPDIR:-/tmp}/n8n-remap.XXXXXX")" || { rm -f "$TMP_OUT"; fail "no se pudo crear temporal"; }
+    remap_creds "$SRC" "$TMP_MID" || { rm -f "$TMP_OUT" "$TMP_MID"; fail "jq fallo con: $SRC"; }
+    remap_wf "$TMP_MID" "$TMP_OUT" || { rm -f "$TMP_OUT" "$TMP_MID"; fail "jq fallo (workflows) con: $SRC"; }
+    rm -f "$TMP_MID"
 
     if diff -q "$SRC" "$TMP_OUT" >/dev/null 2>&1; then
-      echo "[sin cambios] $SRC (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N)"
+      echo "[sin cambios] $SRC (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N)"
       rm -f "$TMP_OUT"
     else
       CHANGED=$((CHANGED + 1))
       if [ "$DRY_RUN" -eq 1 ]; then
-        echo "[dry-run] $SRC -> pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N"
+        echo "[dry-run] $SRC -> pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
         rm -f "$TMP_OUT"
       else
         BASE="$(basename "$SRC")"
         mv "$TMP_OUT" "$OUT_DIR/$BASE" || { rm -f "$TMP_OUT"; fail "no se pudo escribir $OUT_DIR/$BASE"; }
-        echo "[ok] $SRC -> $OUT_DIR/$BASE (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N)"
+        echo "[ok] $SRC -> $OUT_DIR/$BASE (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N)"
       fi
     fi
   done
@@ -372,21 +457,41 @@ for SRC in "$@"; do
   fi
 
   STAGED="$STAGE_DIR/$KEY.json"
-  remap_creds "$SRC" "$STAGED" || { echo "[ERROR] $SRC: fallo remap" >&2; ERR_N=$((ERR_N + 1)); continue; }
+  STAGED_MID="$STAGE_DIR/$KEY.mid.json"
+  remap_creds "$SRC" "$STAGED_MID" || { echo "[ERROR] $SRC: fallo remap" >&2; ERR_N=$((ERR_N + 1)); continue; }
+  remap_wf "$STAGED_MID" "$STAGED" || { echo "[ERROR] $SRC: fallo remap workflows" >&2; ERR_N=$((ERR_N + 1)); continue; }
+  rm -f "$STAGED_MID"
   PG_N="$(count_cred "$STAGED" pg_n8n)"
   TRYTON_N="$(count_cred "$STAGED" pg_tryton)"
   BEARER_N="$(count_cred "$STAGED" bearer)"
+  WF_N="$(count_wf "$STAGED")"
   BAD_PG="$(jq --arg a "$TGT_PG_ID" --arg b "$TGT_TRYTON_ID" \
     '[.nodes[]? | select(.credentials.postgres?) | select(.credentials.postgres.id != $a and .credentials.postgres.id != $b)] | length' "$STAGED")"
   BAD_BEARER="$(jq --arg a "$TGT_BEARER_ID" \
     '[.nodes[]? | select(.credentials.httpBearerAuth?) | select(.credentials.httpBearerAuth.id != $a)] | length' "$STAGED")"
-  if [ "$BAD_PG" != "0" ] || [ "$BAD_BEARER" != "0" ]; then
-    echo "[ERROR] $SRC: remapeo incompleto (pg_fuera:$BAD_PG bearer_fuera:$BAD_BEARER)" >&2
+  BAD_WF="$(jq --arg login "$TGT_WF_LOGIN_ID" --arg categories "$TGT_WF_CATEGORIES_ID" \
+    --arg status "$TGT_WF_STATUS_ID" --arg models "$TGT_WF_MODELS_ID" \
+    --arg assets "$TGT_WF_ASSETS_ID" --arg users "$TGT_WF_USERS_ID" \
+    '[.nodes[]? | select((.parameters.workflowId.value? // null) != null)
+      | select(.name == "Execute login"
+            or .name == "Execute Tryton sync snipeIT categories"
+            or .name == "Execute Tryton sync snipeIT status"
+            or .name == "Execute Tryton sync snipeIT models"
+            or .name == "Execute Tryton sync snipe-IT assets"
+            or .name == "Execute Tryton sync snipe-IT users assets")
+      | select(.parameters.workflowId.value != $login
+           and .parameters.workflowId.value != $categories
+           and .parameters.workflowId.value != $status
+           and .parameters.workflowId.value != $models
+           and .parameters.workflowId.value != $assets
+           and .parameters.workflowId.value != $users)] | length' "$STAGED")"
+  if [ "$BAD_PG" != "0" ] || [ "$BAD_BEARER" != "0" ] || [ "$BAD_WF" != "0" ]; then
+    echo "[ERROR] $SRC: remapeo incompleto (pg_fuera:$BAD_PG bearer_fuera:$BAD_BEARER wf_fuera:$BAD_WF)" >&2
     ERR_N=$((ERR_N + 1)); continue
   fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[dry-run] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ver=${OLD_VID:-?} -> nueva | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N"
+    echo "[dry-run] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ver=${OLD_VID:-?} -> nueva | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
     continue
   fi
 
@@ -424,7 +529,7 @@ for SRC in "$@"; do
       -v vid="$NEWVID" -v live="$LIVE_ID" -v wname="$SNAP_NAME" >/dev/null 2>&1; then
     CHECK="$(psql_q "SELECT \"versionId\" FROM workflow_entity WHERE id='$LIVE_ID';")"
     if [ "$CHECK" = "$NEWVID" ]; then
-      echo "[ok] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ${OLD_VID} -> ${NEWVID} | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N"
+      echo "[ok] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ${OLD_VID} -> ${NEWVID} | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
       OK_N=$((OK_N + 1))
       PUSHED_IDS="$PUSHED_IDS $LIVE_ID"
     else

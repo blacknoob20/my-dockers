@@ -11,6 +11,10 @@
     "id": "EJEMPLO_ID_LOGIN",
     "name": "Tryton login"
   },
+  "orchestrator": {
+    "id": "EJEMPLO_ID_ORCHESTRATOR",
+    "name": "Tryton sync snipe-IT assets orchestrator"
+  },
   "models": {
     "id": "EJEMPLO_ID_MODELS",
     "name": "Tryton sync snipe-IT models"
@@ -21,6 +25,6 @@
   },
   "users": {
     "id": "EJEMPLO_ID_USERS",
-    "name": "Tryton sync users assets"
+    "name": "Tryton sync snipe-IT users assets"
   }
 }
