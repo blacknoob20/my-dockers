@@ -8,7 +8,7 @@
 # Uso:
 #   ./scripts/snipe-it_custom_fields.sh
 #   SNIPE_URL=http://localhost:8080 API_TOKEN=xxx ./scripts/snipe-it_custom_fields.sh
-#   # o lee API_TOKEN de envs/n8n.env si existe
+#   # o lee API_TOKEN de envs/n8n.env si existe (local, ver n8n.env.example)
 #
 # Idempotente: si el campo/fieldset ya existe no lo duplica.
 
@@ -33,7 +33,7 @@ if [[ -z "${API_TOKEN:-}" ]]; then
 fi
 # último fallback: token de laboratorio (actualizar si se regenera Passport)
 if [[ -z "${API_TOKEN:-}" ]]; then
-  echo "⚠ API_TOKEN no configurado. Define SNIPE_URL/API_TOKEN o actualiza envs/n8n.env (SNIPEIT_TOKEN)." >&2
+  echo "⚠ API_TOKEN no configurado. Define SNIPE_URL/API_TOKEN o crea envs/n8n.env desde envs/n8n.env.example (SNIPEIT_TOKEN)." >&2
   exit 1
 fi
 

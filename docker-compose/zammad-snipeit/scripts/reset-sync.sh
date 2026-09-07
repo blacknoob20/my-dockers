@@ -25,6 +25,13 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for _env in snipe-db.env n8n-db.env; do
+  if [[ ! -f "$SCRIPT_DIR/../envs/$_env" ]]; then
+    echo "ERROR: falta envs/$_env (ignorado por git). Cópialo desde el ejemplo y edítalo:" >&2
+    echo "  cp envs/${_env}.example envs/$_env && nano envs/$_env" >&2
+    exit 1
+  fi
+done
 source "$SCRIPT_DIR/../envs/snipe-db.env"
 source "$SCRIPT_DIR/../envs/n8n-db.env"
 
