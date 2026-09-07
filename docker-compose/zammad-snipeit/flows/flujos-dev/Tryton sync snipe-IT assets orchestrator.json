@@ -82,6 +82,10 @@
             {
               "name": "Authorization",
               "value": "={{ $json.authorization }}"
+            },
+            {
+              "name": "Host",
+              "value": "financieroprueba.guayas.gob.ec"
             }
           ]
         },
@@ -729,7 +733,7 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"

@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const email = $('Prep New User').item.json.email;\nconst rows = ($json.body?.rows || []);\nconst match = rows.find(r => String(r.email||'').toLowerCase() === String(email||'').toLowerCase());\nif (match && match.id) {\n  return [{ json: {\n    email,\n    first_name: $('Prep New User').item.json.first_name,\n    last_name: $('Prep New User').item.json.last_name,\n    snipe_user_id: match.id,\n    created_user: false,\n  }}];\n}\nreturn [{ json: {\n  email,\n  first_name: $('Prep New User').item.json.first_name,\n  last_name: $('Prep New User').item.json.last_name,\n  snipe_user_id: '',\n  created_user: false,\n}}];"
+        "jsCode": "const email = $('Prep New User').item.json.email;\nconst rows = ($json.body?.rows || []);\nconst match = rows.find(r => String(r.email||'').toLowerCase() === String(email||'').toLowerCase());\nif (match && match.id) {\n  return [{ json: {\n    email,\n    first_name: $('Prep New User').item.json.first_name,\n    last_name: $('Prep New User').item.json.last_name,\n    snipe_user_id: match.id,\n    created_user: false,\n  }}];\n}\nreturn [{ json: {\n  email,\n  first_name: $('Prep New User').item.json.first_name,\n  last_name: $('Prep New User').item.json.last_name,\n  snipe_user_id: null,\n  created_user: false,\n}}];"
       },
       "id": "7fb336b4-db52-4b33-94a9-c90c668f7216",
       "name": "Recover User",
@@ -126,7 +126,7 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 3
           },
           "conditions": [
@@ -449,7 +449,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const baseUrl = `${$env.SNIPE_HOST}/api/v1/users?limit=500`;\nconst allRows = [];\nfor (let offset = 0; offset < 3000; offset += 500) {\n  const url = `${baseUrl}&offset=${offset}`;\n  try {\n    const resp = await this.helpers.httpRequestWithAuthentication.call(this, 'httpBearerAuth', {\n      url,\n      headers: { Accept: 'application/json' },\n      returnFullResponse: true,\n    }, { nodeCredentialType: 'httpBearerAuth' });\n    const body = resp.body;\n    const rows = (body && body.rows) ? body.rows : [];\n    allRows.push(...rows);\n    if (rows.length < 500) break;\n  } catch (e) {\n    break;\n  }\n}\nreturn [{ json: { body: { rows: allRows } } }];"
+        "jsCode": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst baseUrl = `${$env.SNIPE_HOST}/api/v1/users?limit=500`;\nconst token = $env.SNIPEIT_TOKEN;\nconst allRows = [];\nlet lastError = null;\nfor (let offset = 0; offset < 3000; offset += 500) {\n  if (offset > 0) await sleep(1200);\n  const url = `${baseUrl}&offset=${offset}`;\n  let rows = null;\n  for (let attempt = 1; attempt <= 4; attempt++) {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'GET',\n        url,\n        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },\n        returnFullResponse: true,\n        timeout: 30000,\n      });\n      const body = (resp && resp.body) || {};\n      rows = Array.isArray(body.rows) ? body.rows : [];\n      lastError = null;\n      break;\n    } catch (e) {\n      lastError = (e && e.message) || String(e);\n      await sleep(15000);\n    }\n  }\n  if (rows === null) break;\n  allRows.push(...rows);\n  if (rows.length < 500) break;\n}\nreturn [{ json: { body: { rows: allRows }, preload_error: lastError, preload_total: allRows.length } }];"
       },
       "id": "25c729f5-0551-4b76-9f1e-452844a7fcc0",
       "name": "Preload Snipe Users",
@@ -587,7 +587,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 1200
+              "batchInterval": 1500
             }
           },
           "response": {
@@ -649,7 +649,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 1200
+              "batchInterval": 1500
             }
           },
           "response": {
@@ -772,7 +772,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 1200
+              "batchInterval": 1500
             }
           },
           "response": {
@@ -1028,6 +1028,12 @@
               "name": "created_user",
               "type": "boolean",
               "value": "=true"
+            },
+            {
+              "id": "af16ba2a-b03e-4d71-b512-81e020f9b8d1",
+              "name": "body",
+              "type": "object",
+              "value": "={{ $json.body }}"
             }
           ]
         },
@@ -1102,7 +1108,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 1200
+              "batchInterval": 1500
             }
           },
           "response": {
@@ -1165,6 +1171,12 @@
               "name": "created_user",
               "type": "boolean",
               "value": "=true"
+            },
+            {
+              "id": "f8ff47ce-e6c6-478c-973c-ac016bebb392",
+              "name": "body",
+              "type": "object",
+              "value": "={{ $json.body }}"
             }
           ]
         },
@@ -1239,7 +1251,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 1200
+              "batchInterval": 1500
             }
           },
           "response": {
@@ -1630,6 +1642,10 @@
             {
               "name": "Authorization",
               "value": "={{ $json.authorization }}"
+            },
+            {
+              "name": "Host",
+              "value": "financieroprueba.guayas.gob.ec"
             }
           ]
         },
@@ -1714,7 +1730,7 @@
       "main": [
         [
           {
-            "node": "Save New User",
+            "node": "Has User ID?",
             "type": "main",
             "index": 0
           }

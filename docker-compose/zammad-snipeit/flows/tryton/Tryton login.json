@@ -8,15 +8,24 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"id\": 0,\n  \"method\": \"common.db.login\",\n  \"params\": [\n    \"{{ $env.TRYTON_USER }}\",\n    {\"password\": \"{{ $env.TRYTON_PASS }}\", \"device_cookie\": null},\n    \"es\"\n  ]\n}",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Host",
+              "value": "financieroprueba.guayas.gob.ec"
+            }
+          ]
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1744,
-        672
+        704,
+        208
       ],
-      "id": "28ff5cb2-f347-4533-8ab9-f8018d086341",
+      "id": "bbc09974-919e-4efa-b2c1-e030cd0b20d2",
       "name": "Tryton login",
       "onError": "continueErrorOutput"
     },
@@ -28,10 +37,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1104,
-        656
+        64,
+        192
       ],
-      "id": "61534bfb-fef7-4350-9aec-c14663600631",
+      "id": "56b69527-a1bd-48fa-94b7-c71422d71b27",
       "name": "Read session"
     },
     {
@@ -62,10 +71,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1264,
-        656
+        224,
+        192
       ],
-      "id": "a004ae4c-719e-4abe-a675-0a2096dff61b",
+      "id": "5371cc7d-9448-4fe9-bf21-deda3ea33f60",
       "name": "Some session?"
     },
     {
@@ -78,6 +87,10 @@
             {
               "name": "Authorization",
               "value": "={{ $json.authorization }}"
+            },
+            {
+              "name": "Host",
+              "value": "financieroprueba.guayas.gob.ec"
             }
           ]
         },
@@ -89,10 +102,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1408,
-        576
+        368,
+        112
       ],
-      "id": "57d60fa9-3769-4dfc-a199-ef6411df99bf",
+      "id": "99eaa858-d361-4669-ad49-333c07568d33",
       "name": "Testing session",
       "alwaysOutputData": false,
       "notesInFlow": false,
@@ -103,10 +116,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2880,
-        496
+        1840,
+        32
       ],
-      "id": "41fe5534-c576-45be-9f03-65477d26b8a1",
+      "id": "a5d01482-3dc4-4631-ba5e-1bee5b16e0c5",
       "name": "Finish"
     },
     {
@@ -137,10 +150,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1568,
-        576
+        528,
+        112
       ],
-      "id": "15e0a6f9-16d0-4599-9347-0b8be7acfd07",
+      "id": "1f19343f-ddb0-43fd-80c9-52bb67ea5982",
       "name": "Is working?",
       "onError": "continueRegularOutput"
     },
@@ -171,10 +184,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2032,
-        752
+        992,
+        288
       ],
-      "id": "298aa9d4-be40-4192-90d9-c4ca91129eda",
+      "id": "84c32240-6e10-4c64-b268-9eef84ff0dde",
       "name": "Is not alive?"
     },
     {
@@ -186,11 +199,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1040,
-        464
+        0,
+        0
       ],
       "typeVersion": 1,
-      "id": "e8477737-57aa-4ed8-a778-7c49feef3f21",
+      "id": "835c197f-7f29-4c0c-99a3-0e99426eb9e1",
       "name": "Sticky Note"
     },
     {
@@ -207,10 +220,10 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.2,
       "position": [
-        928,
-        656
+        -112,
+        192
       ],
-      "id": "a72caf4f-d16b-46c1-bce8-c72aff3207d5",
+      "id": "364157fc-9010-481a-8082-e557aee400cf",
       "name": "Executed by Tryton Sync Assets"
     },
     {
@@ -221,10 +234,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1888,
-        720
+        848,
+        256
       ],
-      "id": "a1e40fea-4788-4619-9b1d-5c1ef66a87d9",
+      "id": "c92d452c-7ba4-48f9-8289-060547f3fa0b",
       "name": "Retries 3 times"
     },
     {
@@ -234,10 +247,10 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        2384,
-        848
+        1344,
+        384
       ],
-      "id": "fff8d592-1e2d-4104-a7d7-06d82f75f1c0",
+      "id": "9c6d51d4-861a-4a61-909d-097396fd814d",
       "name": "Stop and Error"
     },
     {
@@ -248,10 +261,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2736,
-        704
+        1696,
+        240
       ],
-      "id": "679c5f97-e69e-4591-9490-d03475ab9dc8",
+      "id": "2f763be1-36eb-4f7b-b0c8-f33480daf1bd",
       "name": "Save Authentication"
     },
     {
@@ -264,10 +277,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2528,
-        608
+        1488,
+        144
       ],
-      "id": "01dedbe8-c605-4516-9361-a164489c4320",
+      "id": "e83530a1-9703-4550-a75d-ae3a9942b2cf",
       "name": "Sticky Note1"
     },
     {
@@ -298,10 +311,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2560,
-        784
+        1520,
+        320
       ],
-      "id": "638a86c0-c125-4d8c-8845-862b448e77b9",
+      "id": "479af793-88dc-4d21-baf0-d0f5323508f5",
       "name": "Is success?"
     },
     {
@@ -347,10 +360,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2240,
-        816
+        1200,
+        352
       ],
-      "id": "fa22f297-60b3-4c0f-94d5-525b3dc53a71",
+      "id": "d5c160c9-7ac3-470b-8620-046db499e7c0",
       "name": "Mail notif"
     },
     {
@@ -370,10 +383,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1744,
-        496
+        704,
+        32
       ],
-      "id": "7cab0532-d871-44d9-9433-4f25e752de9b",
+      "id": "cec3d605-67f1-4d3d-a96d-b5b3f3862254",
       "name": "Cached session"
     }
   ],
@@ -547,21 +560,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "all",
-    "saveManualExecutions": true,
-    "saveExecutionProgress": false,
-    "executionTimeout": 3600
+    "binaryMode": "separate"
   },
   "versionId": "d79ea763-67d3-4cfd-afb5-f856d6b2652e",
   "meta": {
     "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
   "nodeGroups": [],
-  "id": "Cnq2yvzVCRTKFld5",
+  "id": "QHc2NJoBedOUJaPp",
   "tags": []
 }
