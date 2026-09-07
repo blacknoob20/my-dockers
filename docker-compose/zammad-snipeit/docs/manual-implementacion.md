@@ -306,18 +306,25 @@ cd /opt/zammad-snipe
 
 ### Paso 2 — Revisar y ajustar las variables de entorno
 
-Todas las credenciales están en `envs/*.env` (una por servicio) + el `.env` externo de DBs. **En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
+El repo solo trackea plantillas `envs/*.env.example` (sin secretos); los `envs/*.env` reales están ignorados por git (uno por máquina). Créalos antes del primer arranque:
+
+```bash
+for f in envs/*.env.example; do cp -n "$f" "${f%.example}"; done
+# luego edita cada envs/*.env con passwords/tokens/URLs de este ambiente
+```
+
+**En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
 
 | Archivo | Servicio(s) | Contenido |
 |---------|-------------|-----------|
 | `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `changeme_*`) |
-| `envs/snipe-db.env` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
-| `envs/snipe-it.env` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
-| `envs/zammad-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
-| `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, heap |
-| `envs/zammad-app.env` | servicios Zammad | Conexiones PostgreSQL (`POSTGRESQL_HOST=postgres` → `dbs-postgres`), ES, Redis, Memcached |
-| `envs/n8n-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `n8n`/`n8n_user` (debe coincidir con `n8n.env`) |
-| `envs/n8n.env` | `n8n` | Timezone, DB (`DB_POSTGRESDB_HOST=postgres` → `dbs-postgres`), entorno |
+| `envs/snipe-db.env(.example)` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
+| `envs/snipe-it.env(.example)` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
+| `envs/zammad-db.env(.example)` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
+| `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, heap |
+| `envs/zammad-app.env(.example)` | servicios Zammad | Conexiones PostgreSQL (`POSTGRESQL_HOST=postgres` → `dbs-postgres`), ES, Redis, Memcached |
+| `envs/n8n-db.env(.example)` | referencia para `init-external-dbs.sh` | PostgreSQL: `n8n`/`n8n_user` (debe coincidir con `n8n.env`) |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, DB (`DB_POSTGRESDB_HOST=postgres` → `dbs-postgres`), entorno |
 
 Ajustes clave en producción:
 
@@ -383,7 +390,7 @@ Los seeders de `scripts/` pueblan Snipe-IT vía API una vez que `http://<servido
 
 ```bash
 # 1) Crear token API en Snipe-IT (Admin → Settings → API Tokens) y exportarlo.
-#    El token de laboratorio está en envs/n8n.env (SNIPEIT_TOKEN) o en scripts/* (placeholder).
+#    El token de este ambiente está en envs/n8n.env local (SNIPEIT_TOKEN, ver .env.example).
 export SNIPE_URL="http://localhost:8080"
 export API_TOKEN="eyJ0..."   # o: export API_TOKEN=$(grep SNIPEIT_TOKEN envs/n8n.env | cut -d= -f2-)
 
@@ -602,11 +609,11 @@ El stack incluye una integración documentada y operativa entre el ERP **Tryton*
 
 Este repositorio es un **entorno de laboratorio** y requiere ajustes antes de producción:
 
-1. **Cambiar todas las contraseñas** de `envs/*.env` (las actuales son de laboratorio y públicas en el repo). Regenerar también `APP_KEY` de Snipe-IT.
+1. **Cambiar todas las contraseñas** de `envs/*.env` locales (creados desde `*.env.example`; los valores de laboratorio nunca se commitean). Regenerar también `APP_KEY` de Snipe-IT.
 2. **TLS / reverse proxy:** exponer solo los puertos 8000, 8080 y 5678 detrás de un reverse proxy (Caddy, Nginx, Traefik) con certificado TLS. Actualizar `APP_URL` (Snipe-IT) y el hostname público (Zammad) para que los enlaces se generen con HTTPS.
 3. **No exponer las bases de datos:** quitar los puertos `3307` y `5432` del `docker-compose.yml` en producción (los servicios internos se comunican por la red `net`).
-4. **Mail saliente:** el laboratorio usa `MAIL_MAILER=log` (no envía correos). Configurar un SMTP real en `envs/snipe-it.env` y en Zammad (Admin → Channels → Email).
-5. **n8n task runners (opcional pero recomendado):** descomentar el servicio `n8n-runner` y las variables `N8N_RUNNERS_*` comentadas en el compose y en `envs/n8n.env` para ejecutar código JS/Python aislado.
+4. **Mail saliente:** el laboratorio usa `MAIL_MAILER=log` (no envía correos). Configurar un SMTP real en `envs/snipe-it.env` (local, ver `.example`) y en Zammad (Admin → Channels → Email).
+5. **n8n task runners (opcional pero recomendado):** descomentar el servicio `n8n-runner` y las variables `N8N_RUNNERS_*` comentadas en el compose y en `envs/n8n.env` (local, ver `.example`) para ejecutar código JS/Python aislado.
 6. **Elasticsearch:** en producción habilitar `xpack.security.enabled=true` y proteger el puerto 9200 (actualmente `false`/sin autenticación).
 7. **Zona horaria:** `GENERIC_TIMEZONE=America/Guayaquil` (n8n) y zona del host correcta.
 8. **Monitorización:** configurar alertas de disco/RAM (los 16 GB recomendados no incluyen crecimiento de backups) y verificar los healthchecks del stack (`docker compose ps`).

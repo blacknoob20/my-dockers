@@ -93,7 +93,8 @@ Los scripts `.sh` en la raíz del repositorio son **seeders de datos iniciales**
 | Archivo | Qué hace |
 |---------|----------|
 | `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`dbs-postgres`, `dbs-mariadb` en red `docker_net`). Lee el password de superusuario desde `/Volumes/CRGS-1T/Docker/.env` (`POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD`) con fallback `changeme_*`; aliases `postgres`/`mariadb` resuelven a `dbs-*`. Ejecutar una vez antes del primer `docker compose up` (idempotente). |
-| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: **paso 0 (LAB ONLY)** borra todos los assets en Snipe-IT (`DELETE FROM assets`, sin FKs entre assets/models/categories/status_labels, no toca usuarios); luego borra modelos, categorías y status labels creados (modelos por su `category_id` del map, status por `snipe_name`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `sync_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. DBs en `dbs-postgres`/`dbs-mariadb` (defaults `SNIPE_DB_CONT`/`N8N_DB_CONT`); sanitiza `\r` de los `.env` (CRLF). Preserva los 3 status labels built-in (AUTO_INCREMENT a 4), categoría default y users. Uso: `./scripts/reset-sync.sh -y` |
+| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: **paso 0 (LAB ONLY)** borra todos los assets en Snipe-IT (`DELETE FROM assets`, sin FKs entre assets/models/categories/status_labels, no toca usuarios); luego borra modelos, categorías y status labels creados (modelos por su `category_id` del map, status por `snipe_name`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `sync_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. DBs en `dbs-postgres`/`dbs-mariadb` (defaults `SNIPE_DB_CONT`/`N8N_DB_CONT`); lee `envs/snipe-db.env` + `envs/n8n-db.env` locales (ver `*.env.example`, aborta con ayuda si faltan); sanitiza `\r` de los `.env` (CRLF). Preserva los 3 status labels built-in (AUTO_INCREMENT a 4), categoría default y users. Uso: `./scripts/reset-sync.sh -y` |
+| `scripts/n8n-remap.sh` | Remapea IDs de credenciales en snapshots (`flows/**/*.json`) entre ambientes casa/trabajo para importar sin re-seleccionar a mano: `./scripts/n8n-remap.sh --to trabajo "flows/flujos-dev/Tryton sync snipe-IT status.json"` (salida a `/tmp/n8n-remap/<env>`, no se commitea; `--dry-run`, `--help`/`-h`, `--install` solo brew/macOS, nunca `sudo`). Mapas solo-IDs (sin secretos) en `envs/n8n-creds.example.json` / `envs/n8n-workflows.example.json` como plantilla; los reales `envs/n8n-{creds,workflows}.{casa,trabajo}.json` están ignorados por git (cada máquina guarda los suyos). Solo credenciales (`postgres` → `pg_n8n`, salvo `Query Active Employees` → `pg_tryton`; `httpBearerAuth` → `bearer_snipe`); `workflowId` del orquestador pendiente (fase 3). Modo `push` publica al n8n vivo por DB directa (`UPDATE workflow_entity` + `INSERT workflow_history` primero por FK `activeVersionId` + bump `versionId`; backup a `/tmp/n8n-push/<env>`, confirmación salvo `--yes`, `--restart` con espera a `/healthz`): `./scripts/n8n-remap.sh push --to trabajo --dry-run flows/...` Mapas lógico→live-ID en `envs/n8n-workflows.casa.json` / `n8n-workflows.trabajo.json` (locales, ignorados); se niega si el live-ID no existe, el nombre no coincide o está archivado. Fix 2026-09-07: el duplicado `Tryton sync snipe-IT status 1OYIdFnCkg9YJgrP` (3 PG a credencial Tryton) archivado (`isArchived=true`, reversible); canónico `DFYH9aXY2QE6uJzl` republicado vía push |
 
 > **Nota Passport Snipe-IT:** las llaves RSA de Laravel Passport (`oauth-*.key`) viven en `./snipe-data/snipeit/keys/` (bind mount desde `docker-compose.yml`). Si el contenedor se recrea sin ese volumen, toda la API responde 500 `Invalid key supplied`. Si el volumen se regenera con `php artisan passport:keys` como root, corregir permisos con `chown apache:apache /var/lib/snipeit/keys/*`. Los API tokens quedan inválidos tras regenerar llaves (regenerarlos en Admin → API Tokens y actualizar la credencial `Bearer Auth account` / `httpBearerAuth` id `PipxV96bF9YxckC4` en n8n).
 
@@ -126,7 +127,22 @@ Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API
 
 > **⚠ No usar en producción.** Estas credenciales son únicamente para el entorno de laboratorio local.
 
-Las credenciales y variables de entorno están en archivos **`.env`** por servicio dentro de la carpeta **`envs/`**. El `docker-compose.yml` los referencia con `env_file:`.
+Los secretos reales viven en archivos **`envs/*.env` locales, ignorados por git**. El repo solo trackea plantillas **`envs/*.env.example`** (sin secretos) + `envs/n8n-{creds,workflows}.example.json`. El `docker-compose.yml` los referencia con `env_file:` (lee los `.env` reales).
+
+Setup en cada máquina (casa/trabajo):
+
+```bash
+cp envs/n8n.env.example envs/n8n.env
+cp envs/snipe-it.env.example envs/snipe-it.env
+cp envs/zammad-app.env.example envs/zammad-app.env
+cp envs/zammad-search.env.example envs/zammad-search.env
+cp envs/snipe-db.env.example envs/snipe-db.env
+cp envs/zammad-db.env.example envs/zammad-db.env
+cp envs/n8n-db.env.example envs/n8n-db.env
+# luego edita passwords/tokens/URLs por ambiente
+```
+
+> **Nota historial 2026-09-07:** los `*.env` con secretos se des-trackearon (`git rm --cached` + `.gitignore`) y el historial se purgó con `filter-repo`; si tu clon aún los muestra trackeados, re-clona y rota secretos.
 
 ### Contenedores externos (DBs)
 
@@ -135,22 +151,22 @@ Las credenciales y variables de entorno están en archivos **`.env`** por servic
 | `dbs-postgres` (`postgres`) | User: `postgres`, Password: `POSTGRES_PASSWORD` (lab: `changeme_root_pg`) |
 | `dbs-mariadb` (`mariadb`) | Root: `MYSQL_ROOT_PASSWORD` (lab: `changeme_root`) |
 
-### Archivos .env del compose
+### Archivos .env del compose (plantilla `.env.example` en git, real `.env` local ignorado)
 
 | Archivo | Servicio(s) | Contenido |
 |---------|------------|-----------|
-| `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (`API_THROTTLE_PER_MINUTE=600`, default vendor 120; aplicar con `php artisan config:cache`) |
-| `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
-| `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
+| `envs/snipe-it.env(.example)` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (`API_THROTTLE_PER_MINUTE=600`, default vendor 120; aplicar con `php artisan config:cache`) |
+| `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
+| `envs/zammad-app.env(.example)` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
-### Archivos .env de DBs (no usados actualmente, referenciados por init-external-dbs.sh)
+### Archivos .env de DBs (plantilla en git, real local ignorado; referenciados por init-external-dbs.sh)
 
 | Archivo | Contenido |
 |---------|-----------|
-| `envs/snipe-db.env` | MariaDB: root password, DB name, user/password |
-| `envs/zammad-db.env` | PostgreSQL: user/password, DB name |
-| `envs/n8n-db.env` | PostgreSQL: user/password, DB name |
+| `envs/snipe-db.env(.example)` | MariaDB: root password, DB name, user/password |
+| `envs/zammad-db.env(.example)` | PostgreSQL: user/password, DB name |
+| `envs/n8n-db.env(.example)` | PostgreSQL: user/password, DB name |
 
 Cámbialo antes de producción.
 

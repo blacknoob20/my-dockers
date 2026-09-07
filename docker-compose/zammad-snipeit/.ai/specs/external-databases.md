@@ -52,9 +52,11 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 | Archivo | Cambio |
 |---------|--------|
 | `docker-compose.yml` | Servicios `snipe-db`, `zammad-db`, `n8n-db` comentados; red `docker_net` agregada como externa |
-| `envs/snipe-it.env` | `DB_HOST=snipe-db` → `DB_HOST=mariadb` |
-| `envs/zammad-app.env` | `POSTGRESQL_HOST=zammad-db` → `POSTGRESQL_HOST=postgres` |
-| `envs/n8n.env` | Agregadas `DB_TYPE=postgresdb`, `DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_PORT=5432`, `DB_POSTGRESDB_DATABASE=n8n`, `DB_POSTGRESDB_USER=n8n_user`, `DB_POSTGRESDB_PASSWORD=n8n_password_123` |
+| `envs/snipe-it.env(.example)` | `DB_HOST=snipe-db` → `DB_HOST=mariadb` |
+| `envs/zammad-app.env(.example)` | `POSTGRESQL_HOST=zammad-db` → `POSTGRESQL_HOST=postgres` |
+| `envs/n8n.env(.example)` | Agregadas `DB_TYPE=postgresdb`, `DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_PORT=5432`, `DB_POSTGRESDB_DATABASE=n8n`, `DB_POSTGRESDB_USER=n8n_user`, `DB_POSTGRESDB_PASSWORD=n8n_password_123` |
+
+> **Nota 2026-09-07:** los `envs/*.env` reales están ignorados por git (secretos locales por máquina); el repo trackea solo `*.env.example`.
 
 ## Script de Inicialización
 
@@ -75,9 +77,9 @@ Los servicios del compose ahora usan dos redes:
 Si se desea volver a usar las bases de datos internas del compose:
 
 1. Descomentar los servicios `snipe-db`, `zammad-db`, `n8n-db` en `docker-compose.yml`
-2. Restaurar `DB_HOST=snipe-db` en `envs/snipe-it.env`
-3. Restaurar `POSTGRESQL_HOST=zammad-db` en `envs/zammad-app.env`
-4. Eliminar variables `DB_*` de `envs/n8n.env`
+2. Restaurar `DB_HOST=snipe-db` en `envs/snipe-it.env` local (ver `.env.example`)
+3. Restaurar `POSTGRESQL_HOST=zammad-db` en `envs/zammad-app.env` local (ver `.env.example`)
+4. Eliminar variables `DB_*` de `envs/n8n.env` local (ver `.env.example`)
 5. Restaurar `depends_on` originales de `snipe-it`, `zammad-init`, `zammad-backup`, `n8n`
 6. Eliminar `- docker_net` de las listas de networks de cada servicio
 7. Eliminar la sección `docker_net:` de networks en `docker-compose.yml`
