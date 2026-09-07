@@ -12,6 +12,13 @@
 **/.seguridad
 *.key
 
+# Stack zammad-snipeit: secretos reales fuera del repo, solo examples trackeados
+docker-compose/zammad-snipeit/envs/*.env
+!docker-compose/zammad-snipeit/envs/*.env.example
+docker-compose/zammad-snipeit/envs/n8n-creds.*.json
+docker-compose/zammad-snipeit/envs/n8n-workflows.*.json
+!docker-compose/zammad-snipeit/envs/*.example.json
+
 # Datos de aplicaciones
 n8n_data/
 postgresql_vlm/
