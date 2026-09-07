@@ -105,6 +105,15 @@ if [[ "${1:-}" != "-y" ]]; then
   [[ "$resp" =~ ^[sSyY]$ ]] || { echo "Cancelado."; exit 0; }
 fi
 
+# ---- 0. Snipe-IT (MySQL): assets (LAB ONLY, irreversible, sin respaldo) ----
+# Sin este paso el guard de modelos aborta (assets referencian modelos).
+ASSET_COUNT=$(mysql_q "SELECT COUNT(*) FROM assets;")
+echo "==> Snipe-IT paso 0 (LAB ONLY): $ASSET_COUNT asset(s) a borrar (todos)."
+mysql_q "DELETE FROM assets;" >/dev/null
+mysql_q "ALTER TABLE assets AUTO_INCREMENT = 1;" >/dev/null
+echo "==> Snipe-IT: eliminados de assets -> todos ($ASSET_COUNT); AUTO_INCREMENT reiniciado a 1."
+echo "    Assets restantes: $(mysql_q "SELECT COUNT(*) FROM assets;")"
+
 # ---- 1. Snipe-IT (MySQL): modelos ----
 if [[ ${#MOD_IDS[@]} -gt 0 ]]; then
   MOD_LIST=$(IFS=,; echo "${MOD_IDS[*]}")
