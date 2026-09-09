@@ -163,7 +163,7 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 
 | Servicio | Imagen | Puerto publicado | Base de datos |
 |----------|--------|------------------|---------------|
-| `dbs-mariadb` (externo, `docker_net`, alias `mariadb`) | `mariadb:lts-ubi` | `3306:3306` | MySQL `snipeit` (`snipe_user`/`snipe_password_123`, creado por `init-external-dbs.sh`) |
+| `dbs-mariadb` (externo, `docker_net`, alias `mariadb`) | `mariadb:lts-ubi` | `3306:3306` | MySQL `snipeit` (`snipe_user`/`your_snipe_password_here`, creado por `init-external-dbs.sh`, ver `envs/snipe-db.env.example`) |
 | `snipe-it` | `snipe/snipe-it:latest-alpine` | `8080:80` | Conecta a `mariadb` (alias de `dbs-mariadb` en `docker_net`) |
 
 **Zammad — Mesa de ayuda (puerto `8000`)**
@@ -317,7 +317,7 @@ for f in envs/*.env.example; do cp -n "$f" "${f%.example}"; done
 
 | Archivo | Servicio(s) | Contenido |
 |---------|-------------|-----------|
-| `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `changeme_*`) |
+| `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `your_*_here`, ver `*.env.example`) |
 | `envs/snipe-db.env(.example)` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
 | `envs/snipe-it.env(.example)` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
 | `envs/zammad-db.env(.example)` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
@@ -575,7 +575,7 @@ docker run --rm -v zammad-snipe_zammad-backup:/backup alpine ls -la /backup
 
 ```bash
 # Snipe-IT (MariaDB en dbs-mariadb)
-docker exec dbs-mariadb mariadb-dump -u snipe_user -p'snipe_password_123' snipeit > snipeit_$(date +%F).sql
+docker exec dbs-mariadb mariadb-dump -u snipe_user -p'your_snipe_password_here' snipeit > snipeit_$(date +%F).sql  # ver envs/snipe-db.env
 
 # Zammad (PostgreSQL en dbs-postgres)
 docker exec dbs-postgres pg_dump -U zammad_user zammad_production > zammad_$(date +%F).sql

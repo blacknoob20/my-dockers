@@ -19,7 +19,7 @@
 TRYTON_URL="${TRYTON_URL:-http://192.168.56.102:8000}"
 TRYTON_DB="${TRYTON_DB:-dbegoblocal}"
 TRYTON_USER="${TRYTON_USER:-svc_n8n}"
-TRYTON_PASS="${TRYTON_PASS:-12345678}"
+TRYTON_PASS="${TRYTON_PASS:-your_tryton_password_here}"
 DELAY=2
 
 # Tipos de activo de informática (los que IT debe mantener en Snipe-IT)

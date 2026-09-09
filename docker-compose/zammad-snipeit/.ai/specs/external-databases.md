@@ -15,8 +15,8 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 
 | Contenedor | Variable | Valor |
 |------------|----------|-------|
-| `docker-postgres-1` | `POSTGRES_PASSWORD` | `postgres_root_2024` |
-| `docker-mariadb-1` | `MYSQL_ROOT_PASSWORD` | `mariadb_root_2024` |
+| `docker-postgres-1` | `POSTGRES_PASSWORD` | `your_postgres_password_here` (ver `envs/*db.env.example`) |
+| `docker-mariadb-1` | `MYSQL_ROOT_PASSWORD` | `your_mysql_root_password_here` (ver `envs/*db.env.example`) |
 
 ## Bases de Datos y Usuarios Creados
 
@@ -26,7 +26,7 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 |-------|-------|
 | DB | `snipeit` |
 | User | `snipe_user` |
-| Password | `snipe_password_123` |
+| Password | `your_snipe_password_here` (ver `envs/snipe-db.env.example`) |
 | Permisos | ALL PRIVILEGES ON `snipeit`.* |
 
 ### PostgreSQL (Zammad)
@@ -35,7 +35,7 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 |-------|-------|
 | DB | `zammad_production` |
 | User | `zammad_user` |
-| Password | `zammad_password_123` |
+| Password | `your_zammad_password_here` (ver `envs/zammad-app.env.example`) |
 | Owner | `zammad_user` |
 
 ### PostgreSQL (n8n)
@@ -44,7 +44,7 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 |-------|-------|
 | DB | `n8n` |
 | User | `n8n_user` |
-| Password | `n8n_password_123` |
+| Password | `your_n8n_password_here` (ver `envs/n8n-db.env.example`) |
 | Owner | `n8n_user` |
 
 ## Archivos Modificados
@@ -54,7 +54,7 @@ El stack zammad-snipeit original definía sus propios contenedores de bases de d
 | `docker-compose.yml` | Servicios `snipe-db`, `zammad-db`, `n8n-db` comentados; red `docker_net` agregada como externa |
 | `envs/snipe-it.env(.example)` | `DB_HOST=snipe-db` → `DB_HOST=mariadb` |
 | `envs/zammad-app.env(.example)` | `POSTGRESQL_HOST=zammad-db` → `POSTGRESQL_HOST=postgres` |
-| `envs/n8n.env(.example)` | Agregadas `DB_TYPE=postgresdb`, `DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_PORT=5432`, `DB_POSTGRESDB_DATABASE=n8n`, `DB_POSTGRESDB_USER=n8n_user`, `DB_POSTGRESDB_PASSWORD=n8n_password_123` |
+| `envs/n8n.env(.example)` | Agregadas `DB_TYPE=postgresdb`, `DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_PORT=5432`, `DB_POSTGRESDB_DATABASE=n8n`, `DB_POSTGRESDB_USER=n8n_user`, `DB_POSTGRESDB_PASSWORD=your_n8n_password_here` |
 
 > **Nota 2026-09-07:** los `envs/*.env` reales están ignorados por git (secretos locales por máquina); el repo trackea solo `*.env.example`.
 
