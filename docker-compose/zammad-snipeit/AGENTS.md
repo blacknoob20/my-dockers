@@ -158,7 +158,7 @@ cp envs/n8n-db.env.example envs/n8n-db.env
 | `envs/snipe-it.env(.example)` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (`API_THROTTLE_PER_MINUTE=600`, default vendor 120; aplicar con `php artisan config:cache`) |
 | `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
 | `envs/zammad-app.env(.example)` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`, `TRYTON_FULL_SYNC=false` full/incremental, ver `.env.example`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
 ### Archivos .env de DBs (plantilla en git, real local ignorado; referenciados por init-external-dbs.sh)
 
