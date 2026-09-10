@@ -91,7 +91,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"id\": 0, \"method\": \"model.asset.search_read\", \"params\": [ ((since) => (since && $env.TRYTON_FULL_SYNC !== \"true\") ? [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]], [\"OR\", [\"write_date\", \">=\", since], [\"create_date\", \">=\", since]]] : [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]])($('Get last sync').first().json.since), 0, null, null, [\"id\", \"code\", \"internal_code\", \"name\", \"asset_state\", \"asset_type_new.rec_name\", \"actual_value\", \"category.rec_name\", \"company.rec_name\", \"current_owner.rec_name\", \"asset_model.rec_name\"], {} ] }) }}",
+        "jsonBody": "={{ JSON.stringify({ \"id\": 0, \"method\": \"model.asset.search_read\", \"params\": [ ((since) => since ? [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]], [\"OR\", [\"write_date\", \">=\", since], [\"create_date\", \">=\", since]]] : [[\"asset_type_new\", \"in\", [6, 39, 40, 48, 61, 92]]])($('Get last sync').first().json.since), 0, null, null, [\"id\", \"code\", \"internal_code\", \"name\", \"asset_state\", \"asset_type_new.rec_name\", \"actual_value\", \"category.rec_name\", \"company.rec_name\", \"current_owner.rec_name\", \"asset_model.rec_name\"], {} ] }) }}",
         "options": {
           "timeout": 120000
         }
@@ -331,7 +331,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const flat = (() => { try { return $('Flatten assets').first().json.result || []; } catch (e) { return []; } })();\nconst rows = flat.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nconst since = (() => { try { return $('Get last sync').first().json.since || null; } catch (e) { return null; } })();\nconst is_full = !since || $env.TRYTON_FULL_SYNC === 'true';\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length, is_full, since } }];"
+        "jsCode": "const flat = (() => { try { return $('Flatten assets').first().json.result || []; } catch (e) { return []; } })();\nconst rows = flat.map(a => ({\n  tryton_asset_id: a.id,\n  code: a.code ?? null,\n  internal_code: a.internal_code ?? null,\n  name: a.name ?? null,\n  asset_state: a.asset_state ?? null,\n  tryton_model_id: a.asset_model_id ?? null,\n  tryton_model_name: a.asset_model_name ?? null,\n  category_name: a.category ?? null\n}));\nconst since = (() => { try { return $('Get last sync').first().json.since || null; } catch (e) { return null; } })();\nconst is_full = !since;\nreturn [{ json: { payload: JSON.stringify(rows), total: rows.length, is_full, since } }];"
       },
       "id": "62a66b53-a9a2-4f7a-b392-b0abc1fa630f",
       "name": "Prepare staging payload",
@@ -344,7 +344,7 @@
     },
     {
       "parameters": {
-        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (tryton_snipe_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL/TRYTON_FULL_SYNC=true = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.",
+        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (tryton_snipe_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.\nAuto 2026-09-10: decisión full/incremental solo por watermark — forzar full truncando `tryton_snipe_run_summary`.",
         "height": 220,
         "width": 420,
         "color": 4
