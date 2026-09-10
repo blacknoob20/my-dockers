@@ -155,10 +155,10 @@ cp envs/n8n-db.env.example envs/n8n-db.env
 
 | Archivo | Servicio(s) | Contenido |
 |---------|------------|-----------|
-| `envs/snipe-it.env(.example)` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (`API_THROTTLE_PER_MINUTE=600`, default vendor 120; aplicar con `php artisan config:cache`) |
+| `envs/snipe-it.env(.example)` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (plantilla `.env.example` ofrece `API_THROTTLE_PER_MINUTE=600`, default vendor 120; el vivo corre con el default 120 — los batchings del sync están bajo ese cap; aplicar con `php artisan config:cache`) |
 | `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
 | `envs/zammad-app.env(.example)` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`, `TRYTON_FULL_SYNC=false` full/incremental, ver `.env.example`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`; full/incremental lo decide cada flujo por watermark, ver `n8n.env.example`), Zammad (`ZAMMAD_HOST=http://zammad-nginx:8080`, `ZAMMAD_TOKEN` Agent svc-n8n, `ZAMMAD_TOKEN_PROV` Admin svc-zammad-prov; recrear n8n tras cambiarlos), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
 ### Archivos .env de DBs (plantilla en git, real local ignorado; referenciados por init-external-dbs.sh)
 
@@ -181,7 +181,7 @@ Cámbialo antes de producción.
 - Zammad tiene una cadena de dependencias: `zammad-search` + `zammad-redis` + `zammad-memcached` → `zammad-init` → `zammad-railsserver` / `zammad-scheduler` / `zammad-websocket` → `zammad-nginx`.
 - Elasticsearch arranca con `xpack.security.enabled=false` y 1GB de heap (`-Xms1g -Xmx1g`).
 - La zona horaria de n8n está configurada a `America/Guayaquil`.
-- Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (igual que `executionTimeout:3600` del workflow).
+- Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (`executionTimeout` del users: 7200 desde 2026-09-10; el runner se deja en 3600 porque el fan-out largo de checkouts corre en el proceso principal).
 - `execution_data` con `jsonSizeBytes` 35 MB (1497) + 197 `rejected by Runner` + 14 `timeout exceeded when trying to connect` colgaban UI y host. Fix 2026-09-03: `EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168`, `MAX_COUNT=500`, `PRUNE_HARD_DELETE_INTERVAL=15`, `PRUNE_INTERVAL=60`, `DB_POSTGRESDB_POOL_SIZE=5` en `envs/n8n.env` (subido a 10 el 2026-09-05 con la unificación de throttle 1/1200); poda manual `DELETE FROM execution_data WHERE octet_length(data::text)>5MB` (36→152 kB) + `VACUUM`. Sin esto el navegador intenta renderizar 35 MB y el pool PG se satura.
 - El manual de implementación para producción está en `docs/manual-implementacion.md` (hardware, despliegue, tokens de integración, backups).
 - Para volver a usar las DBs internas del compose, ver `.ai/specs/external-databases.md`.
