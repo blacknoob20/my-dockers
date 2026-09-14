@@ -1,0 +1,684 @@
+{
+  "name": "Zammad enrich ticket assets",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zammad-ticket-created",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7a23fe48-cfb2-452a-842d-7761da8cf712",
+      "name": "Zammad ticket created",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        208,
+        256
+      ],
+      "typeVersion": 2,
+      "notesInFlow": false,
+      "webhookId": "5467bcb9-db9f-4431-a85b-adb10b1569b9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eaf9fae5-b1b1-4455b-97d8-e510d015f714",
+              "name": "ticket_id",
+              "type": "number",
+              "value": "={{ $json.body?.ticket?.id ?? $json.body?.ticket_id ?? $json.ticket?.id ?? $json.ticket_id ?? 0 }}"
+            },
+            {
+              "id": "1a389e96-6b6e-44825-abbe-95396352eb63",
+              "name": "ticket_number",
+              "type": "string",
+              "value": "={{ String($json.body?.ticket?.number ?? $json.body?.ticket_number ?? $json.ticket?.number ?? $json.ticket_number ?? '') }}"
+            },
+            {
+              "id": "22a91b00-5c3b-449ac-a47c-de42e304c68b",
+              "name": "customer_email",
+              "type": "string",
+              "value": "={{ String($json.body?.ticket?.customer?.email ?? $json.body?.customer_email ?? $json.ticket?.customer?.email ?? $json.customer_email ?? '').trim() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "88d9c155-b84d-4f87-8726-a6feba07b3cd",
+      "name": "Extract Ticket",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        400,
+        256
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "81f9d594-2f90-431b-bbb2-5243608ee19c",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.customer_email }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "9e11ca15-8f11-414c-b52e-1b96dada5a93",
+      "name": "Has Email?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        560,
+        256
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/users?email={{ encodeURIComponent($json.customer_email) }}&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "59b7b4ad-cf76-483d-a252-f44ca51d4822",
+      "name": "Find Snipe User",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        736,
+        240
+      ],
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('Extract Ticket').first().json;\nconst inp = $input.first().json;\nconst email = String(t.customer_email || '').toLowerCase();\nconst rows = inp.body?.rows || [];\nconst snipeError = !inp.body && !!inp.error;\nconst hits = email ? rows.filter(r => String(r.email || '').toLowerCase() === email) : [];\nhits.sort((a, b) => (a.id ?? 9e15) - (b.id ?? 9e15));\nconst best = hits[0];\nreturn [{ json: {\n  ticket_id: t.ticket_id,\n  ticket_number: t.ticket_number,\n  customer_email: t.customer_email,\n  snipe_user_id: best ? best.id : null,\n  snipe_error: snipeError,\n  match_count: hits.length,\n}}];"
+      },
+      "id": "32a6dd34-d839-4dcb-9711-9cbca71034e5",
+      "name": "Match Snipe User",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        240
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "589b4862-624f-4d4b-8980-9cf4a0de289f",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.snipe_user_id }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "eeefa4a3-06b1-4dcd-aa15-b2cdf8773590",
+      "name": "Has User?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1104,
+        240
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SNIPE_HOST }}/api/v1/hardware?assigned_to={{ $json.snipe_user_id }}&assigned_type=App%5CModels%5CUser&limit=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "d3742fd0-40ba-4a55-87ba-6c4cf504cc19",
+      "name": "Get Assigned Assets",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1280,
+        112
+      ],
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "Adhjdtilu8D9eQs8",
+          "name": "Bearer Auth snipe-it"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('Extract Ticket').first().json;\nconst m = $('Match Snipe User').first().json;\nconst inp = $input.first().json;\nconst rows = inp.body?.rows || [];\nconst err = !inp.body;\nconst count = rows.length;\nconst tags = rows.map(r => r.asset_tag).join(', ');\nconst summary = rows.map(r => {\n  const model = r.model?.name || 'Modelo?';\n  const status = r.status_label?.name || 'Estado?';\n  const serial = r.serial || 's/n';\n  return `- ${r.asset_tag} — ${model} (${status}) S/N ${serial}`;\n}).join('\\n');\nconst note = err\n  ? 'No se pudo consultar los activos en Snipe-IT (error de red/API).'\n  : (count > 0\n    ? `Activos asignados en Snipe-IT (${count}):\\n${summary}`\n    : 'Snipe-IT no reporta activos asignados a este usuario.');\nreturn [{ json: {\n  ticket_id: t.ticket_id,\n  ticket_number: t.ticket_number,\n  customer_email: t.customer_email,\n  snipe_user_id: m.snipe_user_id,\n  asset_count: count,\n  asset_tags: tags,\n  asset_summary: summary,\n  note_body: note,\n}}];"
+      },
+      "id": "eae8bca3-c6d1-47ee-a050-b305438dd36d",
+      "name": "Build Enrichment",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1440,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8f11c685-85fe-44cfb-b381-fe281d64c618",
+              "name": "asset_count",
+              "type": "number",
+              "value": "={{ 0 }}"
+            },
+            {
+              "id": "80bf31a1-667b-4431b-8b4c-feb22c933066",
+              "name": "asset_tags",
+              "type": "string",
+              "value": "={{ '' }}"
+            },
+            {
+              "id": "7cb170ba-23e7-44982-bf2b-7d4499f1d120",
+              "name": "asset_summary",
+              "type": "string",
+              "value": "={{ '' }}"
+            },
+            {
+              "id": "6eaa9b49-dd37-44ab2-bbc6-48dc4c1242ed",
+              "name": "note_body",
+              "type": "string",
+              "value": "={{ 'Webhook sin email de cliente; no se pudo consultar Snipe-IT.' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6cd48896-76f5-4a8c-92b8-5d844e37b5c6",
+      "name": "Build Empty (no email)",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1440,
+        400
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $('Match Snipe User').first().json;\nconst note = m.snipe_error\n  ? 'No se pudo consultar Snipe-IT (error de red/API); reintentar manualmente.'\n  : `Snipe-IT no tiene usuario con email ${m.customer_email}.`;\nreturn [{ json: {\n  ticket_id: m.ticket_id,\n  ticket_number: m.ticket_number,\n  customer_email: m.customer_email,\n  snipe_user_id: null,\n  asset_count: 0,\n  asset_tags: '',\n  asset_summary: '',\n  note_body: note,\n}}];"
+      },
+      "id": "55f22a9a-efda-4e11-a2e8-aa65bff0ba00",
+      "name": "Build Empty (no user)",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1440,
+        256
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.ZAMMAD_HOST }}/api/v1/tickets/{{ $('Extract Ticket').first().json.ticket_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "sendBody": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  snipe_asset_count: $json.asset_count,\n  snipe_asset_tags: $json.asset_tags,\n  snipe_asset_summary: $json.asset_summary,\n  article: {\n    subject: 'Activos Snipe-IT',\n    body: $json.note_body,\n    content_type: 'text/plain',\n    type: 'note',\n    internal: true,\n    sender: 'Agent'\n  }\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "851bb5cd-dcfc-4eeb-9d95-0c54a9fd7ef1",
+      "name": "Update Zammad Ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1648,
+        256
+      ],
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4SD4MimKQx94xWwp",
+          "name": "Header Auth zammad"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "7e0cf0bc-24d1-4118-baec-cdaa3e86a502",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.body?.id }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ true }}",
+        "options": {}
+      },
+      "id": "41207f38-6168-4912-a27a-13c79048ccb7",
+      "name": "Ticket Updated?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1840,
+        256
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, tryton_id, snipe_id, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'zammad','ticket',$3,$4,'enrich_assets',0,0,$5,LEFT($6,4000),$7,0)\nRETURNING $3::int AS ticket_id, $4::text AS ticket_number, 'ok' AS log_status;",
+        "options": {
+          "queryReplacement": "={{ [ $execution.id, $workflow.name, $('Extract Ticket').first().json.ticket_id, $('Extract Ticket').first().json.ticket_number, ($json.statusCode ?? 0), JSON.stringify($json.body ?? $json.error ?? {}), '' ] }}"
+        }
+      },
+      "id": "ca537bc8-634b-4080-ac9e-3f960fbe6985",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        2016,
+        176
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO integration_sync_log (execution_id, workflow_name, source_system, entity, entity_id, entity_tag, operation, tryton_id, snipe_id, response_status, response_body, error_message, retry_count)\nVALUES ($1,$2,'zammad','ticket',$3,$4,'enrich_assets',0,0,$5,LEFT($6,4000),$7,0)\nRETURNING $3::int AS ticket_id, $4::text AS ticket_number, 'error' AS log_status;",
+        "options": {
+          "queryReplacement": "={{ [ $execution.id, $workflow.name, $('Extract Ticket').first().json.ticket_id, $('Extract Ticket').first().json.ticket_number, ($json.statusCode ?? 0), JSON.stringify($json.body ?? {message: $json.error?.message, code: ($json.error?.code ?? $json.error?.name), status: ($json.statusCode ?? 0)}), ('PUT ticket fallo: ' + JSON.stringify($json.body ?? {message: $json.error?.message, code: ($json.error?.code ?? $json.error?.name)}).slice(0,800)) ] }}"
+        }
+      },
+      "id": "32f36d89-ab8d-42d0-a0a1-9537c19b01fc",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        2016,
+        336
+      ],
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "qJJfZl7PuKahcYb0",
+          "name": "Postgres n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Zammad enrich ticket assets\nEnriquecimiento bajo demanda: al crear un ticket, consulta el estado ACTUAL en Snipe-IT y lo escribe en el ticket. Sin sync Snipe→Zammad (evita duplicación).\n\nCap. 1: webhook + normalización (Extract Ticket). Solo dispara en ticket creado (trigger Zammad `Action is created`); el PUT posterior no re-dispara.\nCap. 2: live lookup Snipe-IT (Find → Match exacto LOWER → hardware assigned_to+assigned_type). Sin match → campos 0/vacío + nota.\nCap. 3: PUT ticket (customs + nota interna) → auditoría integration_sync_log → respuesta al webhook.",
+        "height": 188,
+        "width": 2144,
+        "color": 4
+      },
+      "id": "9e5cc3bb-a439-4708-a293-cdbd1ded5b00",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        144,
+        -128
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "Match exacto case-insensitive por email. Ante duplicados reales en Snipe-IT gana el id menor (mismo criterio que Bulk Save Users, fix 2026-09-03).",
+        "height": 172,
+        "width": 244,
+        "color": 5
+      },
+      "id": "bd994169-e733-493b-8ce6-3172aa520b58",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        848,
+        64
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        736,
+        400
+      ],
+      "id": "82f8c1e6-999f-4fab-acfc-d1c144a6df8c",
+      "name": "No email"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: $json.log_status === 'ok', ticket_id: $json.ticket_id, ticket_number: $json.ticket_number, log_status: $json.log_status }) }}",
+        "options": {}
+      },
+      "id": "fb8fd772-70a5-4ff7-b94c-987d069553c2",
+      "name": "Respond zammad",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        2192,
+        256
+      ],
+      "typeVersion": 1.1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Zammad ticket created": {
+      "main": [
+        [
+          {
+            "node": "Extract Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Ticket": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Email?": {
+      "main": [
+        [
+          {
+            "node": "Find Snipe User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Snipe User": {
+      "main": [
+        [
+          {
+            "node": "Match Snipe User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Snipe User": {
+      "main": [
+        [
+          {
+            "node": "Has User?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has User?": {
+      "main": [
+        [
+          {
+            "node": "Get Assigned Assets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Empty (no user)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assigned Assets": {
+      "main": [
+        [
+          {
+            "node": "Build Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Update Zammad Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Empty (no email)": {
+      "main": [
+        [
+          {
+            "node": "Update Zammad Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Empty (no user)": {
+      "main": [
+        [
+          {
+            "node": "Update Zammad Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Zammad Ticket": {
+      "main": [
+        [
+          {
+            "node": "Ticket Updated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticket Updated?": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Respond zammad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Respond zammad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No email": {
+      "main": [
+        [
+          {
+            "node": "Build Empty (no email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0bb6a7b1-18ac-468d-992c-7d8b9ab8a9cf",
+  "meta": {
+    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
+  },
+  "nodeGroups": [],
+  "id": "bgi4JmNIH5wNylf6",
+  "tags": []
+}
