@@ -126,7 +126,7 @@ El stack combina tres tecnologías complementarias para el ciclo de vida del sop
     el usuario, su estado y garantía → resolución más rápida.
 ```
 
-> El flujo 2.2 ya está implementado (workflows `Tryton sync categories` y `Tryton sync assets` en `flows/`). El flujo 2.3 es el caso de uso objetivo de la arquitectura y se construye en n8n sobre las mismas credenciales documentadas en la sección 8.
+> El flujo 2.2 ya está implementado (workflows `Tryton sync categories` y `Tryton sync assets` en `flows/`). El flujo 2.3 está implementado como `flows/zammad/Zammad enrich ticket assets.json` (webhook ticket-created → consulta live Snipe-IT → `PUT` ticket con customs + nota interna, sin sync continua). Guía operativa en `docs/05-integracion-zammad-snipeit.md`, spec en `.ai/specs/zammad-tickets.md`.
 
 ---
 
@@ -435,11 +435,12 @@ Recomendaciones:
 - Crear el token desde un **usuario de servicio** de Snipe-IT con permisos mínimos (solo los módulos que la integración requiere), no desde el admin.
 - Los tokens dependen de las llaves RSA de Laravel Passport (`oauth-*.key`) que viven en `./snipe-data/snipeit/keys/`. **Si ese volumen se pierde, todos los API tokens quedan inválidos** (respuestas `500 Invalid key supplied`) y hay que regenerarlos. El volumen es parte crítica del backup.
 
-### 8.2 Zammad — Token de API
+### 8.2 Zammad — Tokens de API
 
-1. Crear el usuario de integración: **Admin → Usuarios → Nuevo usuario** con rol restringido (p. ej. solo lectura de tickets y usuarios).
-2. Con el usuario de integración logueado: avatar (menú de usuario) → **Token Access** → crear un token con los permisos necesarios (p. ej. `ticket.read`, `user.read`).
-3. Usarlo en las llamadas a la API:
+Se usan **dos usuarios de servicio** (ver `docs/05-integracion-zammad-snipeit.md` §5.3):
+
+1. `svc-n8n` (rol **Agente** con RW en los grupos): avatar → **Token Access** → token nivel **Agent** → variable `ZAMMAD_TOKEN` (runtime del webhook: `PUT /api/v1/tickets/{id}` + nota interna).
+2. `svc-zammad-prov` (rol **Administrar**): token nivel **Admin** → variable `ZAMMAD_TOKEN_PROV` (solo `scripts/zammad-ticket-objects.sh`, una vez; luego desactivar/archivar el usuario).
 
 ```bash
 curl -H "Authorization: Token token=<TOKEN>" http://<servidor>:8000/api/v1/tickets
@@ -469,6 +470,7 @@ N8N_ENCRYPTION_KEY=<valor-generado>
 |------------|------|-----------|
 | Snipe-IT | SnipeIT API | URL (`http://snipe-it:80` desde n8n) + token Bearer |
 | Zammad | HTTP Request (auth token) | Header `Authorization: Token token=...` |
+| Zammad | Header Auth (`Zammad Header Auth`) | Header `Authorization: Token token=<ZAMMAD_TOKEN>` — usada por `Zammad enrich ticket assets` (credencial `zammad_header`, remapeada por `n8n-remap.sh` v1.3.0+) |
 | Tryton | HTTP Request (header custom) | Header `Authorization: Session <base64(...)>` (ver 8.4) |
 
 ### 8.4 Tryton — Usuario de servicio `svc_n8n`

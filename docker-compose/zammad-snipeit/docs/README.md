@@ -8,18 +8,21 @@
 | `02-tryton-protocolo-jsonrpc.md` | Protocolo JSON-RPC de Tryton |
 | `03-integracion-n8n-tryton.md` | Sub-workflow de autenticación y consumo del login |
 | `04-workflows-sincronizacion.md` | Workflows de sincronización Tryton → Snipe-IT (categorías, modelos, estados, activos) |
+| `05-integracion-zammad-snipeit.md` | Enriquecimiento de tickets Zammad con activos Snipe-IT bajo demanda (webhook + objetos + trigger) |
 
 ## Specs
 
 | Archivo | Contenido |
 |---------|-----------|
 | `.ai/specs/tryton-activos.md` | Spec canónico: arquitectura, contratos de entrada/salida, tablas de mapeo, errores conocidos |
+| `.ai/specs/zammad-tickets.md` | Spec canónico: enriquecimiento de tickets Zammad con activos Snipe-IT bajo demanda |
 
 Los exports de los workflows (snapshots de n8n) viven en `flows/`:
 
 | Archivo | Workflow |
 |---------|----------|
 | `flows/tryton/Tryton login.json` | Autenticación |
+| `flows/zammad/Zammad enrich ticket assets.json` | Enriquecimiento de tickets (webhook ticket-created → Snipe-IT live → PUT ticket) |
 | `flows/Tryton sync categories.json` | Categorías |
 | `flows/Tryton sync models.json` | Modelos |
 | `flows/Tryton sync statuses.json` | Status labels |

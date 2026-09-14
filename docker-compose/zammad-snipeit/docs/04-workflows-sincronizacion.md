@@ -8,10 +8,11 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 - [4.2 Tryton sync categories](#42-tryton-sync-categories)
 - [4.3 Tryton sync snipe-IT models](#43-tryton-sync-snipe-it-models)
 - [4.4 Tryton sync snipe-IT status](#44-tryton-sync-snipe-it-status)
-- [4.5 Tryton sync snipe-IT assets ingest (batch)](#45-tryton-sync-snipe-it-assets-ingest-batch)
+- [4.5 Tryton sync snipe-IT assets](#45-tryton-sync-snipe-it-assets)
 - [4.6 Tryton sync titular-activo (v1)](#46-tryton-sync-titular-activo-v1)
 - [4.7 Tablas de mapeo](#47-tablas-de-mapeo)
 - [4.8 Limitaciones y errores conocidos](#48-limitaciones-y-errores-conocidos)
+- [4.9 Zammad enrich ticket assets (bajo demanda)](#49-zammad-enrich-ticket-assets-bajo-demanda)
 
 ---
 
@@ -27,7 +28,7 @@ Este documento describe los workflows de negocio que sincronizan datos de Tryton
 
 - Trigger: **manual** (`When clicking 'Execute workflow'`). No es un webhook.
 - **Fase 1 — catálogos:** login → categorías y estados en paralelo (`Execute Tryton sync snipe-IT categories` / `status`) → `Wait categories & statuses` → modelos (`Execute Tryton sync snipe-IT models`, lote completo en 1 item, modo once — sin `Split Out models`).
-- **Fase 2 — batch PG (activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (`Code`, `const assets = $('Flatten assets').first().json.result` → `payload: JSON.stringify(rows), total`) → `Execute ingest (batch)` (sub-workflow `Tryton sync snipe-IT assets ingest (batch)` vía `Execute Workflow`, inputs `{payload, total}`, `waitForSubWorkflow: true`) → `Sync titular activo` (sub-workflow `Tryton sync titular-activo (v1)`). Detalle del ingest: ver §4.5.
+- **Fase 2 — batch PG (activos):** `Execute Tryton sync snipeIT models` → `Prepare staging payload` (Code: lee `$('Flatten assets').first().json.result` + `$('Get last sync').first().json.since` y emite `{payload: JSON.stringify(rows), total, is_full, since}`) → `Execute Tryton sync snipe-IT assets` (sub-workflow `Tryton sync snipe-IT assets` vía `Execute Workflow`, `waitForSubWorkflow: true`) → `Execute Tryton sync snipe-IT users assets` (sub-workflow `Tryton sync snipe-IT users assets` vía `Execute Workflow`, input `{ok}`). Detalle del sub assets: ver §4.5.
 
 > **Estado:** experimental. Los workflows viejos en `flows/` fueron reemplazados por sub-workflows en `flows/flujos-dev/`.
 
@@ -55,12 +56,12 @@ Status list   ──┼──→ Split Out ──→ Execute categories/status �
 Model list    ──┘                                              ↓
                                         Execute models (lote, modo once) ──→ Prepare staging payload
                                                                           |
-                                                            Execute ingest (batch)  ← sub-workflow §4.5
-                                                                          |
-                                                            Sync titular activo (v1)
+                                                            Execute Tryton sync snipe-IT assets  ← sub-workflow §4.5
+                                                                           |
+                                                            Execute Tryton sync snipe-IT users assets  ← sub-workflow §4.6
 ```
 
-Sub-workflow `Tryton sync snipe-IT assets ingest (batch)` (§4.5, detalle):
+Sub-workflow `Tryton sync snipe-IT assets` (§4.5, detalle):
 
 ```
 Reset staging (DELETE staging_tryton_assets)
@@ -103,11 +104,11 @@ category, category_id, category_name
 
 ### Fase 2 — Batch PG (staging/diff/upsert) — vía sub-workflow
 
-Fase 2 está delegada al sub-workflow `Tryton sync snipe-IT assets ingest (batch)` (§4.5). En el orquestador solo quedan:
+Fase 2 está delegada al sub-workflow `Tryton sync snipe-IT assets` (§4.5), seguido del sub `Tryton sync snipe-IT users assets` (§4.6). En el orquestador solo quedan:
 
-1. **Prepare staging payload** (Code): construye `payload = [{tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name}, …]` desde los activos aplanados y emite `{payload: JSON.stringify(rows), total}`.
-2. **Execute ingest (batch)** (`n8n-nodes-base.executeWorkflow` → workflow `Asse2tIngestSub01`, inputs `{payload, total}`, `waitForSubWorkflow: true`).
-3. **Sync titular activo** (`Execute Workflow` → `Tryton sync titular-activo (v1)`).
+1. **Prepare staging payload** (Code): construye `payload = [{tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name}, …]` desde los activos aplanados y emite `{payload: JSON.stringify(rows), total, is_full, since}` (`is_full = !since`).
+2. **Execute Tryton sync snipe-IT assets** (`n8n-nodes-base.executeWorkflow` → ID del ambiente —casa `ym0zaIpEj3J8xg2l`, trabajo `v6K5kipkr7UKp0fE`—, `waitForSubWorkflow: true`).
+3. **Execute Tryton sync snipe-IT users assets** (`Execute Workflow` → `Tryton sync snipe-IT users assets`, input `{ok}`).
 
 Detalle de los pasos internalizados (ver §4.5):
 
@@ -118,6 +119,8 @@ Detalle de los pasos internalizados (ver §4.5):
 - `Saved?` → `Upsert asset map` / `Log error (batch)` (ambos `onError: continueRegularOutput`, loop-back a `Batch changes`) → `Run summary` (`executeOnce`, `INSERT INTO sync_run_summary ...`).
 
 > **Refactor 2026-08-28 (ingest sub-workflow):** fase 2 extraída al sub-workflow `Asse2tIngestSub01` para mejorar mantenibilidad. El orquestador pasa `payload`/`total` vía `workflowInputs`; `Log error (batch)` en el sub registra `workflow_name` del sub y `execution_id` del sub (conteo `api_errors` de `Run summary` consistente dentro del sub).
+
+> **Sync 2026-09-10 (sticky v2 del orquestador):** la sticky `Sticky v2` aún describía el sub como `Tryton sync snipe-IT assets ingest (batch)` (`Execute ingest`) y omitía la fase users. Actualizada en el snapshot a la cadena real (`Prepare staging payload` → `Execute Tryton sync snipe-IT assets` → `Execute Tryton sync snipe-IT users assets`); publicada en trabajo vía `n8n-remap.sh push` sobre `3hh7DBsrq8A1rIQg`. Espejo de `.ai/specs/tryton-activos.md`.
 
 ### Enriquecimiento (fase 1, legacy)
 
@@ -275,11 +278,11 @@ Find status in Snipe → Recover status → Recovered status? → Save SnipeIT S
 
 ## 4.5 Tryton sync snipe-IT assets
 
-**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets.json` (ID `v6K5kipkr7UKp0fE`, activo — **canónico**; el archivo `ingest (batch).json` `Asse2tIngestSub01` era un snapshot stale duplicado del mismo workflow y fue eliminado) — invocado por el orquestador vía `Execute ingest (batch)` (`waitForSubWorkflow: true`, workflow `v6K5kipkr7UKp0fE`).
+**Archivo:** `flows/flujos-dev/Tryton sync snipe-IT assets.json` (ID `v6K5kipkr7UKp0fE`, activo — **canónico**; el archivo `ingest (batch).json` `Asse2tIngestSub01` era un snapshot stale duplicado del mismo workflow y fue eliminado) — invocado por el orquestador vía `Execute Tryton sync snipe-IT assets` (`waitForSubWorkflow: true`, ID del ambiente —casa `ym0zaIpEj3J8xg2l`, trabajo `v6K5kipkr7UKp0fE`—).
 
 **Trigger:** `Tryton sync snipe-IT assets orchestrator` (`n8n-nodes-base.executeWorkflowTrigger`, `inputSource: passthrough`, antes `Tryton sync snipe-IT assets orchestrator`).
 
-**Entrada:** `{ "payload": "<json-array-string>", "total": 100 }` desde `Prepare staging payload` del orquestador (`payload = JSON.stringify(rows)` donde cada row es `{tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name}`).
+**Entrada:** `{ "payload": "<json-array-string>", "total": 100, "is_full": true, "since": null }` desde `Prepare staging payload` del orquestador (`payload = JSON.stringify(rows)` donde cada row es `{tryton_asset_id, code, internal_code, name, asset_state, tryton_model_id, tryton_model_name, category_name}`).
 
 ### Flujo
 
@@ -601,3 +604,54 @@ Resumen por ejecución del orquestador. Esquema en `public.tryton_snipe_run_summ
 | `reset-sync.sh` plan ilegible con 557 IDs inline (sin nombres, sin aviso de assets, sin totales) | El plan previo imprimía los arrays completos inline (`MOD_IDS[*]`, 557 IDs) envueltos en ~2 KB por línea; no mostraba nombres de categorías/modelos/status ni el conteo del paso 0 de assets antes de la confirmación; las 10 líneas n8n no estaban alineadas ni sumaban total; sin flag `--verbose`. > **Fix 2026-09-08:** plan reescrito con names+counts (primeros 10 + resto), desglose de modelos por categoría, conteo de assets (paso 0) antes de confirmar, totales Snipe-IT/PG, línea `Se preserva:`, AUTO_INCREMENT y ruta `/tmp/...` con IDs completos; añadido `--verbose` para nombres completos; auto-detección del contenedor de BD corriendo (`docker-mariadb-1`/`docker-postgres-1` en Linux, `dbs-*` en Mac lab; override `SNIPE_DB_CONT`/`N8N_DB_CONT`, aborta con mensaje claro si faltan); `mktemp` portable con plantilla `-XXXXXX` (antes sin `X` → fallaba en GNU/BSD). Actualizados `scripts/reset-sync.sh`, `AGENTS.md` stack y `docs/04` §4.8. |
 | IDs del snapshot (casa) no coinciden con el vivo de trabajo — parece que `n8n-remap.sh` no remapeó | Snapshots commiteados en sabor casa (orquestador `BFfvossXQY8Ck5zh`, users `Yv8AlEkGEdwzRJrJ`); en trabajo los vivos son otros objetos (orquestador `3hh7DBsrq8A1rIQg`, users `yjyUYjVEaZ9UniSs`). Comparar snapshot contra vivo a mano sugiere un remap incompleto. > **Fix 2026-09-08:** verificado en vivo (`workflow_entity`) que los 6 `workflowId` del orquestador trabajo coinciden exacto con `envs/n8n-workflows.trabajo.json` (`wf_fuera:0`); el script sí traduce. Aclaración por ambiente añadida en §4.6 y spec. Verdad = `workflow_entity` en vivo, no el snapshot. |
 | Run 1830 de users: timeout mata los upserts finales aunque `Checkout Asset` termina (mapa en 0, deadlock) | Ejecución 1830 (`yjyUYjVEaZ9UniSs`, 2026-09-10 14:11→18:00 UTC): `Checkout Asset` procesó las 8,991 llamadas (`batching 1/1500ms`, ~3h48m) y al volver al loop n8n vio `executionTimeout:3600` vencido (solo se evalúa entre nodos) → `TimeoutExecutionCancelledError`, cancelada un nodo antes de `Package Results`/`Upsert Owners (bulk)`. Tablas: `staging_titular`=8991, `snipe_titular_user_map`=699, **`snipe_titular_map`=0**, 0 filas titular en `integration_sync_log`. Las 8,991 respuestas fueron HTTP 200 `{status:error}` "That asset is not available for checkout!" (6,122 ya asignados al titular + 2,869 con status no-deployable Malo/Baja/Desuso — Snipe no los asigna jamás). Causa raíz del bucle: con el mapa en 0, `Detect Changes` devolvía los 8,991 cada corrida y el barrido completo manual excedía el timeout en todas las corridas. > **Fix 2026-09-10:** backfill SQL `snipe_titular_map` desde staging+asset_map+user_map (dry-run 8991/8991, apply 8,991 filas: 6,122 certificados contra Snipe real + 2,869 "titular deseado" no-deployables, que no se reintentarán ni al volverse deployables — documentado); decisión full/incremental automática sin variable de entorno (`Get last sync` titular: `since` = `GREATEST(titular run_summary, assets summary)−2h` + `map_rows`; full si mapa vacío o sin watermark; forzar full = truncar `snipe_titular_map`/`tryton_snipe_run_summary`, manual §9.3); `batching 1/600ms` (~100/min, bajo el cap real 120/min) en `Checkout/Retry/Checkin Asset` + `settings.executionTimeout: 7200` (el full cabe en ~93 min); `envs/n8n.env(.example)` sin la variable + snapshots y vivos actualizados + recrear n8n. Espejo de `.ai/specs/tryton-activos.md`. |
+
+---
+
+## 4.9 Zammad enrich ticket assets (bajo demanda)
+
+Espejo de `.ai/specs/zammad-tickets.md` (canónico) y `docs/05-integracion-zammad-snipeit.md` (guía operativa).
+
+**Archivo:** `flows/zammad/Zammad enrich ticket assets.json` (vivo trabajo `bgi4JmNIH5wNylf6`, activo; clave `zammad` en `envs/n8n-workflows.{casa,trabajo}.json`).
+
+Sin sync Snipe-IT → Zammad: al crear un ticket, el trigger Zammad (`Action is created` → webhook) dispara el flujo, que consulta el estado **actual** en Snipe-IT y lo escribe en el ticket.
+
+### Flujo
+
+```
+Zammad ticket created (webhook POST /webhook/zammad-ticket-created)
+      ↓
+Extract Ticket (Set: ticket_id / ticket_number / customer_email)
+      ↓
+Has Email? → Sí: Find Snipe User (GET /api/v1/users?email=…&limit=10)
+             → Match Snipe User (exacto LOWER; duplicados → id menor)
+             → Has User? → Sí: Get Assigned Assets
+               (GET /api/v1/hardware?assigned_to={id}&assigned_type=App\Models\User&limit=100)
+               → Build Enrichment (count/tags/summary/nota)
+             → No: Build Empty (no user) (nota según causa)
+           → No: Build Empty (no email) (Set estático)
+      ↓ (mismo contrato: asset_count/tags/summary/note_body)
+Update Zammad Ticket (PUT /api/v1/tickets/{id}: customs + article note internal)
+      ↓
+Ticket Updated? (body.id notEmpty) → Log Success / Log Error
+  (INSERT integration_sync_log source_system='zammad' entity='ticket' operation='enrich_assets')
+      ↓
+Respond ({ok, ticket_id, ticket_number, log_status})
+```
+
+- **PUT, no POST** (POST crearía un ticket nuevo); sin tabla nueva.
+- **Anti-loop:** el trigger solo reacciona a `created`; el `PUT` es `update`.
+- **`assigned_type` URL-encodeado** (`App%5CModels%5CUser`).
+- **Credencial Zammad:** `httpHeaderAuth` (`Zammad Header Auth`,
+  `Authorization: Token token=...`); sentinela `ZAMMAD_HEADER_PENDIENTE` hasta
+  crearla en cada n8n (remapeada por `n8n-remap.sh` v1.3.0+, ver §4.8 y spec).
+- > **Fix 2026-09-10 (Extract leía fuera de `body`):** el webhook n8n envuelve
+  el payload en `$json.body`; `Extract Ticket` leía `$json.ticket_id` a nivel
+  raíz → `{ticket_id: 0, email: ""}`, rama "sin email" y `PUT` a `/tickets/0`.
+  Fix: leer `$json.body?.ticket_id` (con fallback plano) en las 3 expresiones
+  + push a vivo trabajo. Segundo hallazgo del mismo smoke test: `PUT` con
+  `{"code":"ERR_INVALID_HTTP_TOKEN"}` = Value de la Header Auth con `\r`/
+  espacio pegado → reescribirlo a mano (no es 401/403). Tercer hallazgo:
+  `PUT` 200 sin cambios (`Parameters: {"id" => "3"}` en Rails) = al nodo le
+  faltaba `"sendBody": true` (único POST/PUT/PATCH del repo sin esa llave);
+  sin ella n8n ignora `jsonBody` y Zammad devuelve 200 con el ticket intacto
+  → `ok:true` engañoso.
