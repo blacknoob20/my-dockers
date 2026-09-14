@@ -79,14 +79,42 @@ Ticket Updated? (IF body.id notEmpty)
 Respond (JSON {ok, ticket_id, ticket_number, log_status})
 ```
 
+### Nodos Code — manual de mantenimiento (clean code)
+
+Los 3 nodos `Code` son el manual del flujo; cada uno lleva encabezado con
+propósito, entradas, salida y reglas de negocio, constantes con mensajes
+literales y helpers puros. No hay cambio de comportamiento (solo legibilidad):
+
+- **Match Snipe User** (`flows/zammad/Zammad enrich ticket assets.json:134`):
+  helpers `normalizeEmail` / `isSnipeFetchError` / `findExactEmailMatches` /
+  `sortByIdAsc`; constante `FALLBACK_MAX_ID = 9e15`. Lêe
+  `$('Extract Ticket')` + `$input.body.rows` de `Find Snipe User`, compara
+  exacta `LOWER` y ante duplicados elige `id` menor.
+- **Build Enrichment** (`…:224`): helpers `isFetchError` / `sortByAssetTag` /
+  `formatAssetBlock` / `buildSummaryBlock`; constantes `MSG_FETCH_ERROR`,
+  `MSG_NO_ASSETS`, `FALLBACK_MODEL/STATUS/TAG/SERIAL`. Ordena por
+  `asset_tag`, arma el bloque UX 4 líneas (`ACTIVOS SNIPE-IT (N)` + `----` +
+  `NN modelo` / `   tag` / `   estado` / `   S/N serial`, blank line) y
+  `note_body = summary` cuando `N>0`; si `!body` o `0` usa las notas del §Casos.
+- **Build Empty (no user)** (`…:278`): constante `MSG_SNIPE_FETCH_ERROR` y
+  helper `buildMissingUserNote(email)`. Lee solo `Match Snipe User`
+  (siempre ejecutado en su rama); si `snipe_error` nota de reintento, si no
+  `Snipe-IT no tiene usuario con email …`; siempre `count 0 / vacíos`.
+
+> **Refactor 2026-09-14 (clean code):** reescritura solo legibilidad, verificado
+> con harness: duplicados id menor, sin match, error red/API, body sin rows,
+> tags desordenados, 4 activos reales, fallbacks `Modelo?/Estado?/s/n` y 0
+> activos. Comportamiento y literales idénticos; no requiere push funcional
+> (mismo `versionId` salvo que se re-exporte).
+
 ### Contrato de enriquecimiento
 
 | Campo Zammad         | Tipo     | Origen |
 |----------------------|----------|--------|
 | `snipe_asset_count`  | integer  | `rows.length` de `/hardware` |
 | `snipe_asset_tags`   | textarea | `asset_tag` unidos por `, ` |
-| `snipe_asset_summary`| textarea | líneas `- {tag} — {modelo} ({estado}) S/N {serial}` |
-| artículo             | note     | `type: note`, `internal: true`, `sender: Agent`, `content_type: text/plain` |
+| `snipe_asset_summary`| textarea | Bloque UX `ACTIVOS SNIPE-IT (N)` + `--------------------` + N bloques `NN modelo` / `   tag` / `   estado` / `   S/N serial` (orden por `asset_tag`, `NN` 01.., estado = `status_label.name` original, serial = `r.serial\|\|s/n`); vacío si `N=0` |
+| artículo             | note     | `type: note`, `internal: true`, `sender: Agent`, `content_type: text/plain` — body = mismo bloque que `snipe_asset_summary` (o nota explicativa si `N=0`/`error`) |
 
 Provisionados una sola vez por instancia con
 `scripts/zammad-ticket-objects.sh` (API Object Manager + migraciones +
@@ -96,13 +124,29 @@ reinicio obligatorio de workers). Ver `docs/05-integracion-zammad-snipeit.md`.
 
 | Caso | Comportamiento |
 |------|----------------|
-| Usuario con N activos | Customs con N/tags/resumen + nota interna con el detalle |
+| Usuario con N activos | `snipe_asset_count=N`, `tags` con N, `summary`=bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   tag`/`   estado`/`   S/N serial` (01.., orden `asset_tag`, 4 líneas por activo, blank line entre bloques, datos reales Snipe-IT sin conversión) + nota interna con el mismo bloque |
 | Usuario sin activos | `0` / vacíos + nota "Snipe-IT no reporta activos asignados…" |
 | Email sin match en Snipe-IT | `0` / vacíos + nota "Snipe-IT no tiene usuario con email …" |
 | Webhook sin email | `0` / vacíos + nota "Webhook sin email de cliente…" |
 | Fallo red/API Snipe-IT | Degrada a nota de error (no tumba la ejecución); si el `PUT` falla, `Log Error` + `ok: false` al webhook (Zammad reintenta hasta 4 veces) |
 | Email duplicado en Snipe-IT | Gana el id menor (mismo criterio que `Bulk Save Users`, fix 2026-09-03) |
 | >100 activos por usuario | Truncado a 100 (`limit=100`); documentar si aparece el caso |
+
+> **Formato 2026-09-14 (UX 4 líneas, datos reales):** una línea por dato, sin etiquetas largas, valores originales Snipe-IT. Ejemplo con 4 activos reales (`r.model.name`, `r.asset_tag`, `r.status_label.name`, `r.serial`):
+> ```
+> ACTIVOS SNIPE-IT (4)
+> --------------------
+> 01 POWERLITE118
+>    1410107-000650
+>    good: Bueno
+>    S/N s/n
+>
+> 02 DELL-OPTIPLEX
+>    1410107-000651
+>    good: Bueno
+>    S/N 12345
+> ```
+> Estado y S/N son los registrados en Snipe-IT (no convertidos a `OK`/`MAL`); `s/n` si `serial` vacío. Ver `Build Enrichment` en snapshot. Fixture anterior `72006` con `OK`/`MAL` ficticio queda como histórica.
 
 ### Reglas de expresiones (gotchas heredados)
 

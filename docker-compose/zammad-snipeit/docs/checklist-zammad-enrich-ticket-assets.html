@@ -404,7 +404,7 @@ jq . /tmp/zammad-enrich-response.json</pre></div>
         <div class="where"><span class="tag zammad">ZAMMAD UI</span><span class="tag sql">POSTGRES n8n</span></div>
       </div></div>
       <div class="card-body">
-        <div class="expect"><b>En el ticket:</b> <code class="inline">snipe_asset_count</code> con el número real, <code class="inline">tags</code> separados por coma, <code class="inline">summary</code> con una línea por activo y artículo interno <code class="inline">Activos Snipe-IT</code> invisible para el cliente.</div>
+        <div class="expect"><b>En el ticket:</b> <code class="inline">snipe_asset_count</code> con el número real, <code class="inline">tags</code> separados por coma, <code class="inline">summary</code> con bloque <code class="inline">ACTIVOS SNIPE-IT (N)</code> + <code class="inline">--------------------</code> + <code class="inline">NN modelo</code>/<code class="inline">   tag</code>/<code class="inline">   estado</code>/<code class="inline">   S/N serial</code> (4 líneas por activo, orden <code class="inline">asset_tag</code>, datos reales Snipe-IT sin conversión) y artículo interno con el mismo bloque.</div>
         <div class="cmd"><button class="copy" data-copy="c10">Copiar</button><pre id="c10">SELECT id, created_at, workflow_name, execution_id,
   entity_id, entity_tag, operation, response_status, error_message
 FROM public.integration_sync_log

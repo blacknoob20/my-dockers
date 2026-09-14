@@ -155,8 +155,8 @@ docker exec zammad-snipeit-zammad-railsserver-1 /opt/zammad/bin/rails runner \
 
 ## 5.8 Pruebas
 
-1. Cliente con 2 activos asignados en Snipe-IT → crear ticket → customs con
-   `2`/tags/resumen + nota interna visible para el agente.
+1. Cliente con 2–4 activos asignados en Snipe-IT → crear ticket → customs con
+   `N`/tags/resumen UX `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   tag`/`   estado`/`   S/N serial` + nota interna con el mismo bloque (datos reales Snipe-IT).
 2. Cambiar un activo en Snipe-IT → nuevo ticket → refleja el cambio.
 3. Cliente inexistente en Snipe-IT → `0`/vacíos + nota explicativa.
 4. Cliente sin activos → `0`/vacíos + nota.
@@ -164,10 +164,11 @@ docker exec zammad-snipeit-zammad-railsserver-1 /opt/zammad/bin/rails runner \
 6. Auditoría: `SELECT * FROM integration_sync_log WHERE entity='ticket' ORDER BY id DESC LIMIT 5;`
 7. Confirmar que el `PUT` no genera una segunda ejecución del webhook.
 
+> **Formato UX 2026-09-14 (4 líneas reales):** una línea por dato, sin etiquetas largas. `snipe_asset_summary` y nota usan `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   tag`/`   estado`/`   S/N serial`) orden por `asset_tag`, blank line entre bloques, valores originales Snipe-IT (sin `OK`/`MAL`). Ejemplo 4 activos en spec `.ai/specs/zammad-tickets.md`.
 > **Datos de prueba:** el caso positivo exige un email que exista en Zammad
 > (customer del ticket) **y** en Snipe-IT (usuario con activos). En el lab no
 > había solape: se creó el customer `adriana.leon@guayas.gob.ec` (1 activo,
-> tag `1410107-000650`) y el ticket descartable id 3 / `72003`. Checklist
+> tag `1410107-000650`) y el ticket descartable id 3 / `72003` (verificado 2026-09-14 con formato 4 líneas: `01 POWERLITE118`/`   1410107-000650`/`   good: Bueno`/`   S/N s/n`). Checklist
 > interactivo: `docs/checklist-zammad-enrich-ticket-assets.html`.
 
 ## 5.9 Problemas frecuentes

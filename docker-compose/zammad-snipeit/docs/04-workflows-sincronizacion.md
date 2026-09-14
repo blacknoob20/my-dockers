@@ -638,9 +638,17 @@ Ticket Updated? (body.id notEmpty) → Log Success / Log Error
 Respond ({ok, ticket_id, ticket_number, log_status})
 ```
 
+- **Contrato UX (2026-09-14, 4 líneas reales):** `snipe_asset_summary` y nota interna usan bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   tag`/`   estado`/`   S/N serial`) ordenados por `asset_tag` (4 líneas por activo, blank line entre bloques, una línea por dato sin etiquetas largas, valores originales Snipe-IT sin conversión `OK`/`MAL`). Vacío si `N=0`.
 - **PUT, no POST** (POST crearía un ticket nuevo); sin tabla nueva.
 - **Anti-loop:** el trigger solo reacciona a `created`; el `PUT` es `update`.
 - **`assigned_type` URL-encodeado** (`App%5CModels%5CUser`).
+- **Nodos Code — clean code (2026-09-14):** los 3 `Code` llevan manual en cabecera
+  + constantes y helpers puros sin cambiar comportamiento:
+  `Match Snipe User` (`normalizeEmail`/`isSnipeFetchError`/`findExactEmailMatches`/`sortByIdAsc`,
+  `FALLBACK_MAX_ID=9e15`), `Build Enrichment` (`isFetchError`/`sortByAssetTag`/`formatAssetBlock`/`buildSummaryBlock`,
+  `MSG_FETCH_ERROR`/`MSG_NO_ASSETS`/`FALLBACK_*`), `Build Empty (no user)`
+  (`MSG_SNIPE_FETCH_ERROR`/`buildMissingUserNote`). Verificado con harness
+  (duplicados id menor, error red, 4 activos reales, fallbacks `Modelo?/Estado?/s/n`). Espejo de `.ai/specs/zammad-tickets.md`.
 - **Credencial Zammad:** `httpHeaderAuth` (`Zammad Header Auth`,
   `Authorization: Token token=...`); sentinela `ZAMMAD_HEADER_PENDIENTE` hasta
   crearla en cada n8n (remapeada por `n8n-remap.sh` v1.3.0+, ver §4.8 y spec).
