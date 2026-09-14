@@ -10,5 +10,9 @@
   "bearer_snipe": {
     "id": "EJEMPLO_ID_BEARER",
     "name": "Bearer Auth account"
+  },
+  "zammad_header": {
+    "id": "EJEMPLO_ID_ZAMMAD_HEADER",
+    "name": "Zammad Header Auth"
   }
 }

@@ -26,5 +26,9 @@
   "users": {
     "id": "EJEMPLO_ID_USERS",
     "name": "Tryton sync snipe-IT users assets"
+  },
+  "zammad": {
+    "id": "EJEMPLO_ID_ZAMMAD",
+    "name": "Zammad enrich ticket assets"
   }
 }
