@@ -6,7 +6,7 @@
 # mktemp, diff, uname, docker (+ uuidgen o python3 solo en modo push).
 # No usa arrays asociativos, mapfile ni sed -i.
 #
-# Modo remap (default): reescribe credentials.{postgres,httpBearerAuth}.
+# Modo remap (default): reescribe credentials.{postgres,httpBearerAuth,httpHeaderAuth}.
 #   {id,name} y los workflowId del orquestador en copias bajo /tmp
 #   (el repo no se modifica).
 # Modo push: remapea + UPDATE workflow_entity (nodes/connections/settings)
@@ -21,7 +21,7 @@
 
 set -u
 
-VERSION="1.2.2"
+VERSION="1.3.0"
 
 print_usage() {
   cat <<USAGE
@@ -55,6 +55,8 @@ Reglas de mapeo (solo IDs):
   postgres (todos los nodos)  -> pg_n8n del destino,
     salvo "Query Active Employees" -> pg_tryton del destino.
   httpBearerAuth              -> bearer_snipe del destino.
+  httpHeaderAuth              -> zammad_header del destino (solo si el mapa
+    destino lo define; si no, se deja intacto con aviso y no falla).
   workflowId (6 Execute del orquestador, por nombre de nodo)
                               -> id del sub-workflow destino
     (ver NODOS_WF abajo); actualiza value, cachedResultUrl y
@@ -207,6 +209,15 @@ TGT_TRYTON_ID="$(jq -r '.pg_tryton.id' "$TGT_CREDS")"
 TGT_TRYTON_NAME="$(jq -r '.pg_tryton.name' "$TGT_CREDS")"
 TGT_BEARER_ID="$(jq -r '.bearer_snipe.id' "$TGT_CREDS")"
 TGT_BEARER_NAME="$(jq -r '.bearer_snipe.name' "$TGT_CREDS")"
+# zammad_header es OPCIONAL (v1.3.0): los mapas viejos no lo tienen y el
+# resto de flujos no debe romperse. Vacio => httpHeaderAuth se deja intacto.
+TGT_HEADER_ID="$(jq -r '.zammad_header.id // empty' "$TGT_CREDS")"
+TGT_HEADER_NAME="$(jq -r '.zammad_header.name // empty' "$TGT_CREDS")"
+CASA_HEADER="$(jq -r '.zammad_header.id // empty' "$CASA_CREDS")"
+TRABAJO_HEADER="$(jq -r '.zammad_header.id // empty' "$TRABAJO_CREDS")"
+# Sentinela que traen los snapshots nuevos antes de crear la credencial
+# Header Auth en cada n8n (ver docs/05-integracion-zammad-snipeit.md).
+SENTINEL_HEADER="ZAMMAD_HEADER_PENDIENTE"
 
 # ---------- mapa de workflows destino (fase 3: workflowIds) ----------
 [ -f "$TGT_WF" ] || fail "no existe $TGT_WF (mapa de workflows destino)"
@@ -232,31 +243,42 @@ remap_creds() {
      --arg tgt_pg_id "$TGT_PG_ID" --arg tgt_pg_name "$TGT_PG_NAME" \
      --arg tgt_tryton_id "$TGT_TRYTON_ID" --arg tgt_tryton_name "$TGT_TRYTON_NAME" \
      --arg tgt_bearer_id "$TGT_BEARER_ID" --arg tgt_bearer_name "$TGT_BEARER_NAME" \
-   '.nodes |= map(
-      . as $n
-      | if (.credentials | type) != "object" then .
-        else .credentials |= with_entries(
-          if .key == "postgres" then
-            (.value.id) as $cid
-            | if $cid == $casa_pg or $cid == $trabajo_pg then
-                .value.id = $tgt_pg_id | .value.name = $tgt_pg_name
-              elif $cid == $casa_tryton or $cid == $trabajo_tryton then
-                .value.id = $tgt_tryton_id | .value.name = $tgt_tryton_name
-              elif $n.name == "Query Active Employees" then
-                .value.id = $tgt_tryton_id | .value.name = $tgt_tryton_name
-              else
-                .value.id = $tgt_pg_id | .value.name = $tgt_pg_name
-              end
-          elif .key == "httpBearerAuth" then
-            .value.id = $tgt_bearer_id | .value.name = $tgt_bearer_name
-          else . end
-        )
-        end
-    )' "$1" > "$2"
+     --arg tgt_header_id "$TGT_HEADER_ID" --arg tgt_header_name "$TGT_HEADER_NAME" \
+     --arg casa_header "$CASA_HEADER" --arg trabajo_header "$TRABAJO_HEADER" \
+     --arg sentinel_header "$SENTINEL_HEADER" \
+    '.nodes |= map(
+       . as $n
+       | if (.credentials | type) != "object" then .
+         else .credentials |= with_entries(
+           if .key == "postgres" then
+             (.value.id) as $cid
+             | if $cid == $casa_pg or $cid == $trabajo_pg then
+                 .value.id = $tgt_pg_id | .value.name = $tgt_pg_name
+               elif $cid == $casa_tryton or $cid == $trabajo_tryton then
+                 .value.id = $tgt_tryton_id | .value.name = $tgt_tryton_name
+               elif $n.name == "Query Active Employees" then
+                 .value.id = $tgt_tryton_id | .value.name = $tgt_tryton_name
+               else
+                 .value.id = $tgt_pg_id | .value.name = $tgt_pg_name
+               end
+           elif .key == "httpBearerAuth" then
+             .value.id = $tgt_bearer_id | .value.name = $tgt_bearer_name
+           elif .key == "httpHeaderAuth" then
+             (.value.id) as $cid
+             | if $tgt_header_id == "" then .
+               elif $cid == $casa_header or $cid == $trabajo_header
+                 or $cid == $sentinel_header or $cid == $tgt_header_id then
+                 .value.id = $tgt_header_id | .value.name = $tgt_header_name
+               else .
+               end
+           else . end
+         )
+         end
+     )' "$1" > "$2"
 }
 
 count_cred() {
-  # $1=archivo $2=rol(pg_n8n|pg_tryton|bearer) -> numero
+  # $1=archivo $2=rol(pg_n8n|pg_tryton|bearer|header) -> numero
   case "$2" in
     pg_n8n)
       jq --arg a "$CASA_TRYTON" --arg b "$TRABAJO_TRYTON" \
@@ -266,7 +288,20 @@ count_cred() {
         '[.nodes[]? | select(.credentials.postgres?) | select(.credentials.postgres.id == $a or .credentials.postgres.id == $b or .name == "Query Active Employees")] | length' "$1" ;;
     bearer)
       jq '[.nodes[]? | select(.credentials.httpBearerAuth?)] | length' "$1" ;;
+    header)
+      jq '[.nodes[]? | select(.credentials.httpHeaderAuth?)] | length' "$1" ;;
   esac
+}
+
+count_header_outside() {
+  # $1=archivo -> httpHeaderAuth con id fuera de {casa,trabajo,destino,sentinela}
+  jq --arg a "$CASA_HEADER" --arg b "$TRABAJO_HEADER" \
+     --arg t "$TGT_HEADER_ID" --arg s "$SENTINEL_HEADER" \
+    '[.nodes[]? | select(.credentials.httpHeaderAuth?)
+      | select(.credentials.httpHeaderAuth.id != $a
+           and .credentials.httpHeaderAuth.id != $b
+           and .credentials.httpHeaderAuth.id != $t
+           and .credentials.httpHeaderAuth.id != $s)] | length' "$1"
 }
 
 # Reescribe los workflowId de los 6 Execute del orquestador ($1) al
@@ -340,7 +375,15 @@ if [ "$MODE" = "remap" ]; then
     PG_N="$(count_cred "$SRC" pg_n8n)"
     TRYTON_N="$(count_cred "$SRC" pg_tryton)"
     BEARER_N="$(count_cred "$SRC" bearer)"
+    HEADER_N="$(count_cred "$SRC" header)"
     WF_N="$(count_wf "$SRC")"
+    if [ "$HEADER_N" != "0" ] && [ -z "$TGT_HEADER_ID" ]; then
+      echo "n8n-remap: aviso: $SRC trae $HEADER_N httpHeaderAuth pero $TGT_CREDS no define zammad_header (se deja intacto)" >&2
+    fi
+    HEADER_OUT="$(count_header_outside "$SRC")"
+    if [ "$HEADER_OUT" != "0" ]; then
+      echo "n8n-remap: aviso: $SRC trae $HEADER_OUT httpHeaderAuth con id desconocido (no casa/trabajo/sentinela; se deja intacto)" >&2
+    fi
 
     TMP_OUT="$(mktemp "${TMPDIR:-/tmp}/n8n-remap.XXXXXX")" || fail "no se pudo crear temporal"
     TMP_MID="$(mktemp "${TMPDIR:-/tmp}/n8n-remap.XXXXXX")" || { rm -f "$TMP_OUT"; fail "no se pudo crear temporal"; }
@@ -349,17 +392,17 @@ if [ "$MODE" = "remap" ]; then
     rm -f "$TMP_MID"
 
     if diff -q "$SRC" "$TMP_OUT" >/dev/null 2>&1; then
-      echo "[sin cambios] $SRC (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N)"
+      echo "[sin cambios] $SRC (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N header:$HEADER_N wf:$WF_N)"
       rm -f "$TMP_OUT"
     else
       CHANGED=$((CHANGED + 1))
       if [ "$DRY_RUN" -eq 1 ]; then
-        echo "[dry-run] $SRC -> pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
+        echo "[dry-run] $SRC -> pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N header:$HEADER_N wf:$WF_N"
         rm -f "$TMP_OUT"
       else
         BASE="$(basename "$SRC")"
         mv "$TMP_OUT" "$OUT_DIR/$BASE" || { rm -f "$TMP_OUT"; fail "no se pudo escribir $OUT_DIR/$BASE"; }
-        echo "[ok] $SRC -> $OUT_DIR/$BASE (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N)"
+        echo "[ok] $SRC -> $OUT_DIR/$BASE (pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N header:$HEADER_N wf:$WF_N)"
       fi
     fi
   done
@@ -466,11 +509,18 @@ for SRC in "$@"; do
   PG_N="$(count_cred "$STAGED" pg_n8n)"
   TRYTON_N="$(count_cred "$STAGED" pg_tryton)"
   BEARER_N="$(count_cred "$STAGED" bearer)"
+  HEADER_N="$(count_cred "$STAGED" header)"
   WF_N="$(count_wf "$STAGED")"
   BAD_PG="$(jq --arg a "$TGT_PG_ID" --arg b "$TGT_TRYTON_ID" \
     '[.nodes[]? | select(.credentials.postgres?) | select(.credentials.postgres.id != $a and .credentials.postgres.id != $b)] | length' "$STAGED")"
   BAD_BEARER="$(jq --arg a "$TGT_BEARER_ID" \
     '[.nodes[]? | select(.credentials.httpBearerAuth?) | select(.credentials.httpBearerAuth.id != $a)] | length' "$STAGED")"
+  if [ -n "$TGT_HEADER_ID" ]; then
+    BAD_HEADER="$(jq --arg a "$TGT_HEADER_ID" \
+      '[.nodes[]? | select(.credentials.httpHeaderAuth?) | select(.credentials.httpHeaderAuth.id != $a)] | length' "$STAGED")"
+  else
+    BAD_HEADER="0"
+  fi
   BAD_WF="$(jq --arg login "$TGT_WF_LOGIN_ID" --arg categories "$TGT_WF_CATEGORIES_ID" \
     --arg status "$TGT_WF_STATUS_ID" --arg models "$TGT_WF_MODELS_ID" \
     --arg assets "$TGT_WF_ASSETS_ID" --arg users "$TGT_WF_USERS_ID" \
@@ -488,13 +538,13 @@ for SRC in "$@"; do
            and .parameters.workflowId.value != $models
            and .parameters.workflowId.value != $assets
            and .parameters.workflowId.value != $users)] | length' "$STAGED")"
-  if [ "$BAD_PG" != "0" ] || [ "$BAD_BEARER" != "0" ] || [ "$BAD_WF" != "0" ]; then
-    echo "[ERROR] $SRC: remapeo incompleto (pg_fuera:$BAD_PG bearer_fuera:$BAD_BEARER wf_fuera:$BAD_WF)" >&2
+  if [ "$BAD_PG" != "0" ] || [ "$BAD_BEARER" != "0" ] || [ "$BAD_HEADER" != "0" ] || [ "$BAD_WF" != "0" ]; then
+    echo "[ERROR] $SRC: remapeo incompleto (pg_fuera:$BAD_PG bearer_fuera:$BAD_BEARER header_fuera:$BAD_HEADER wf_fuera:$BAD_WF)" >&2
     ERR_N=$((ERR_N + 1)); continue
   fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[dry-run] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ver=${OLD_VID:-?} -> nueva | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
+    echo "[dry-run] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ver=${OLD_VID:-?} -> nueva | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N header:$HEADER_N wf:$WF_N"
     continue
   fi
 
@@ -532,7 +582,7 @@ for SRC in "$@"; do
       -v vid="$NEWVID" -v live="$LIVE_ID" -v wname="$SNAP_NAME" >/dev/null 2>&1; then
     CHECK="$(psql_q "SELECT \"versionId\" FROM workflow_entity WHERE id='$LIVE_ID';")"
     if [ "$CHECK" = "$NEWVID" ]; then
-      echo "[ok] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ${OLD_VID} -> ${NEWVID} | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N wf:$WF_N"
+      echo "[ok] $SNAP_NAME ($KEY): live $LIVE_ID active=$LIVE_ACTIVE ${OLD_VID} -> ${NEWVID} | pg_n8n:$PG_N pg_tryton:$TRYTON_N bearer:$BEARER_N header:$HEADER_N wf:$WF_N"
       OK_N=$((OK_N + 1))
       PUSHED_IDS="$PUSHED_IDS $LIVE_ID"
     else
