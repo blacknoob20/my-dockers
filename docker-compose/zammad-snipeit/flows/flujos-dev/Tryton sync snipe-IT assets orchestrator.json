@@ -16,9 +16,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "QHc2NJoBedOUJaPp",
+          "value": "Cnq2yvzVCRTKFld5",
           "mode": "list",
-          "cachedResultUrl": "/workflow/QHc2NJoBedOUJaPp",
+          "cachedResultUrl": "/workflow/Cnq2yvzVCRTKFld5",
           "cachedResultName": "Tryton login"
         },
         "workflowInputs": {
@@ -244,9 +244,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "5OesIemPhyWJrGFZ",
+          "value": "DFYH9aXY2QE6uJzl",
           "mode": "list",
-          "cachedResultUrl": "/workflow/5OesIemPhyWJrGFZ",
+          "cachedResultUrl": "/workflow/DFYH9aXY2QE6uJzl",
           "cachedResultName": "Tryton sync snipe-IT status"
         },
         "workflowInputs": {
@@ -273,9 +273,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "aOaoZvxNM7LCjvVS",
+          "value": "Ps2wicy3xI4n37nD",
           "mode": "list",
-          "cachedResultUrl": "/workflow/aOaoZvxNM7LCjvVS",
+          "cachedResultUrl": "/workflow/Ps2wicy3xI4n37nD",
           "cachedResultName": "Tryton sync snipe-IT categories"
         },
         "workflowInputs": {
@@ -302,9 +302,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "S87XSGgQ9vGDmbcy",
+          "value": "JODxuGjfCJ2wDobA",
           "mode": "list",
-          "cachedResultUrl": "/workflow/S87XSGgQ9vGDmbcy",
+          "cachedResultUrl": "/workflow/JODxuGjfCJ2wDobA",
           "cachedResultName": "Tryton sync snipe-IT models"
         },
         "workflowInputs": {
@@ -344,22 +344,6 @@
     },
     {
       "parameters": {
-        "content": "## Fase de activos v2 — VALIDACIÓN EN LOTE (vía sub-workflow)\nStaging/diff/ingest ahora en `Tryton sync snipe-IT assets ingest (batch)` (Execute ingest). Catálogos: fases originales intactas.\nSub: `Reset staging` → `Load staging (bulk)` → `Diff assets` → `Any changes?` → loop `Batch changes`/`Create|Update` → `Run summary` (tryton_snipe_run_summary).\nIncremental 2026-09-06: `Search assets` filtra `OR(write_date,create_date) >= Get last sync` (MAX finished_at -2h; NULL = full); `Has assets?` salta catálogos con 0 filas; `Run summary` solo cuenta deleted en full.\nAuto 2026-09-10: decisión full/incremental solo por watermark — forzar full truncando `tryton_snipe_run_summary`.",
-        "height": 220,
-        "width": 420,
-        "color": 4
-      },
-      "id": "ff3fb198-cbab-453c-b5a9-81017d73d6e0",
-      "name": "Sticky v2",
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        2080,
-        112
-      ],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT TO_CHAR(MAX(finished_at) - interval '2 hours', 'YYYY-MM-DD HH24:MI:SS') AS since, COUNT(*)::int AS runs FROM tryton_snipe_run_summary;",
         "options": {}
@@ -375,7 +359,7 @@
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "vJtGvptYH9m03zLH",
+          "id": "qJJfZl7PuKahcYb0",
           "name": "Postgres n8n account"
         }
       }
@@ -419,9 +403,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "ym0zaIpEj3J8xg2l",
+          "value": "v6K5kipkr7UKp0fE",
           "mode": "list",
-          "cachedResultUrl": "/workflow/ym0zaIpEj3J8xg2l",
+          "cachedResultUrl": "/workflow/v6K5kipkr7UKp0fE",
           "cachedResultName": "Tryton sync snipe-IT assets"
         },
         "options": {
@@ -441,9 +425,9 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "Yv8AlEkGEdwzRJrJ",
+          "value": "yjyUYjVEaZ9UniSs",
           "mode": "list",
-          "cachedResultUrl": "/workflow/Yv8AlEkGEdwzRJrJ",
+          "cachedResultUrl": "/workflow/yjyUYjVEaZ9UniSs",
           "cachedResultName": "Tryton sync snipe-IT users assets"
         },
         "workflowInputs": {
@@ -738,11 +722,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "cd4cbdf6-0b72-426b-85fd-ddda06010548",
+  "versionId": "83f331e6-ae8b-432e-95a2-932e5afa6762",
   "meta": {
-    "instanceId": "984367b661ca03c1a155308c4c58e94cc2d45366a1839956b94d6328b90afa24"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "07a4d8260167d9ecd79cb24c47377f5fb3355a6ca338d3876c06d28927edfc92"
   },
   "nodeGroups": [],
-  "id": "BFfvossXQY8Ck5zh",
+  "id": "3hh7DBsrq8A1rIQg",
   "tags": []
 }
