@@ -35,8 +35,9 @@ estado **actual** en Snipe-IT (`users?email` → match LOWER exacto →
 (anti-loop), auditoría en `integration_sync_log`, sin tabla nueva.
 Contrato canónico en `.ai/specs/zammad-tickets.md`, guía en
 `docs/05-integracion-zammad-snipeit.md`, espejo en `docs/04` §4.9.
-Formato UX 2026-09-14 (4 líneas reales): `snipe_asset_summary`/nota = `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   tag`/`   estado`/`   S/N serial`), orden `asset_tag`, datos reales Snipe-IT sin conversión (ver spec Zammad).
+Formato UX 2026-09-14 (5 líneas reales): `snipe_asset_summary`/nota = `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial`), orden `asset_tag`, categoría=`r.category.name` (identifica mouse/monitor/etc), datos reales Snipe-IT sin conversión (ver spec Zammad).
 > **Refactor 2026-09-14 (clean code):** los 3 `Code` (`Match Snipe User`, `Build Enrichment`, `Build Empty (no user)`) reescritos solo para legibilidad: encabezado manual + constantes + helpers puros, sin cambio de comportamiento ni de literales. Ver harness en spec Zammad.
+> **Fix 2026-09-14 (categoría):** `Build Enrichment` añade `r.category.name` como 2ª línea por activo (5 líneas/bloque).
 
 ---
 
