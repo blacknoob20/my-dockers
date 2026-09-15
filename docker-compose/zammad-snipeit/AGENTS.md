@@ -92,8 +92,10 @@ Los scripts `.sh` en la raíz del repositorio son **seeders de datos iniciales**
 
 | Archivo | Qué hace |
 |---------|----------|
-| `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`dbs-postgres`, `dbs-mariadb` en red `docker_net`). Lee el password de superusuario desde `/Volumes/CRGS-1T/Docker/.env` (`POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD`) con fallback `changeme_*`; aliases `postgres`/`mariadb` resuelven a `dbs-*`. Ejecutar una vez antes del primer `docker compose up` (idempotente). |
-| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: **paso 0 (LAB ONLY)** borra todos los assets en Snipe-IT (`DELETE FROM assets`, sin FKs entre assets/models/categories/status_labels, no toca usuarios); luego borra modelos, categorías y status labels creados (modelos por su `category_id` del map, status por `snipe_name`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `sync_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. DBs en `dbs-postgres`/`dbs-mariadb` (defaults `SNIPE_DB_CONT`/`N8N_DB_CONT`); sanitiza `\r` de los `.env` (CRLF). Preserva los 3 status labels built-in (AUTO_INCREMENT a 4), categoría default y users. Uso: `./scripts/reset-sync.sh -y` |
+| `scripts/init-external-dbs.sh` | Crea bases de datos y usuarios en los contenedores Docker externos (`dbs-postgres`, `dbs-mariadb` en red `docker_net`). Lee el password de superusuario desde `/Volumes/CRGS-1T/Docker/.env` (`POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD`) con fallback `your_*_here` (ver `*.env.example`); aliases `postgres`/`mariadb` resuelven a `dbs-*`. Ejecutar una vez antes del primer `docker compose up` (idempotente). |
+| `scripts/reset-sync.sh` | Limpia los datos del flujo n8n "Tryton sync assets" para re-ejecutarlo: paso 0 (LAB ONLY) borra TODOS los assets en Snipe-IT (`DELETE FROM assets`, sin FKs entre assets/models/categories/status_labels, no toca usuarios); luego borra modelos, categorías y status labels creados (modelos por su `category_id` del map, status por `snipe_name`) y trunca `tryton_snipe_model_map`, `tryton_snipe_category_map`, `tryton_snipe_status_map`, `staging_tryton_assets`, `tryton_snipe_asset_map`, `tryton_snipe_run_summary`, `staging_titular`, `snipe_titular_map`, `snipe_titular_user_map` e `integration_sync_log` (PostgreSQL de n8n) reiniciando secuencias. Muestra plan legible antes de confirmar: totales Snipe-IT/PG, names+counts (primeros 10 + resto), paso 0 de assets, lo que se preserva, AUTO_INCREMENT y ruta `/tmp/...` con IDs completos. Auto-detecta el contenedor de BD corriendo (`docker-mariadb-1`/`docker-postgres-1` en Linux, `dbs-*` en Mac lab; override `SNIPE_DB_CONT`/`N8N_DB_CONT`, aborta con mensaje claro si faltan); lee `envs/snipe-db.env` + `envs/n8n-db.env` locales (ver `*.env.example`, aborta con ayuda si faltan); sanitiza `\r` de los `.env` (CRLF). Preserva usuarios Snipe-IT, categoría default id 1 y status built-in 1-3. Uso: `./scripts/reset-sync.sh -y [--verbose]` |
+| `scripts/n8n-remap.sh` | Remapea IDs de credenciales y `workflowId` del orquestador en snapshots (`flows/**/*.json`) entre ambientes casa/trabajo para importar sin re-seleccionar a mano: `./scripts/n8n-remap.sh --to trabajo "flows/flujos-dev/Tryton sync snipe-IT status.json"` (salida a `/tmp/n8n-remap/<env>`, no se commitea; `--dry-run`, `--help`/`-h`, `--install` solo brew/macOS, nunca `sudo`). Mapas solo-IDs (sin secretos) en `envs/n8n-creds.example.json` / `envs/n8n-workflows.example.json` como plantilla; los reales `envs/n8n-{creds,workflows}.{casa,trabajo}.json` están ignorados por git (cada máquina guarda los suyos). Credenciales (`postgres` → `pg_n8n`, salvo `Query Active Employees` → `pg_tryton`; `httpBearerAuth` → `bearer_snipe`) + fase 3 `workflowIds` (6 `Execute` del orquestador por nombre exacto de nodo → id del sub-workflow destino, actualiza `value`/`cachedResultUrl`/`cachedResultName`; conteo `wf:N`, validación `wf_fuera:0` en push). Modo `push` publica al n8n vivo por DB directa (`UPDATE workflow_entity` + `INSERT workflow_history` primero por FK `activeVersionId` + bump `versionId`; backup a `/tmp/n8n-push/<env>`, confirmación salvo `--yes`, `--restart` con espera a `/healthz`): `./scripts/n8n-remap.sh push --to trabajo --dry-run flows/...` Mapas lógico→live-ID en `envs/n8n-workflows.casa.json` / `n8n-workflows.trabajo.json` (locales, ignorados, incluyen `orchestrator`: casa `BFfvossXQY8Ck5zh`, trabajo `3hh7DBsrq8A1rIQg`); se niega si el live-ID no existe, el nombre no coincide o está archivado. Fix 2026-09-07: el duplicado `Tryton sync snipe-IT status 1OYIdFnCkg9YJgrP` (3 PG a credencial Tryton) archivado (`isArchived=true`, reversible); canónico `DFYH9aXY2QE6uJzl` republicado vía push. Fix 2026-09-07 (fase 3): `PFlL1vCJhhGR6qAr` (orquestador con `workflowIds` mezclados casa/trabajo) archivado; `3hh7DBsrq8A1rIQg` (v2 batch, 6 IDs trabajo) renombrado al nombre canónico y actualizado vía push al snapshot incremental (22 nodos, `tryton_snipe_run_summary`). Fix 2026-09-07 (v1.2.1, rename snipe-IT): flujo `users` → `Tryton sync snipe-IT users assets` y nodo `Execute Tryton sync snipe-IT users assets` (mapa `NODOS_WF` actualizado; el push valida por nombre y se niega si el vivo aún tiene el viejo). Fix 2026-09-07 (v1.2.2): alias `Tryton Login → login` (llamada de login dentro de users/status también se remapea; antes filtraba el `QHc2` de casa al vivo trabajo). v1.3.0 (2026-09-09): `httpHeaderAuth` → `zammad_header` del destino (opcional: si el mapa destino no lo define, se deja intacto con aviso y no falla; ids conocidos casa/trabajo/sentinela `ZAMMAD_HEADER_PENDIENTE`; conteo `header:N`, validación `header_fuera` en push). |
+| `scripts/zammad-ticket-objects.sh` | Provisiona una vez por instancia los 3 objetos custom del ticket para `Zammad enrich ticket assets` (`snipe_asset_count` integer, `snipe_asset_tags`/`snipe_asset_summary` textarea) vía API Object Manager (`POST /api/v1/object_manager_attributes` + `POST ..._execute_migrations`; requiere token Admin `ZAMMAD_TOKEN_PROV`, ver `envs/n8n.env.example`); tras migraciones es obligatorio `docker compose restart zammad-railsserver zammad-scheduler zammad-websocket`. Idempotente (si existe, reporta y sigue); `--check` solo verifica. Uso: `./scripts/zammad-ticket-objects.sh [--check]` |
 
 > **Nota Passport Snipe-IT:** las llaves RSA de Laravel Passport (`oauth-*.key`) viven en `./snipe-data/snipeit/keys/` (bind mount desde `docker-compose.yml`). Si el contenedor se recrea sin ese volumen, toda la API responde 500 `Invalid key supplied`. Si el volumen se regenera con `php artisan passport:keys` como root, corregir permisos con `chown apache:apache /var/lib/snipeit/keys/*`. Los API tokens quedan inválidos tras regenerar llaves (regenerarlos en Admin → API Tokens y actualizar la credencial `Bearer Auth account` / `httpBearerAuth` id `PipxV96bF9YxckC4` en n8n).
 
@@ -126,31 +128,46 @@ Los scripts son idempotentes a nivel práctico: si el registro ya existe, la API
 
 > **⚠ No usar en producción.** Estas credenciales son únicamente para el entorno de laboratorio local.
 
-Las credenciales y variables de entorno están en archivos **`.env`** por servicio dentro de la carpeta **`envs/`**. El `docker-compose.yml` los referencia con `env_file:`.
+Los secretos reales viven en archivos **`envs/*.env` locales, ignorados por git**. El repo solo trackea plantillas **`envs/*.env.example`** (sin secretos) + `envs/n8n-{creds,workflows}.example.json`. El `docker-compose.yml` los referencia con `env_file:` (lee los `.env` reales).
+
+Setup en cada máquina (casa/trabajo):
+
+```bash
+cp envs/n8n.env.example envs/n8n.env
+cp envs/snipe-it.env.example envs/snipe-it.env
+cp envs/zammad-app.env.example envs/zammad-app.env
+cp envs/zammad-search.env.example envs/zammad-search.env
+cp envs/snipe-db.env.example envs/snipe-db.env
+cp envs/zammad-db.env.example envs/zammad-db.env
+cp envs/n8n-db.env.example envs/n8n-db.env
+# luego edita passwords/tokens/URLs por ambiente
+```
+
+> **Nota historial 2026-09-07:** los `*.env` con secretos se des-trackearon (`git rm --cached` + `.gitignore`) y el historial se purgó con `filter-repo`; si tu clon aún los muestra trackeados, re-clona y rota secretos.
 
 ### Contenedores externos (DBs)
 
 | Contenedor | Credenciales (definidas en `/Volumes/CRGS-1T/Docker/.env`) |
 |------------|--------------|
-| `dbs-postgres` (`postgres`) | User: `postgres`, Password: `POSTGRES_PASSWORD` (lab: `changeme_root_pg`) |
-| `dbs-mariadb` (`mariadb`) | Root: `MYSQL_ROOT_PASSWORD` (lab: `changeme_root`) |
+| `dbs-postgres` (`postgres`) | User: `postgres`, Password: `POSTGRES_PASSWORD` (lab: `your_postgres_password_here`) |
+| `dbs-mariadb` (`mariadb`) | Root: `MYSQL_ROOT_PASSWORD` (lab: `your_mysql_root_password_here`) |
 
-### Archivos .env del compose
+### Archivos .env del compose (plantilla `.env.example` en git, real `.env` local ignorado)
 
 | Archivo | Servicio(s) | Contenido |
 |---------|------------|-----------|
-| `envs/snipe-it.env` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (`API_THROTTLE_PER_MINUTE=600`, default vendor 120; aplicar con `php artisan config:cache`) |
-| `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
-| `envs/zammad-app.env` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
-| `envs/n8n.env` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
+| `envs/snipe-it.env(.example)` | `snipe-it` | App URL, APP_KEY, DB connection (`DB_HOST=mariadb`), mail config, API throttle (plantilla `.env.example` ofrece `API_THROTTLE_PER_MINUTE=600`, default vendor 120; el vivo corre con el default 120 — los batchings del sync están bajo ese cap; aplicar con `php artisan config:cache`) |
+| `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, xpack, JVM heap |
+| `envs/zammad-app.env(.example)` | `zammad-init`, `zammad-railsserver`, `zammad-scheduler`, `zammad-websocket`, `zammad-nginx`, `zammad-backup` | PostgreSQL (`POSTGRESQL_HOST=postgres`), Elasticsearch, Redis, Memcached connection |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, NODE_ENV, DB connection (`DB_POSTGRESDB_HOST=postgres`, `DB_POSTGRESDB_POOL_SIZE=10`), Tryton connection (`TRYTON_URL`, `TRYTON_DB`, `TRYTON_USER`, `TRYTON_PASS`; full/incremental lo decide cada flujo por watermark, ver `n8n.env.example`), Zammad (`ZAMMAD_HOST=http://zammad-nginx:8080`, `ZAMMAD_TOKEN` Agent svc-n8n, `ZAMMAD_TOKEN_PROV` Admin svc-zammad-prov; recrear n8n tras cambiarlos), Mail notifications (`MAIL_FROM`, `MAIL_TO`, `MAIL_TOKEN`), Runner limits (`N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096`, `N8N_RUNNERS_TASK_TIMEOUT=3600`), Pruning (`EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168h`, `MAX_COUNT=500`) |
 
-### Archivos .env de DBs (no usados actualmente, referenciados por init-external-dbs.sh)
+### Archivos .env de DBs (plantilla en git, real local ignorado; referenciados por init-external-dbs.sh)
 
 | Archivo | Contenido |
 |---------|-----------|
-| `envs/snipe-db.env` | MariaDB: root password, DB name, user/password |
-| `envs/zammad-db.env` | PostgreSQL: user/password, DB name |
-| `envs/n8n-db.env` | PostgreSQL: user/password, DB name |
+| `envs/snipe-db.env(.example)` | MariaDB: root password, DB name, user/password |
+| `envs/zammad-db.env(.example)` | PostgreSQL: user/password, DB name |
+| `envs/n8n-db.env(.example)` | PostgreSQL: user/password, DB name |
 
 Cámbialo antes de producción.
 
@@ -165,7 +182,7 @@ Cámbialo antes de producción.
 - Zammad tiene una cadena de dependencias: `zammad-search` + `zammad-redis` + `zammad-memcached` → `zammad-init` → `zammad-railsserver` / `zammad-scheduler` / `zammad-websocket` → `zammad-nginx`.
 - Elasticsearch arranca con `xpack.security.enabled=false` y 1GB de heap (`-Xms1g -Xmx1g`).
 - La zona horaria de n8n está configurada a `America/Guayaquil`.
-- Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (igual que `executionTimeout:3600` del workflow).
+- Task runner JS sin `N8N_RUNNERS_TASK_TIMEOUT` usa 300 s por defecto (n8n 2.36.7 `TaskBroker.handleTaskTimeout`); con titular-activo el fan-out `Create Snipe User` → `Users Ready` lo supera. Fix 2026-09-03: `N8N_RUNNERS_TASK_TIMEOUT=3600` en `envs/n8n.env` (`executionTimeout` del users: 7200 desde 2026-09-10; el runner se deja en 3600 porque el fan-out largo de checkouts corre en el proceso principal).
 - `execution_data` con `jsonSizeBytes` 35 MB (1497) + 197 `rejected by Runner` + 14 `timeout exceeded when trying to connect` colgaban UI y host. Fix 2026-09-03: `EXECUTIONS_DATA_PRUNE=true`, `MAX_AGE=168`, `MAX_COUNT=500`, `PRUNE_HARD_DELETE_INTERVAL=15`, `PRUNE_INTERVAL=60`, `DB_POSTGRESDB_POOL_SIZE=5` en `envs/n8n.env` (subido a 10 el 2026-09-05 con la unificación de throttle 1/1200); poda manual `DELETE FROM execution_data WHERE octet_length(data::text)>5MB` (36→152 kB) + `VACUUM`. Sin esto el navegador intenta renderizar 35 MB y el pool PG se satura.
 - El manual de implementación para producción está en `docs/manual-implementacion.md` (hardware, despliegue, tokens de integración, backups).
 - Para volver a usar las DBs internas del compose, ver `.ai/specs/external-databases.md`.
@@ -181,6 +198,7 @@ Los specs de integración están en `.ai/specs/`:
 | Archivo | Descripción |
 |---------|-------------|
 | `.ai/specs/tryton-activos.md` | Spec canónico de sincronización Tryton → Snipe-IT: arquitectura de los 6 workflows, contratos, tablas de mapeo, errores conocidos |
+| `.ai/specs/zammad-tickets.md` | Spec canónico de enriquecimiento Zammad bajo demanda: webhook ticket-created → consulta live Snipe-IT → PUT ticket (customs + nota), sin sync continua |
 | `.ai/specs/external-databases.md` | Configuración de bases de datos externas: contenedores, credenciales, DBs/usuarios creados, paso a paso para volver a DBs internas |
 
 ### Servidor Tryton (producción)

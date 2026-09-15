@@ -63,7 +63,7 @@ En la pestaña **Accesos** del grupo, agregar permisos **solo de lectura** para 
    - **Nombre completo**: `Integracion N8N`
    - **Correo electrónico**: (opcional)
 3. En la pestaña **Grupos**, agregar el grupo `integracion_n8n`
-4. En la pestaña **Preferencias**, definir la contraseña: `12345678`
+4. En la pestaña **Preferencias**, definir la contraseña: `your_tryton_password_here` (ver `envs/n8n.env.example` `TRYTON_PASS`)
 5. **Guardar**
 
 ---
@@ -77,7 +77,7 @@ curl -X POST "http://<tryton_host>:8000/<database>/" \
   -d '{
     "id": 0,
     "method": "common.db.login",
-    "params": ["svc_n8n", {"password": "12345678", "device_cookie": null}, "es"]
+    "params": ["svc_n8n", {"password": "your_tryton_password_here", "device_cookie": null}, "es"]
   }'
 ```
 
@@ -112,7 +112,7 @@ curl -X POST "http://<tryton_host>:8000/<database>/" \
 | URL Tryton | `http://192.168.56.102:8000` |
 | Base de datos | `dbegoblocal` |
 | Usuario | `svc_n8n` |
-| Contraseña | `12345678` |
+| Contraseña | `your_tryton_password_here` (ver `envs/n8n.env.example`) |
 | Grupo | `integracion_n8n` |
 | UID | `2160` |
 

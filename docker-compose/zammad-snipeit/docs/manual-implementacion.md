@@ -126,7 +126,7 @@ El stack combina tres tecnologías complementarias para el ciclo de vida del sop
     el usuario, su estado y garantía → resolución más rápida.
 ```
 
-> El flujo 2.2 ya está implementado (workflows `Tryton sync categories` y `Tryton sync assets` en `flows/`). El flujo 2.3 es el caso de uso objetivo de la arquitectura y se construye en n8n sobre las mismas credenciales documentadas en la sección 8.
+> El flujo 2.2 ya está implementado (workflows `Tryton sync categories` y `Tryton sync assets` en `flows/`). El flujo 2.3 está implementado como `flows/zammad/Zammad enrich ticket assets.json` (webhook ticket-created → consulta live Snipe-IT → `PUT` ticket con customs + nota interna, sin sync continua). Guía operativa en `docs/05-integracion-zammad-snipeit.md`, spec en `.ai/specs/zammad-tickets.md`.
 
 ---
 
@@ -163,7 +163,7 @@ Toda la infraestructura corre en una única VM con Docker Compose. Los contenedo
 
 | Servicio | Imagen | Puerto publicado | Base de datos |
 |----------|--------|------------------|---------------|
-| `dbs-mariadb` (externo, `docker_net`, alias `mariadb`) | `mariadb:lts-ubi` | `3306:3306` | MySQL `snipeit` (`snipe_user`/`snipe_password_123`, creado por `init-external-dbs.sh`) |
+| `dbs-mariadb` (externo, `docker_net`, alias `mariadb`) | `mariadb:lts-ubi` | `3306:3306` | MySQL `snipeit` (`snipe_user`/`your_snipe_password_here`, creado por `init-external-dbs.sh`, ver `envs/snipe-db.env.example`) |
 | `snipe-it` | `snipe/snipe-it:latest-alpine` | `8080:80` | Conecta a `mariadb` (alias de `dbs-mariadb` en `docker_net`) |
 
 **Zammad — Mesa de ayuda (puerto `8000`)**
@@ -306,18 +306,25 @@ cd /opt/zammad-snipe
 
 ### Paso 2 — Revisar y ajustar las variables de entorno
 
-Todas las credenciales están en `envs/*.env` (una por servicio) + el `.env` externo de DBs. **En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
+El repo solo trackea plantillas `envs/*.env.example` (sin secretos); los `envs/*.env` reales están ignorados por git (uno por máquina). Créalos antes del primer arranque:
+
+```bash
+for f in envs/*.env.example; do cp -n "$f" "${f%.example}"; done
+# luego edita cada envs/*.env con passwords/tokens/URLs de este ambiente
+```
+
+**En producción se deben cambiar las contraseñas de laboratorio antes del primer arranque.**
 
 | Archivo | Servicio(s) | Contenido |
 |---------|-------------|-----------|
-| `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `changeme_*`) |
-| `envs/snipe-db.env` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
-| `envs/snipe-it.env` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
-| `envs/zammad-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
-| `envs/zammad-search.env` | `zammad-search` | Elasticsearch: single-node, heap |
-| `envs/zammad-app.env` | servicios Zammad | Conexiones PostgreSQL (`POSTGRESQL_HOST=postgres` → `dbs-postgres`), ES, Redis, Memcached |
-| `envs/n8n-db.env` | referencia para `init-external-dbs.sh` | PostgreSQL: `n8n`/`n8n_user` (debe coincidir con `n8n.env`) |
-| `envs/n8n.env` | `n8n` | Timezone, DB (`DB_POSTGRESDB_HOST=postgres` → `dbs-postgres`), entorno |
+| `/Volumes/CRGS-1T/Docker/.env` (externo) | `dbs-postgres`/`dbs-mariadb` | Superusuarios `POSTGRES_PASSWORD`/`MYSQL_ROOT_PASSWORD` (lab: `your_*_here`, ver `*.env.example`) |
+| `envs/snipe-db.env(.example)` | referencia para `init-external-dbs.sh` | MariaDB: `snipeit`/`snipe_user` (debe coincidir con `snipe-it.env`) |
+| `envs/snipe-it.env(.example)` | `snipe-it` | APP_URL, APP_KEY, conexión DB (`DB_HOST=mariadb` → `dbs-mariadb`), mail |
+| `envs/zammad-db.env(.example)` | referencia para `init-external-dbs.sh` | PostgreSQL: `zammad_production`/`zammad_user` (debe coincidir con `zammad-app.env`) |
+| `envs/zammad-search.env(.example)` | `zammad-search` | Elasticsearch: single-node, heap |
+| `envs/zammad-app.env(.example)` | servicios Zammad | Conexiones PostgreSQL (`POSTGRESQL_HOST=postgres` → `dbs-postgres`), ES, Redis, Memcached |
+| `envs/n8n-db.env(.example)` | referencia para `init-external-dbs.sh` | PostgreSQL: `n8n`/`n8n_user` (debe coincidir con `n8n.env`) |
+| `envs/n8n.env(.example)` | `n8n` | Timezone, DB (`DB_POSTGRESDB_HOST=postgres` → `dbs-postgres`), entorno |
 
 Ajustes clave en producción:
 
@@ -383,7 +390,7 @@ Los seeders de `scripts/` pueblan Snipe-IT vía API una vez que `http://<servido
 
 ```bash
 # 1) Crear token API en Snipe-IT (Admin → Settings → API Tokens) y exportarlo.
-#    El token de laboratorio está en envs/n8n.env (SNIPEIT_TOKEN) o en scripts/* (placeholder).
+#    El token de este ambiente está en envs/n8n.env local (SNIPEIT_TOKEN, ver .env.example).
 export SNIPE_URL="http://localhost:8080"
 export API_TOKEN="eyJ0..."   # o: export API_TOKEN=$(grep SNIPEIT_TOKEN envs/n8n.env | cut -d= -f2-)
 
@@ -428,11 +435,12 @@ Recomendaciones:
 - Crear el token desde un **usuario de servicio** de Snipe-IT con permisos mínimos (solo los módulos que la integración requiere), no desde el admin.
 - Los tokens dependen de las llaves RSA de Laravel Passport (`oauth-*.key`) que viven en `./snipe-data/snipeit/keys/`. **Si ese volumen se pierde, todos los API tokens quedan inválidos** (respuestas `500 Invalid key supplied`) y hay que regenerarlos. El volumen es parte crítica del backup.
 
-### 8.2 Zammad — Token de API
+### 8.2 Zammad — Tokens de API
 
-1. Crear el usuario de integración: **Admin → Usuarios → Nuevo usuario** con rol restringido (p. ej. solo lectura de tickets y usuarios).
-2. Con el usuario de integración logueado: avatar (menú de usuario) → **Token Access** → crear un token con los permisos necesarios (p. ej. `ticket.read`, `user.read`).
-3. Usarlo en las llamadas a la API:
+Se usan **dos usuarios de servicio** (ver `docs/05-integracion-zammad-snipeit.md` §5.3):
+
+1. `svc-n8n` (rol **Agente** con RW en los grupos): avatar → **Token Access** → token nivel **Agent** → variable `ZAMMAD_TOKEN` (runtime del webhook: `PUT /api/v1/tickets/{id}` + nota interna).
+2. `svc-zammad-prov` (rol **Administrar**): token nivel **Admin** → variable `ZAMMAD_TOKEN_PROV` (solo `scripts/zammad-ticket-objects.sh`, una vez; luego desactivar/archivar el usuario).
 
 ```bash
 curl -H "Authorization: Token token=<TOKEN>" http://<servidor>:8000/api/v1/tickets
@@ -462,6 +470,7 @@ N8N_ENCRYPTION_KEY=<valor-generado>
 |------------|------|-----------|
 | Snipe-IT | SnipeIT API | URL (`http://snipe-it:80` desde n8n) + token Bearer |
 | Zammad | HTTP Request (auth token) | Header `Authorization: Token token=...` |
+| Zammad | Header Auth (`Zammad Header Auth`) | Header `Authorization: Token token=<ZAMMAD_TOKEN>` — usada por `Zammad enrich ticket assets` (credencial `zammad_header`, remapeada por `n8n-remap.sh` v1.3.0+) |
 | Tryton | HTTP Request (header custom) | Header `Authorization: Session <base64(...)>` (ver 8.4) |
 
 ### 8.4 Tryton — Usuario de servicio `svc_n8n`
@@ -522,11 +531,11 @@ docker compose restart zammad-railsserver
 
 ### 9.3 Sincronización Tryton → Snipe-IT (incremental)
 
-Desde 2026-09-06 el orquestador (`Tryton sync snipe-IT assets orchestrator v2`) es **incremental**: `Get last sync` lee `MAX(finished_at) - 2h` de `sync_run_summary` y `Search assets` / `Read Owned Assets` filtran `OR(write_date, create_date) >= since`. Sin cambios, el run completo tarda segundos (7.5s medidos) y `Run summary` registra `total_tryton=0`. Con `Has assets?` se saltan los sub-workflows de catálogos cuando no hay filas.
+Desde 2026-09-06 el orquestador (`Tryton sync snipe-IT assets orchestrator v2`) es **incremental**: `Get last sync` lee `MAX(finished_at) - 2h` de `tryton_snipe_run_summary` y `Search assets` / `Read Owned Assets` filtran `OR(write_date, create_date) >= since`. Sin cambios, el run completo tarda segundos (7.5s medidos) y `Run summary` registra `total_tryton=0`. Con `Has assets?` se saltan los sub-workflows de catálogos cuando no hay filas.
 
 - **Operación normal:** programar el orquestador a diario en horario nocturno (ej. 02:00, trigger Schedule en n8n). Solo los deltas generan llamadas a Snipe-IT (techo 50/min por el throttle 1/1200ms).
-- **Full semanal:** una vez por semana (ej. domingo) forzar barrido completo para recalcular `deleted_in_tryton` (el incremental lo reporta en 0) y reconciliar derivas: fijar `TRYTON_FULL_SYNC=true` en `envs/n8n.env`, recrear n8n (`docker compose up -d n8n`), ejecutar el orquestador, y volver a `false` + recrear. Un full de 9518 assets tarda ~3.2h por el cap de Snipe-IT.
-- **Primera ejecución** (tabla `sync_run_summary` vacía): hace full automáticamente.
+- **Full semanal:** una vez por semana (ej. domingo) forzar barrido completo para recalcular `deleted_in_tryton` (el incremental lo reporta en 0) y reconciliar derivas: truncar el watermark del orquestador (en la BD `n8n`: `TRUNCATE tryton_snipe_run_summary;`) — `Get last sync` devuelve `since=NULL` y el sistema hace full automáticamente —, ejecutar el orquestador, y listo (el `Run summary` re-registra el watermark). Un full de 9518 assets tarda ~3.2h por el cap de Snipe-IT (120/min). El flujo de users usa watermark propio (`integration_sync_log` titular + fallback al de assets) más `snipe_titular_map`: full solo cuando el mapa está vacío (`map_rows=0`) o no hay watermark; su fan-out corre a 100/min (`batching 1/600ms`, `executionTimeout: 7200`) para caber en timeout.
+- **Primera ejecución** (tablas de resumen vacías y mapa de titulares vacío): hace full automáticamente.
 
 ### 9.3 Actualización de versiones
 
@@ -568,7 +577,7 @@ docker run --rm -v zammad-snipe_zammad-backup:/backup alpine ls -la /backup
 
 ```bash
 # Snipe-IT (MariaDB en dbs-mariadb)
-docker exec dbs-mariadb mariadb-dump -u snipe_user -p'snipe_password_123' snipeit > snipeit_$(date +%F).sql
+docker exec dbs-mariadb mariadb-dump -u snipe_user -p'your_snipe_password_here' snipeit > snipeit_$(date +%F).sql  # ver envs/snipe-db.env
 
 # Zammad (PostgreSQL en dbs-postgres)
 docker exec dbs-postgres pg_dump -U zammad_user zammad_production > zammad_$(date +%F).sql
@@ -602,11 +611,11 @@ El stack incluye una integración documentada y operativa entre el ERP **Tryton*
 
 Este repositorio es un **entorno de laboratorio** y requiere ajustes antes de producción:
 
-1. **Cambiar todas las contraseñas** de `envs/*.env` (las actuales son de laboratorio y públicas en el repo). Regenerar también `APP_KEY` de Snipe-IT.
+1. **Cambiar todas las contraseñas** de `envs/*.env` locales (creados desde `*.env.example`; los valores de laboratorio nunca se commitean). Regenerar también `APP_KEY` de Snipe-IT.
 2. **TLS / reverse proxy:** exponer solo los puertos 8000, 8080 y 5678 detrás de un reverse proxy (Caddy, Nginx, Traefik) con certificado TLS. Actualizar `APP_URL` (Snipe-IT) y el hostname público (Zammad) para que los enlaces se generen con HTTPS.
 3. **No exponer las bases de datos:** quitar los puertos `3307` y `5432` del `docker-compose.yml` en producción (los servicios internos se comunican por la red `net`).
-4. **Mail saliente:** el laboratorio usa `MAIL_MAILER=log` (no envía correos). Configurar un SMTP real en `envs/snipe-it.env` y en Zammad (Admin → Channels → Email).
-5. **n8n task runners (opcional pero recomendado):** descomentar el servicio `n8n-runner` y las variables `N8N_RUNNERS_*` comentadas en el compose y en `envs/n8n.env` para ejecutar código JS/Python aislado.
+4. **Mail saliente:** el laboratorio usa `MAIL_MAILER=log` (no envía correos). Configurar un SMTP real en `envs/snipe-it.env` (local, ver `.example`) y en Zammad (Admin → Channels → Email).
+5. **n8n task runners (opcional pero recomendado):** descomentar el servicio `n8n-runner` y las variables `N8N_RUNNERS_*` comentadas en el compose y en `envs/n8n.env` (local, ver `.example`) para ejecutar código JS/Python aislado.
 6. **Elasticsearch:** en producción habilitar `xpack.security.enabled=true` y proteger el puerto 9200 (actualmente `false`/sin autenticación).
 7. **Zona horaria:** `GENERIC_TIMEZONE=America/Guayaquil` (n8n) y zona del host correcta.
 8. **Monitorización:** configurar alertas de disco/RAM (los 16 GB recomendados no incluyen crecimiento de backups) y verificar los healthchecks del stack (`docker compose ps`).

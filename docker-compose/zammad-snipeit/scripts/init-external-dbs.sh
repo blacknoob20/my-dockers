@@ -13,24 +13,29 @@ set -euo pipefail
 MARIA_CONT="docker-mariadb-1"
 POSTGRES_CONT="docker-postgres-1"
 
-MARIA_ROOT_PASS="mariadb_root_2024"
+# Lee secretos desde /Volumes/CRGS-1T/Docker/.env si existe; fallback solo placeholder (reemplazar en local)
+if [[ -f "/Volumes/CRGS-1T/Docker/.env" ]]; then
+  # shellcheck disable=SC1091
+  set -a; source "/Volumes/CRGS-1T/Docker/.env"; set +a
+fi
+MARIA_ROOT_PASS="${MYSQL_ROOT_PASSWORD:-your_mysql_root_password_here}"
 PG_USER="postgres"
-PG_PASS="postgres_root_2024"
+PG_PASS="${POSTGRES_PASSWORD:-your_postgres_password_here}"
 
 # Snipe-IT (MariaDB)
 SNIPE_DB="snipeit"
 SNIPE_USER="snipe_user"
-SNIPE_PASS="snipe_password_123"
+SNIPE_PASS="${SNIPE_PASSWORD:-your_snipe_password_here}"
 
 # Zammad (PostgreSQL)
 ZAMMAD_DB="zammad_production"
 ZAMMAD_USER="zammad_user"
-ZAMMAD_PASS="zammad_password_123"
+ZAMMAD_PASS="${ZAMMAD_PASSWORD:-your_zammad_password_here}"
 
 # n8n (PostgreSQL)
 N8N_DB="n8n"
 N8N_USER="n8n_user"
-N8N_PASS="n8n_password_123"
+N8N_PASS="${N8N_PASSWORD:-your_n8n_password_here}"
 
 echo "=== Inicializando bases de datos en contenedores externos ==="
 

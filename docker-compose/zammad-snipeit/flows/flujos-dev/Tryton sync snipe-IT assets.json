@@ -367,7 +367,7 @@
         208
       ],
       "parameters": {
-        "query": "INSERT INTO sync_run_summary (run_id, total_tryton, to_create, to_update, unchanged, missing_model, deleted_in_tryton, api_errors, finished_at)\nSELECT $1, s.total, $2::int, $3::int,\n       GREATEST(s.total - $2::int - $3::int - mm.cnt, 0), mm.cnt, (CASE WHEN $4::boolean THEN del.cnt ELSE 0 END),\n       (SELECT COUNT(*)::int FROM integration_sync_log WHERE execution_id = $1), now()\nFROM (SELECT COUNT(*)::int AS total FROM staging_tryton_assets) s,\n     (SELECT COUNT(*)::int AS cnt FROM staging_tryton_assets st\n        LEFT JOIN tryton_snipe_model_map m ON m.tryton_model_id = st.tryton_model_id AND m.snipe_model_id IS NOT NULL\n        LEFT JOIN tryton_snipe_status_map ss ON ss.tryton_name = st.asset_state\n       WHERE m.tryton_model_id IS NULL OR ss.tryton_name IS NULL) mm,\n     (SELECT COUNT(*)::int AS cnt FROM tryton_snipe_asset_map am\n        LEFT JOIN staging_tryton_assets st ON st.tryton_asset_id = am.tryton_asset_id\n       WHERE st.tryton_asset_id IS NULL) del\nRETURNING *;",
+        "query": "INSERT INTO tryton_snipe_run_summary (run_id, total_tryton, to_create, to_update, unchanged, missing_model, deleted_in_tryton, api_errors, finished_at)\nSELECT $1, s.total, $2::int, $3::int,\n       GREATEST(s.total - $2::int - $3::int - mm.cnt, 0), mm.cnt, (CASE WHEN $4::boolean THEN del.cnt ELSE 0 END),\n       (SELECT COUNT(*)::int FROM integration_sync_log WHERE execution_id = $1), now()\nFROM (SELECT COUNT(*)::int AS total FROM staging_tryton_assets) s,\n     (SELECT COUNT(*)::int AS cnt FROM staging_tryton_assets st\n        LEFT JOIN tryton_snipe_model_map m ON m.tryton_model_id = st.tryton_model_id AND m.snipe_model_id IS NOT NULL\n        LEFT JOIN tryton_snipe_status_map ss ON ss.tryton_name = st.asset_state\n       WHERE m.tryton_model_id IS NULL OR ss.tryton_name IS NULL) mm,\n     (SELECT COUNT(*)::int AS cnt FROM tryton_snipe_asset_map am\n        LEFT JOIN staging_tryton_assets st ON st.tryton_asset_id = am.tryton_asset_id\n       WHERE st.tryton_asset_id IS NULL) del\nRETURNING *;",
         "options": {
           "queryReplacement": "={{ [ String($execution.id), $('Diff assets (batch)').all().filter(i => i.json.action === 'create').length, $('Diff assets (batch)').all().filter(i => i.json.action === 'update').length , ($('Tryton sync snipe-IT assets orchestrator').first().json.is_full !== false) ] }}"
         },
@@ -746,7 +746,7 @@
         "color": 6,
         "width": 640,
         "height": 176,
-        "content": "## ④ Auditoría del lote\n`Run summary` (`executeOnce`) cuenta `api_errors` desde `integration_sync_log WHERE execution_id = run_id` y renderea `sync_run_summary` → `¿API errors?` → `Fail` vs `Finish`. Loop `Loop` puentea al split.\n**Contrato:** `api_errors == 0` → `Finish`; `>0` → `StopAndError` (visible en orquestador)."
+        "content": "## ④ Auditoría del lote\n`Run summary` (`executeOnce`) cuenta `api_errors` desde `integration_sync_log WHERE execution_id = run_id` y renderea `tryton_snipe_run_summary` → `¿API errors?` → `Fail` vs `Finish`. Loop `Loop` puentea al split.\n**Contrato:** `api_errors == 0` → `Finish`; `>0` → `StopAndError` (visible en orquestador)."
       },
       "typeVersion": 1
     }

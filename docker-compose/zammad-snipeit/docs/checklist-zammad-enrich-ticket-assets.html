@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zammad enrich ticket assets — Checklist quirúrgico</title>
+<style>
+:root{
+  --bg:#070b16; --bg2:#0b1226; --card:#0f1830; --card2:#131f3d;
+  --line:#243257; --txt:#e8eefc; --mut:#9aa8c7; --mut2:#6b7a9e;
+  --acc:#5eead4; --acc2:#818cf8; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --info:#60a5fa;
+  --r:16px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Helvetica,Arial;
+  color:var(--txt);
+  background:
+    radial-gradient(1100px 500px at 15% -5%, #1b2a5e 0%, transparent 60%),
+    radial-gradient(900px 480px at 90% 0%, #0e4b4a 0%, transparent 55%),
+    radial-gradient(700px 600px at 50% 110%, #2b1650 0%, transparent 60%),
+    linear-gradient(180deg,var(--bg),var(--bg2));
+  min-height:100vh;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 18px 90px}
+.hero{
+  border:1px solid var(--line); border-radius:22px; padding:26px 24px;
+  background:linear-gradient(135deg,rgba(129,140,248,.18),rgba(94,234,212,.12) 45%,rgba(52,211,153,.08));
+  backdrop-filter:blur(8px); position:relative; overflow:hidden;
+}
+.hero:after{
+  content:"";position:absolute;inset:-40px -60px auto auto;width:340px;height:340px;
+  background:radial-gradient(circle,rgba(94,234,212,.28),transparent 65%);pointer-events:none;
+}
+.kicker{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.pill{font-size:12px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);
+  padding:6px 10px;border-radius:999px;color:var(--mut);background:rgba(255,255,255,.03)}
+.pill.live{color:#06281f;background:linear-gradient(90deg,var(--acc),#6ee7ff);border-color:transparent;font-weight:800}
+h1{margin:.2em 0 .3em;font-size:clamp(24px,4vw,38px);line-height:1.05}
+.sub{color:var(--mut);max-width:72ch;line-height:1.55;margin:0}
+.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:18px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);background:rgba(15,24,48,.75);border-radius:var(--r);padding:16px}
+.progress-big{display:flex;align-items:center;gap:16px}
+.ring{width:86px;height:86px;flex:0 0 86px}
+.bar{height:12px;background:#0a1126;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--acc2),var(--acc),var(--ok));transition:width .5s ease}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:rgba(255,255,255,.02);font-size:13px;color:var(--mut)}
+.stat b{color:var(--txt);font-size:15px;margin-right:6px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button,.btn{
+  appearance:none;border:1px solid var(--line);background:#16224a;color:var(--txt);
+  padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;
+}
+button:hover{border-color:var(--acc);transform:translateY(-1px)}
+button.primary{background:linear-gradient(90deg,#22d3ee,#34d399);color:#04231c;border-color:transparent}
+button.ghost{background:transparent}
+button.danger{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.4)}
+input[type=text],textarea,select{
+  width:100%;background:#0a1126;border:1px solid var(--line);color:var(--txt);
+  border-radius:12px;padding:10px 12px;font-size:14px;font-family:inherit;
+}
+textarea{min-height:74px;resize:vertical}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:18px 2px}
+.filters button{font-size:13px;padding:8px 12px}
+.filters button.on{background:linear-gradient(90deg,var(--acc2),var(--acc));color:#08131f;border-color:transparent}
+.steps{display:grid;gap:14px;margin-top:12px}
+.card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--card),var(--card2));overflow:hidden}
+.card-head{display:flex;gap:14px;padding:16px 16px 12px;align-items:flex-start}
+.num{
+  width:44px;height:44px;flex:0 0 44px;border-radius:14px;display:grid;place-items:center;
+  font-weight:900;font-size:18px;background:#0a1126;border:1px solid var(--line);
+}
+.card h2{margin:0;font-size:18px}
+.meta{color:var(--mut);font-size:13px;margin-top:4px;line-height:1.5}
+.card-body{padding:0 16px 16px}
+.where{display:inline-flex;gap:8px;align-items:center;font-size:12px;margin-top:8px;flex-wrap:wrap}
+.tag{border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--mut);background:rgba(255,255,255,.03);font-weight:700}
+.tag.host{color:#7dd3fc;border-color:rgba(125,211,252,.4)}
+.tag.n8n{color:#c4b5fd;border-color:rgba(196,181,253,.4)}
+.tag.zammad{color:#fcd34d;border-color:rgba(252,211,77,.35)}
+.tag.sql{color:#6ee7b7;border-color:rgba(110,231,183,.35)}
+.cmd{position:relative;margin:10px 0;border:1px solid var(--line);border-radius:12px;background:#060b1c;overflow:hidden}
+.cmd pre{margin:0;padding:14px 14px 14px;overflow:auto;font-size:13px;line-height:1.55;color:#dbe7ff;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre}
+.copy{position:absolute;top:8px;right:8px;font-size:12px;padding:7px 10px;border-radius:10px}
+.expect{border-left:3px solid var(--ok);background:rgba(52,211,153,.08);padding:10px 12px;border-radius:0 12px 12px 0;color:#c9f5e3;font-size:13.5px;line-height:1.55;margin:10px 0}
+.alert{border-left:3px solid var(--bad);background:rgba(248,113,113,.1);padding:10px 12px;border-radius:0 12px 12px 0;color:#ffd7d7;font-size:13.5px;line-height:1.6;margin:10px 0}
+.warnbox{border-left:3px solid var(--warn);background:rgba(251,191,36,.1);padding:10px 12px;border-radius:0 12px 12px 0;color:#ffedbe;font-size:13.5px;line-height:1.6;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:rgba(255,255,255,.04)}
+.statusrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;border-radius:0;background:transparent;font-size:13px}
+.seg button.on[data-s=pendiente]{background:#26314f}
+.seg button.on[data-s=curso]{background:rgba(96,165,250,.25)}
+.seg button.on[data-s=superado]{background:rgba(52,211,153,.28)}
+.seg button.on[data-s=bloqueado]{background:rgba(248,113,113,.28)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:middle}
+.dot.pendiente{background:#64748b}.dot.curso{background:var(--info)}.dot.superado{background:var(--ok)}.dot.bloqueado{background:var(--bad)}
+.evlabel{font-size:13px;color:var(--mut);margin:10px 0 6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.foot{color:var(--mut2);font-size:12.5px;margin-top:18px;line-height:1.6}
+code.inline{background:rgba(255,255,255,.07);border:1px solid var(--line);padding:1px 7px;border-radius:8px;font-size:12.5px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;
+  background:#0b1530;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:999px;font-size:13px;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+details{border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin:10px 0;background:rgba(255,255,255,.02)}
+summary{cursor:pointer;font-weight:800;color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker">
+      <span class="pill live">Checklist interactivo</span>
+      <span class="pill">Zammad enrich ticket assets</span>
+      <span class="pill">12 pasos quirúrgicos</span>
+      <span class="pill">sin secretos literales</span>
+    </div>
+    <h1>Probar el flujo, uno a uno, sin perder evidencia</h1>
+    <p class="sub">
+      Marca cada paso como <b>superado</b> solo cuando el resultado esperado sea visible.
+      El progreso se guarda automáticamente en este navegador. No pegues tokens reales:
+      usa <code class="inline">$ZAMMAD_TOKEN</code>, <code class="inline">&lt;ambiente&gt;</code> y placeholders.
+    </p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="progress-big">
+          <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#1e2a4d" stroke-width="12"/>
+            <circle id="ringFg" cx="50" cy="50" r="42" fill="none" stroke="url(#g)" stroke-width="12"
+              stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="263.9" transform="rotate(-90 50 50)"/>
+            <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#818cf8"/><stop offset=".5" stop-color="#5eead4"/><stop offset="1" stop-color="#34d399"/>
+            </linearGradient></defs>
+            <text id="ringTxt" x="50" y="56" text-anchor="middle" font-size="20" font-weight="900" fill="#e8eefc">0%</text>
+          </svg>
+          <div style="flex:1">
+            <div style="font-weight:900">Progreso de la prueba</div>
+            <div id="progressLine" style="color:var(--mut);font-size:13px">0 de 12 superados</div>
+            <div class="bar"><i id="barFg"></i></div>
+            <div class="stats">
+              <span class="stat"><b id="cOk">0</b>superados</span>
+              <span class="stat"><b id="cRun">0</b>en curso</span>
+              <span class="stat"><b id="cBlock">0</b>bloqueados</span>
+              <span class="stat"><b id="cPend">0</b>pendientes</span>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="primary" id="btnExport">Exportar reporte .md</button>
+          <button class="ghost" id="btnCopyReport">Copiar reporte</button>
+          <button class="danger" id="btnReset">Reiniciar checklist</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="font-weight:900;margin-bottom:8px">Cómo usarlo</div>
+        <div style="color:var(--mut);font-size:13.5px;line-height:1.65">
+          1. Ejecuta el comando del paso con <b>Copiar</b>.<br>
+          2. Pega la salida resumida en <b>Evidencia</b> (sin tokens).<br>
+          3. Cambia el estado a <b>superado</b> o <b>bloqueado</b>.<br>
+          4. No avances al smoke test con el paso 3 en rojo.<br>
+          5. Al final exporta el reporte para auditoría.
+        </div>
+        <details>
+          <summary>Regla de oro del paso 3</summary>
+          <div style="color:var(--mut);font-size:13.5px;line-height:1.65;margin-top:8px">
+            No ejecutes la prueba del token dentro de <code class="inline">zammad-nginx</code>.
+            <code class="inline">ZAMMAD_TOKEN</code> vive en el contenedor <code class="inline">n8n</code>.
+            Si el header viaja vacío, Zammad responde <code class="inline">HTTP 403</code>.
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button data-f="todos" class="on">Todos</button>
+    <button data-f="pendiente">Pendientes</button>
+    <button data-f="curso">En curso</button>
+    <button data-f="superado">Superados</button>
+    <button data-f="bloqueado">Bloqueados</button>
+  </div>
+
+  <div class="steps" id="steps">
+
+    <section class="card" data-step="1">
+      <div class="card-head"><div class="num">01</div><div>
+        <h2>Stack levantado y sano</h2>
+        <div class="meta">Base mínima. No uses <code class="inline">reset-sync.sh</code>: borra datos de Snipe-IT.</div>
+        <div class="where"><span class="tag host">HOST</span><span class="tag">docs/05 §5.1</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="cmd"><button class="copy" data-copy="c1">Copiar</button><pre id="c1">cd /home/crguerrero/Docker/images/my-dockers/docker-compose/zammad-snipeit
+docker compose ps
+curl -fsS http://localhost:5678/healthz</pre></div>
+        <div class="expect"><b>Esperado:</b> todos los servicios en <code class="inline">Up/healthy</code> y <code class="inline">/healthz</code> responde sin error. Zammad en <code class="inline">:8000</code>, Snipe-IT en <code class="inline">:8080</code>, n8n en <code class="inline">:5678</code>.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia (pega salida resumida)</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: n8n healthy, zammad-nginx healthy, healthz OK"></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="2">
+      <div class="card-head"><div class="num">02</div><div>
+        <h2>Campos custom del ticket</h2>
+        <div class="meta">Sin estos 3 campos el <code class="inline">PUT</code> falla con 422.</div>
+        <div class="where"><span class="tag host">HOST</span><span class="tag">scripts/zammad-ticket-objects.sh</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="cmd"><button class="copy" data-copy="c2a">Copiar</button><pre id="c2a">./scripts/zammad-ticket-objects.sh --check</pre></div>
+        <div class="expect"><b>Esperado:</b> confirma <code class="inline">snipe_asset_count</code>, <code class="inline">snipe_asset_tags</code> y <code class="inline">snipe_asset_summary</code> activos.</div>
+        <details><summary>Si falta alguno</summary><div class="cmd"><button class="copy" data-copy="c2b">Copiar</button><pre id="c2b">./scripts/zammad-ticket-objects.sh
+docker compose restart zammad-railsserver zammad-scheduler zammad-websocket
+./scripts/zammad-ticket-objects.sh --check</pre></div></details>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: Los 3 atributos existen."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="3">
+      <div class="card-head"><div class="num">03</div><div>
+        <h2>Token Agent y conectividad — superado con wget</h2>
+        <div class="meta">Tu <code class="inline">HTTP 403</code> dentro de <code class="inline">zammad-snipeit-zammad-nginx-1</code> era esperable: ese contenedor no tiene <code class="inline">ZAMMAD_TOKEN</code>. Verificado <code class="inline">200 OK</code> desde <code class="inline">n8n</code> con <code class="inline">wget</code>.</div>
+        <div class="where"><span class="tag n8n">N8N / HOST</span><span class="tag">docs/05 §5.3–§5.4</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="alert"><b>Diagnóstico:</b> ejecutaste la prueba dentro de <code class="inline">zammad-nginx</code>, donde la variable está vacía. El header probablemente viajó como <code class="inline">Authorization: Token token=</code> → <code class="inline">HTTP 403</code>. Además usaste <code class="inline">localhost:8080</code> dentro del contenedor; desde n8n/host la ruta correcta es <code class="inline">zammad-nginx:8080</code> o <code class="inline">localhost:8000</code> respectivamente. Ojo: el contenedor <code class="inline">n8n</code> no trae <code class="inline">curl</code>, usa <code class="inline">wget</code>.</div>
+        <div class="cmd"><button class="copy" data-copy="c3a">Copiar</button><pre id="c3a">docker compose exec -T n8n sh -lc '
+printf "SNIPE_HOST=%s\nZAMMAD_HOST=%s\n" "$SNIPE_HOST" "$ZAMMAD_HOST"
+if test -n "$ZAMMAD_TOKEN"; then echo "ZAMMAD_TOKEN=present"; else echo "ZAMMAD_TOKEN=VACIO"; fi
+command -v curl || echo "curl: no encontrado (normal en n8n)"
+command -v wget || echo "wget: no encontrado"
+'</pre></div>
+        <div class="expect"><b>Esperado:</b><br><code class="inline">SNIPE_HOST=http://snipe-it:80</code><br><code class="inline">ZAMMAD_HOST=http://zammad-nginx:8080</code><br><code class="inline">ZAMMAD_TOKEN=present</code> + <code class="inline">wget</code> disponible.</div>
+        <div class="cmd"><button class="copy" data-copy="c3b">Copiar</button><pre id="c3b">docker compose exec -T n8n sh -lc '
+test -n "$ZAMMAD_TOKEN" || { printf "ZAMMAD_TOKEN vacio en n8n\n" >&2; exit 1; }
+rm -f /tmp/zammad-check.json
+wget -S -O /tmp/zammad-check.json \
+  --header="Authorization: Token token=$ZAMMAD_TOKEN" \
+  "http://zammad-nginx:8080/api/v1/users?limit=1" 2>&1 | head -20
+echo "---EXIT:$?"
+ls -l /tmp/zammad-check.json
+head -c 500 /tmp/zammad-check.json; echo
+'</pre></div>
+        <div class="expect"><b>Esperado:</b> <code class="inline">HTTP/1.1 200 OK</code> y JSON válido. Si cambiaste <code class="inline">envs/n8n.env</code>, recrea n8n: <code class="inline">docker compose up -d --force-recreate n8n</code>.</div>
+        <div class="warnbox"><b>Matiz importante:</b> <code class="inline">GET /users</code> valida conectividad, pero el runtime usa <code class="inline">PUT /tickets/{id}</code>. Si el 403 persiste con token presente, el fallo real es permiso Agent sobre el grupo del ticket; se confirma en el paso 9 contra un ticket descartable.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia (no pegues el token)</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: HTTP 403 dentro de zammad-nginx por variable vacía; pendiente reintento desde n8n."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="4">
+      <div class="card-head"><div class="num">04</div><div>
+        <h2>Credencial Zammad Header Auth en n8n</h2>
+        <div class="meta">Sin esta credencial el snapshot conserva el sentinela <code class="inline">ZAMMAD_HEADER_PENDIENTE</code>.</div>
+        <div class="where"><span class="tag n8n">N8N UI</span><span class="tag">docs/05 §5.6</span></div>
+      </div></div>
+      <div class="card-body">
+        <table><tr><th>Campo</th><th>Valor</th></tr>
+        <tr><td>Tipo</td><td>Header Auth</td></tr>
+        <tr><td>Nombre</td><td><code class="inline">Zammad Header Auth</code></td></tr>
+        <tr><td>Name</td><td><code class="inline">Authorization</code></td></tr>
+        <tr><td>Value</td><td><code class="inline">Token token=$ZAMMAD_TOKEN</code> del usuario <code class="inline">svc-n8n</code></td></tr></table>
+        <div class="expect"><b>Esperado:</b> usuario <code class="inline">svc-n8n</code> con rol Agente y RW en el grupo del ticket. Anota el ID generado; lo necesitarás en el paso 5.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia (solo IDs/nombres, nunca el token)</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: credencial Zammad Header Auth creada, ID anotado en mapa local."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="5">
+      <div class="card-head"><div class="num">05</div><div>
+        <h2>Mapas locales + remap del snapshot</h2>
+        <div class="meta">Los mapas reales están ignorados por git. Usa <code class="inline">casa</code> o <code class="inline">trabajo</code> según tu ambiente.</div>
+        <div class="where"><span class="tag host">HOST</span><span class="tag">scripts/n8n-remap.sh v1.3.0+</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="cmd"><button class="copy" data-copy="c5a">Copiar</button><pre id="c5a">jq -e '.zammad_header.id' envs/n8n-creds.&lt;ambiente&gt;.json
+jq -e '.pg_n8n.id and .pg_tryton.id and .bearer_snipe.id' envs/n8n-creds.&lt;ambiente&gt;.json</pre></div>
+        <div class="cmd"><button class="copy" data-copy="c5b">Copiar</button><pre id="c5b">ENV_OBJETIVO=trabajo
+./scripts/n8n-remap.sh --to "$ENV_OBJETIVO" "flows/zammad/Zammad enrich ticket assets.json"
+ls -l "/tmp/n8n-remap/$ENV_OBJETIVO/Zammad enrich ticket assets.json"</pre></div>
+        <div class="expect"><b>Esperado:</b> el remap no avisa de <code class="inline">httpHeaderAuth intacto</code> y el JSON generado ya no contiene <code class="inline">ZAMMAD_HEADER_PENDIENTE</code>.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: remap a trabajo OK, header:1, sin sentinela."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="6">
+      <div class="card-head"><div class="num">06</div><div>
+        <h2>Importar y activar el workflow</h2>
+        <div class="meta">El snapshot viaja inactivo. Sin activar, el webhook responde 404.</div>
+        <div class="where"><span class="tag n8n">N8N UI</span><span class="tag">snapshot inactivo</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="expect"><b>Checklist visual antes de activar:</b><br>
+        1. <code class="inline">Update Zammad Ticket</code> usa <code class="inline">Zammad Header Auth</code>.<br>
+        2. <code class="inline">Find Snipe User</code> y <code class="inline">Get Assigned Assets</code> usan el Bearer de Snipe-IT.<br>
+        3. <code class="inline">Log Success / Log Error</code> usan Postgres de n8n.<br>
+        4. Activar el workflow y copiar la <b>Production URL</b>: <code class="inline">http://localhost:5678/webhook/zammad-ticket-created</code>.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: workflow activo, Production URL copiada."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="7">
+      <div class="card-head"><div class="num">07</div><div>
+        <h2>Webhook en Zammad (sin trigger todavía)</h2>
+        <div class="meta">Primero prueba directa. El trigger se crea después del smoke test.</div>
+        <div class="where"><span class="tag zammad">ZAMMAD UI</span><span class="tag">Admin → Webhooks</span></div>
+      </div></div>
+      <div class="card-body">
+        <table><tr><th>Campo</th><th>Valor</th></tr>
+        <tr><td>Nombre</td><td><code class="inline">n8n enrich ticket</code></td></tr>
+        <tr><td>Endpoint</td><td><code class="inline">http://n8n:5678/webhook/zammad-ticket-created</code></td></tr>
+        <tr><td>Método</td><td><code class="inline">POST</code></td></tr>
+        <tr><td>Autenticación</td><td>ninguna (red interna)</td></tr></table>
+        <div class="cmd"><button class="copy" data-copy="c7">Copiar</button><pre id="c7">{
+  "ticket_id": "#{ticket.id}",
+  "ticket_number": "#{ticket.number}",
+  "customer_email": "#{ticket.customer.email}"
+}</pre></div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: webhook creado, trigger aún no activado."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="8">
+      <div class="card-head"><div class="num">08</div><div>
+        <h2>Ticket descartable + cliente con activos</h2>
+        <div class="meta">El email debe coincidir exactamente (salvo mayúsculas/espacios) entre Zammad y Snipe-IT.</div>
+        <div class="where"><span class="tag zammad">ZAMMAD UI</span><span class="tag">SNIPE-IT UI</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="expect"><b>Preparar y anotar:</b> <code class="inline">EMAIL</code>, <code class="inline">TICKET_ID</code>, <code class="inline">TICKET_NUMBER</code>. Crea un ticket de prueba, por ejemplo <code class="inline">[TEST] Zammad enrich assets</code>. No existe fixture fija en el repo: usa datos descartables del laboratorio.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia (emails de prueba, no secretos)</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: TICKET_ID=123, NUMBER=..., EMAIL con N activos en Snipe."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="9">
+      <div class="card-head"><div class="num">09</div><div>
+        <h2>Smoke test directo al webhook</h2>
+        <div class="meta">Con el trigger aún desactivado. Aísla fallos de n8n frente a fallos de Zammad.</div>
+        <div class="where"><span class="tag host">HOST</span><span class="tag">n8n Production URL</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="cmd"><button class="copy" data-copy="c9">Copiar</button><pre id="c9">TICKET_ID=123
+TICKET_NUMBER='100001'
+EMAIL='usuario-prueba@example.local'
+
+PAYLOAD=$(jq -n \
+  --argjson id "$TICKET_ID" \
+  --arg number "$TICKET_NUMBER" \
+  --arg email "$EMAIL" \
+  '{ticket_id:$id,ticket_number:$number,customer_email:$email}')
+
+curl -sS \
+  -o /tmp/zammad-enrich-response.json \
+  -w 'HTTP %{http_code}\n' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  --data "$PAYLOAD" \
+  'http://localhost:5678/webhook/zammad-ticket-created'
+
+jq . /tmp/zammad-enrich-response.json</pre></div>
+        <div class="expect"><b>Esperado:</b> <code class="inline">{"ok": true, "ticket_id": 123, "ticket_number": "100001", "log_status": "ok"}</code>. Si recibes <code class="inline">ok:false</code>, no sigas: revisa la ejecución en n8n y el paso 3.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia (pega el JSON de respuesta)</span><span data-date></span></div>
+        <textarea data-ev placeholder='Ej: {"ok": true, ...}'></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="10">
+      <div class="card-head"><div class="num">10</div><div>
+        <h2>Verificar ticket + auditoría</h2>
+        <div class="meta">El éxito real es el <code class="inline">PUT</code> reflejado en Zammad y en Postgres.</div>
+        <div class="where"><span class="tag zammad">ZAMMAD UI</span><span class="tag sql">POSTGRES n8n</span></div>
+      </div></div>
+      <div class="card-body">
+        <div class="expect"><b>En el ticket:</b> <code class="inline">snipe_asset_count</code> con el número real, <code class="inline">tags</code> separados por coma, <code class="inline">summary</code> con bloque <code class="inline">ACTIVOS SNIPE-IT (N)</code> + <code class="inline">--------------------</code> + <code class="inline">NN modelo</code>/<code class="inline">   categoría</code>/<code class="inline">   tag</code>/<code class="inline">   estado</code>/<code class="inline">   S/N serial</code> (5 líneas por activo, categoría=<code class="inline">r.category.name</code>, orden <code class="inline">asset_tag</code>, datos reales Snipe-IT sin conversión) y artículo interno con el mismo bloque.</div>
+        <div class="cmd"><button class="copy" data-copy="c10">Copiar</button><pre id="c10">SELECT id, created_at, workflow_name, execution_id,
+  entity_id, entity_tag, operation, response_status, error_message
+FROM public.integration_sync_log
+WHERE source_system = 'zammad'
+  AND entity = 'ticket'
+  AND operation = 'enrich_assets'
+ORDER BY id DESC
+LIMIT 5;</pre></div>
+        <div class="expect"><b>Esperado:</b> fila nueva con <code class="inline">operation=enrich_assets</code>, <code class="inline">response_status=200</code> y <code class="inline">error_message</code> vacío.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: customs OK, nota interna OK, log id=... status 200."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="11">
+      <div class="card-head"><div class="num">11</div><div>
+        <h2>Prueba end-to-end con trigger</h2>
+        <div class="meta">Solo después del smoke test. Verifica que el <code class="inline">PUT</code> no genere un loop.</div>
+        <div class="where"><span class="tag zammad">ZAMMAD UI</span><span class="tag">Trigger Action created</span></div>
+      </div></div>
+      <div class="card-body">
+        <table><tr><th>Campo</th><th>Valor</th></tr>
+        <tr><td>Nombre</td><td><code class="inline">Enriquecer ticket con Snipe-IT</code></td></tr>
+        <tr><td>Activated by</td><td><code class="inline">Action</code></td></tr>
+        <tr><td>Action execution</td><td><code class="inline">Selective</code></td></tr>
+        <tr><td>Condición</td><td><code class="inline">Ticket → Action → is → created</code></td></tr>
+        <tr><td>Acción</td><td><code class="inline">Notification → Webhook → n8n enrich ticket</code></td></tr></table>
+        <div class="expect"><b>Esperado:</b> crear un segundo ticket descartable produce una sola ejecución nueva, una sola fila de auditoría, enriquecimiento visible y ninguna segunda ejecución causada por el <code class="inline">PUT</code>.</div>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: 1 ejecución, 1 fila log, sin loop."></textarea>
+      </div>
+    </section>
+
+    <section class="card" data-step="12">
+      <div class="card-head"><div class="num">12</div><div>
+        <h2>Casos negativos y diagnóstico</h2>
+        <div class="meta">Estas ramas no son fallos: deben devolver <code class="inline">0</code> + nota explicativa.</div>
+        <div class="where"><span class="tag host">HOST</span><span class="tag">ZAMMAD + N8N</span></div>
+      </div></div>
+      <div class="card-body">
+        <table><tr><th>Caso</th><th>Resultado esperado</th></tr>
+        <tr><td>Usuario con activos</td><td>conteo, tags, resumen y nota</td></tr>
+        <tr><td>Usuario sin activos</td><td><code class="inline">0</code> + nota explicativa</td></tr>
+        <tr><td>Email sin usuario en Snipe-IT</td><td><code class="inline">0</code> + nota de inexistencia</td></tr>
+        <tr><td>Payload sin email</td><td><code class="inline">0</code> + nota de webhook sin email</td></tr>
+        <tr><td>Mayúsculas/espacios</td><td>mismo usuario por normalización</td></tr></table>
+        <table><tr><th>Síntoma</th><th>Causa probable</th></tr>
+        <tr><td><code class="inline">404</code></td><td>workflow inactivo o path distinto</td></tr>
+        <tr><td><code class="inline">401</code></td><td>Header Auth vieja o sin rol Agente</td></tr>
+        <tr><td><code class="inline">422</code></td><td>faltan customs o sin acceso al grupo</td></tr>
+        <tr><td><code class="inline">ECONNREFUSED</code></td><td><code class="inline">localhost</code> dentro de n8n; usar nombres internos</td></tr>
+        <tr><td>Sentinela</td><td>falta <code class="inline">zammad_header</code> y repetir remap</td></tr></table>
+        <div class="statusrow"><span class="dot pendiente" data-dot></span><div class="seg" data-seg>
+          <button data-s="pendiente">Pendiente</button><button data-s="curso">En curso</button><button data-s="superado">Superado</button><button data-s="bloqueado">Bloqueado</button>
+        </div></div>
+        <div class="evlabel"><span>Evidencia</span><span data-date></span></div>
+        <textarea data-ev placeholder="Ej: sin match → 0 OK; sin activos → 0 OK."></textarea>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    Archivo local: <code class="inline">docs/checklist-zammad-enrich-ticket-assets.html</code> ·
+    Fuente: <code class="inline">docs/05-integracion-zammad-snipeit.md</code> + <code class="inline">.ai/specs/zammad-tickets.md</code> ·
+    No commitea ni modifica servicios; solo guarda tu avance en <code class="inline">localStorage</code>.
+  </div>
+</div>
+
+<div class="toast" id="toast">Copiado</div>
+
+<script>
+(function(){
+  var KEY='zammad-enrich-checklist-v1';
+  var cards=Array.prototype.slice.call(document.querySelectorAll('.card'));
+  var state={};
+  try{ state=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ state={}; }
+
+  // Estado inicial pedido por el usuario: 1 y 2 superados, 3 bloqueado con 403.
+  var defaults={ '1':{s:'superado',ev:'Stack levantado y verificado.'},
+    '2':{s:'superado',ev:'Campos custom verificados con --check.'},
+    '3':{s:'superado',ev:'Verificado 2026-09-10 desde n8n con wget: HTTP/1.1 200 OK, SNIPE_HOST=http://snipe-it:80, ZAMMAD_HOST=http://zammad-nginx:8080, ZAMMAD_TOKEN=present. El 403 previo era por ejecutar en zammad-nginx (variable vacía) + curl inexistente en n8n.'},
+    '4':{s:'superado',ev:'Header Auth zammad (4SD4...) verificada en credentials_entity; Name=Authorization, Value=Token token=<token> reescrito a mano.'},
+    '5':{s:'superado',ev:'Mapa trabajo con zammad_header; remap OK pg_n8n:2 bearer:2 header:1, sin sentinela.'},
+    '6':{s:'superado',ev:'Vivo bgi4... activo=true; Logs en Postgres n8n; bearer y header correctos.'},
+    '7':{s:'superado',ev:'Webhook id=1 n8n enrich ticket verificado (endpoint POST, custom payload, activo); sin trigger.'},
+    '8':{s:'superado',ev:'Customer id=6 adriana.leon@... (1 activo 1410107-000650) + ticket descartable id=3/72003.'},
+    '9':{s:'superado',ev:'Smoke test 2026-09-10: HTTP 200 {"ok":true,"ticket_id":3,"log_status":"ok"} tras fixes body+sendBody.'},
+    '10':{s:'superado',ev:'Ticket 3: count=1, tags=1410107-000650, resumen OK + nota interna id 5; log id 22 status 200.'},
+    '11':{s:'superado',ev:'Trigger id=4 creado (rails runner); ticket 4/72004 enriquecido con 1 sola ejecución (8→9), sin loop tras 45s.'},
+    '12':{s:'superado',ev:'Email inexistente→nota usuario inexistente; sin email→nota webhook; mayúsculas+espacios→match count=1. Notas internas 8/9/10.'} };
+  cards.forEach(function(card){
+    var id=card.getAttribute('data-step');
+    if(!state[id] && defaults[id]) state[id]=defaults[id];
+    if(!state[id]) state[id]={s:'pendiente',ev:''};
+  });
+
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){} }
+  function toast(msg){
+    var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show')},1600);
+  }
+  async function copyText(txt){
+    try{ await navigator.clipboard.writeText(txt); return true; }
+    catch(e){
+      var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+      ta.select(); try{ document.execCommand('copy'); }catch(_){} ta.remove(); return true;
+    }
+  }
+
+  function paint(){
+    var ok=0,run=0,block=0,pend=0;
+    cards.forEach(function(card){
+      var id=card.getAttribute('data-step');
+      var st=(state[id]&&state[id].s)||'pendiente';
+      if(st==='superado')ok++; else if(st==='curso')run++; else if(st==='bloqueado')block++; else pend++;
+      var dot=card.querySelector('[data-dot]');
+      if(dot) dot.className='dot '+st;
+      var btns=card.querySelectorAll('[data-seg] button');
+      btns.forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-s')===st); });
+      var ta=card.querySelector('[data-ev]');
+      if(ta && document.activeElement!==ta) ta.value=state[id].ev||'';
+      var dd=card.querySelector('[data-date]');
+      if(dd) dd.textContent=state[id].ts?('guardado '+state[id].ts):'';
+    });
+    var pct=Math.round(ok/cards.length*100);
+    document.getElementById('ringFg').style.strokeDashoffset=String(263.9-263.9*pct/100);
+    document.getElementById('ringTxt').textContent=pct+'%';
+    document.getElementById('barFg').style.width=pct+'%';
+    document.getElementById('progressLine').textContent=ok+' de '+cards.length+' superados';
+    document.getElementById('cOk').textContent=ok;
+    document.getElementById('cRun').textContent=run;
+    document.getElementById('cBlock').textContent=block;
+    document.getElementById('cPend').textContent=pend;
+    applyFilter(currentFilter);
+  }
+
+  var currentFilter='todos';
+  function applyFilter(f){
+    currentFilter=f;
+    document.querySelectorAll('#filters button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-f')===f);
+    });
+    cards.forEach(function(card){
+      var id=card.getAttribute('data-step');
+      var st=(state[id]&&state[id].s)||'pendiente';
+      card.style.display=(f==='todos'||st===f)?'':'none';
+    });
+  }
+
+  cards.forEach(function(card){
+    var id=card.getAttribute('data-step');
+    card.querySelectorAll('[data-seg] button').forEach(function(b){
+      b.addEventListener('click',function(){
+        state[id].s=b.getAttribute('data-s');
+        state[id].ts=new Date().toLocaleString();
+        save(); paint();
+      });
+    });
+    var ta=card.querySelector('[data-ev]');
+    ta.addEventListener('input',function(){
+      state[id].ev=ta.value; state[id].ts=new Date().toLocaleString(); save();
+      var dd=card.querySelector('[data-date]'); if(dd) dd.textContent='guardado '+state[id].ts;
+    });
+  });
+
+  document.querySelectorAll('#filters button').forEach(function(b){
+    b.addEventListener('click',function(){ applyFilter(b.getAttribute('data-f')); });
+  });
+
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var pre=document.getElementById(btn.getAttribute('data-copy'));
+      if(!pre) return;
+      await copyText(pre.innerText);
+      toast('Comando copiado');
+    });
+  });
+
+  function titles(){ return {1:'Stack levantado y sano',2:'Campos custom del ticket',3:'Token Agent y conectividad',4:'Credencial Zammad Header Auth',5:'Mapas locales + remap',6:'Importar y activar workflow',7:'Webhook en Zammad',8:'Ticket descartable + cliente',9:'Smoke test directo',10:'Verificar ticket + auditoría',11:'Prueba end-to-end con trigger',12:'Casos negativos y diagnóstico'}; }
+  function buildReport(){
+    var t=titles(); var lines=[];
+    lines.push('# Reporte — Zammad enrich ticket assets');
+    lines.push('');
+    lines.push('- Fecha: '+new Date().toLocaleString());
+    lines.push('- Progreso: '+document.getElementById('progressLine').textContent);
+    lines.push('');
+    cards.forEach(function(card){
+      var id=card.getAttribute('data-step');
+      var st=(state[id]&&state[id].s)||'pendiente';
+      lines.push('## Paso '+id+' — '+t[id]+' ['+st.toUpperCase()+']');
+      if(state[id].ev) lines.push('Evidencia: '+state[id].ev);
+      if(state[id].ts) lines.push('Guardado: '+state[id].ts);
+      lines.push('');
+    });
+    lines.push('Nota: sin secretos literales. Tokens solo como $ZAMMAD_TOKEN.');
+    return lines.join('\n');
+  }
+
+  document.getElementById('btnCopyReport').addEventListener('click',async function(){
+    await copyText(buildReport()); toast('Reporte copiado');
+  });
+  document.getElementById('btnExport').addEventListener('click',function(){
+    var blob=new Blob([buildReport()],{type:'text/markdown;charset=utf-8'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='reporte-zammad-enrich.md'; document.body.appendChild(a); a.click(); a.remove();
+    toast('Reporte descargado');
+  });
+  document.getElementById('btnReset').addEventListener('click',function(){
+    if(!confirm('¿Reiniciar el checklist? Se borra el avance local.')) return;
+    state={}; save(); paint(); toast('Checklist reiniciado');
+  });
+
+  save(); paint();
+})();
+</script>
+</body>
+</html>
