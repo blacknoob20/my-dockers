@@ -3,7 +3,7 @@
 # y opcionalmente los publica (push) en el n8n vivo por DB directa.
 #
 # Compatible con bash 3.2 (macOS de fabrica) y Linux. Solo usa: bash, jq,
-# mktemp, diff, uname, docker (+ uuidgen o python3 solo en modo push).
+# grep, mktemp, diff, uname, docker (+ uuidgen o python3 solo en modo push).
 # No usa arrays asociativos, mapfile ni sed -i.
 #
 # Modo remap (default): reescribe credentials.{postgres,httpBearerAuth,httpHeaderAuth}.
@@ -21,7 +21,7 @@
 
 set -u
 
-VERSION="1.3.0"
+VERSION="1.3.1"
 
 print_usage() {
   cat <<USAGE
@@ -42,7 +42,8 @@ Opciones remap:
 Opciones push (suman a --to y --dry-run):
   --yes           Omite la confirmacion interactiva.
   --restart       Reinicia n8n al final y espera a que responda /healthz.
-  --db-cont NAME  Contenedor postgres de n8n (default: docker-postgres-1).
+  --db-cont NAME  Contenedor postgres de n8n. Default: N8N_DB_CONT o
+                  auto-deteccion (docker-postgres-1 Linux / dbs-postgres Mac).
 
   -h, --help      Muestra esta ayuda.
 
@@ -98,7 +99,7 @@ DRY_RUN=0
 DO_INSTALL=0
 DO_YES=0
 DO_RESTART=0
-DB_CONT="docker-postgres-1"
+DB_CONT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -426,9 +427,25 @@ if [ -f "$ENVS_DIR/n8n-db.env" ]; then
 fi
 POSTGRES_USER="$(printf '%s' "${POSTGRES_USER:-n8n_user}" | tr -d '\r')"
 POSTGRES_DB="$(printf '%s' "${POSTGRES_DB:-n8n}" | tr -d '\r')"
-N8N_DB_CONT="${N8N_DB_CONT:-$DB_CONT}"
 
 command -v docker >/dev/null 2>&1 || fail "falta docker"
+
+# Contenedor postgres: --db-cont > N8N_DB_CONT (n8n-db.env) > auto-deteccion.
+# El mismo repo corre en Mac lab (dbs-postgres) y compose Linux
+# (docker-postgres-1); se elige el que este corriendo, como reset-sync.sh.
+if [ -n "$DB_CONT" ]; then
+  N8N_DB_CONT="$DB_CONT"
+elif [ -z "${N8N_DB_CONT:-}" ]; then
+  N8N_DB_CONT=""
+  for _try in docker-postgres-1 dbs-postgres; do
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$_try"; then
+      N8N_DB_CONT="$_try"
+      break
+    fi
+  done
+  [ -n "$N8N_DB_CONT" ] \
+    || fail "no encuentro el contenedor postgres de n8n corriendo (probe docker-postgres-1 y dbs-postgres). Usa --db-cont NAME o define N8N_DB_CONT"
+fi
 docker exec "$N8N_DB_CONT" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -A -c "SELECT 1;" >/dev/null 2>&1 \
   || fail "no hay acceso a $N8N_DB_CONT ($POSTGRES_USER/$POSTGRES_DB)"
 
@@ -511,6 +528,9 @@ for SRC in "$@"; do
   BEARER_N="$(count_cred "$STAGED" bearer)"
   HEADER_N="$(count_cred "$STAGED" header)"
   WF_N="$(count_wf "$STAGED")"
+  if [ "$HEADER_N" != "0" ] && [ -z "$TGT_HEADER_ID" ]; then
+    echo "n8n-remap push: aviso: $SRC trae $HEADER_N httpHeaderAuth pero $TGT_CREDS no define zammad_header (se deja intacto)" >&2
+  fi
   BAD_PG="$(jq --arg a "$TGT_PG_ID" --arg b "$TGT_TRYTON_ID" \
     '[.nodes[]? | select(.credentials.postgres?) | select(.credentials.postgres.id != $a and .credentials.postgres.id != $b)] | length' "$STAGED")"
   BAD_BEARER="$(jq --arg a "$TGT_BEARER_ID" \
