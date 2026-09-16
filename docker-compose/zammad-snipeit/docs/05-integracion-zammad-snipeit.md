@@ -156,7 +156,7 @@ docker exec zammad-snipeit-zammad-railsserver-1 /opt/zammad/bin/rails runner \
 ## 5.8 Pruebas
 
 1. Cliente con 2–4 activos asignados en Snipe-IT → crear ticket → customs con
-   `N`/tags/resumen UX `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial` + nota interna con el mismo bloque (5 líneas/bloque, categoría=`r.category.name` identifica mouse/monitor/etc, datos reales Snipe-IT).
+   `N`/tags/`snipe_asset_summary` bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial` (5 líneas/bloque, categoría=`r.category.name`, datos reales Snipe-IT) + nota interna tabla ASCII `ACTIVOS SNIPE-IT (N)` + `+---+`/`| # | MODELO | CATEGORIA | TAG | ESTADO | S/N |`/`+---+` (anchos `max(header, celdas)` +2, `padEnd`, sanitizada, alineación perfecta).
 2. Cambiar un activo en Snipe-IT → nuevo ticket → refleja el cambio.
 3. Cliente inexistente en Snipe-IT → `0`/vacíos + nota explicativa.
 4. Cliente sin activos → `0`/vacíos + nota.
@@ -164,7 +164,7 @@ docker exec zammad-snipeit-zammad-railsserver-1 /opt/zammad/bin/rails runner \
 6. Auditoría: `SELECT * FROM integration_sync_log WHERE entity='ticket' ORDER BY id DESC LIMIT 5;`
 7. Confirmar que el `PUT` no genera una segunda ejecución del webhook.
 
-> **Formato UX 2026-09-14 (5 líneas reales):** una línea por dato, sin etiquetas largas. `snipe_asset_summary` y nota usan `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial`) orden por `asset_tag` (5 líneas/bloque, categoría=`r.category.name`), blank line entre bloques, valores originales Snipe-IT (sin `OK`/`MAL`). Ejemplo 4 activos en spec `.ai/specs/zammad-tickets.md`.
+> **Formato UX 2026-09-14 (5 líneas `snipe_asset_summary`) + 2026-09-15 (tabla ASCII `note_body`):** `snipe_asset_summary` usa bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + N×(`NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial`) orden por `asset_tag` (5 líneas/bloque, categoría=`r.category.name`, blank line, valores reales sin `OK`/`MAL`); `note_body` cuando `N>0` es tabla ASCII `ACTIVOS SNIPE-IT (N)` + `+---+`/`| # | MODELO | CATEGORIA | TAG | ESTADO | S/N |`/`+---+` + filas `| 01 | … |` (anchos `max(header, celdas)` +2, celdas sanitizadas `\r/\n/\t/|→/`, `padEnd`, alineación perfecta). Ejemplo en spec `.ai/specs/zammad-tickets.md` (bloque 5 líneas y tabla 2 activos).
 > **Datos de prueba:** el caso positivo exige un email que exista en Zammad
 > (customer del ticket) **y** en Snipe-IT (usuario con activos). En el lab no
 > había solape: se creó el customer `adriana.leon@guayas.gob.ec` (1 activo,

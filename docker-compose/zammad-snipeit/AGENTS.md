@@ -143,7 +143,7 @@ cp envs/n8n-db.env.example envs/n8n-db.env
 # luego edita passwords/tokens/URLs por ambiente
 ```
 
-> **Nota historial 2026-09-07:** los `*.env` con secretos se des-trackearon (`git rm --cached` + `.gitignore`) y el historial se purgó con `filter-repo`; si tu clon aún los muestra trackeados, re-clona y rota secretos.
+> **Nota historial 2026-09-07 / 2026-09-16:** los `*.env` con secretos se des-trackearon (`git rm --cached` + `.gitignore`) y el historial se purgó con `filter-repo`; el 2026-09-14 el merge `cf62c77` reintrodujo los 7 `.env` por heredar la línea antigua `45d7a71` (primer padre) — `.gitignore` no desrastrea archivos ya en el índice; **Fix 2026-09-16:** segunda purga con `filter-repo` (`1dae2e4`), `force-push` de `main`, rotación de passwords DB consistentes (`n8n-db`↔`n8n.env`, `snipe-db`↔`snipe-it.env`, `zammad-db`↔`zammad-app.env`) y actualización de usuarios en `docker-postgres-1`/`docker-mariadb-1` + `compose up -d`; tokens `SNIPEIT/ZAMMAD` requieren regeneración manual vía UI si estuvieron expuestos; backup de `envs` en `/tmp/opencode-backup-envs-20260916-091829`; si tu clon aún muestra `.env` trackeados, re-clona.
 
 ### Contenedores externos (DBs)
 

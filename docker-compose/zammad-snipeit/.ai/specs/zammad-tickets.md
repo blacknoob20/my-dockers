@@ -91,12 +91,13 @@ literales y helpers puros. No hay cambio de comportamiento (solo legibilidad):
   `$('Extract Ticket')` + `$input.body.rows` de `Find Snipe User`, compara
   exacta `LOWER` y ante duplicados elige `id` menor.
 - **Build Enrichment** (`…:224`): helpers arrow `isFetchError` / `sortByAssetTag` /
-  `formatAssetBlock` / `buildSummaryBlock`; constantes `MSG_FETCH_ERROR`,
-  `MSG_NO_ASSETS`, `FALLBACK_MODEL/CATEGORY/STATUS/TAG/SERIAL` (`FALLBACK_CATEGORY='Categoría?'`).
-  Ordena por `asset_tag`, arma el bloque UX 5 líneas (`ACTIVOS SNIPE-IT (N)` + `----` +
+  `formatAssetBlock` / `buildAsciiTable` / `buildSummaryBlock`; constantes `MSG_FETCH_ERROR`,
+  `MSG_NO_ASSETS`, `FALLBACK_MODEL/CATEGORY/STATUS/TAG/SERIAL` (`FALLBACK_CATEGORY='Categoría?'`),
+  `TABLE_HEADERS=['#','MODELO','CATEGORIA','TAG','ESTADO','S/N']` y helpers `sanitizeCell`/`padCell`.
+  Ordena por `asset_tag`, arma el bloque UX 5 líneas para `summary` (`ACTIVOS SNIPE-IT (N)` + `----` +
   `NN modelo` / `   categoría` / `   tag` / `   estado` / `   S/N serial`, blank line) con
   `r.category.name` (identifica mouse/monitor/teclado/licencia/etc) y
-  `note_body = summary` cuando `N>0`; si `!body` o `0` usa las notas del §Casos.
+  `note_body` como tabla ASCII con anchos `max(header, celdas)` +2, `border` `+---+`, header `| # | MODELO |…|` y filas `| 01 | … |` (celdas sanitizadas `\r/\n/\t/|→/`, `padEnd`, monospace `text/plain`, alineación perfecta); si `!body` o `0` usa las notas del §Casos.
 - **Build Empty (no user)** (`…:278`): constante `MSG_SNIPE_FETCH_ERROR` y
   helper `buildMissingUserNote(email)`. Lee solo `Match Snipe User`
   (siempre ejecutado en su rama); si `snipe_error` nota de reintento, si no
@@ -121,7 +122,7 @@ literales y helpers puros. No hay cambio de comportamiento (solo legibilidad):
 | `snipe_asset_count`  | integer  | `rows.length` de `/hardware` |
 | `snipe_asset_tags`   | textarea | `asset_tag` unidos por `, ` |
 | `snipe_asset_summary`| textarea | Bloque UX `ACTIVOS SNIPE-IT (N)` + `--------------------` + N bloques `NN modelo` / `   categoría` / `   tag` / `   estado` / `   S/N serial` (orden por `asset_tag`, `NN` 01.., categoría=`r.category.name`, estado=`status_label.name` original, serial=`r.serial\|\|s/n`); vacío si `N=0` |
-| artículo             | note     | `type: note`, `internal: true`, `sender: Agent`, `content_type: text/plain` — body = mismo bloque que `snipe_asset_summary` (o nota explicativa si `N=0`/`error`) |
+| artículo             | note     | `type: note`, `internal: true`, `sender: Agent`, `content_type: text/plain` — body = tabla ASCII `ACTIVOS SNIPE-IT (N)` + `+---+`/`| # | MODELO | CATEGORIA | TAG | ESTADO | S/N |`/`+---+` + N filas `| 01 | modelo | categoría | tag | estado | serial |` (orden por `asset_tag`, anchos `max(header, celdas)` +2, celdas sanitizadas sin `\r/\n/\t/|`, `padEnd`, monospace, alineación perfecta) o nota explicativa si `N=0`/`error` |
 
 Provisionados una sola vez por instancia con
 `scripts/zammad-ticket-objects.sh` (API Object Manager + migraciones +
@@ -131,7 +132,7 @@ reinicio obligatorio de workers). Ver `docs/05-integracion-zammad-snipeit.md`.
 
 | Caso | Comportamiento |
 |------|----------------|
-| Usuario con N activos | `snipe_asset_count=N`, `tags` con N, `summary`=bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial` (01.., orden `asset_tag`, 5 líneas por activo, blank line entre bloques, categoría=`r.category.name` identifica mouse/monitor/etc, datos reales Snipe-IT sin conversión) + nota interna con el mismo bloque |
+| Usuario con N activos | `snipe_asset_count=N`, `tags` con N, `summary`=bloque `ACTIVOS SNIPE-IT (N)` + `--------------------` + `NN modelo`/`   categoría`/`   tag`/`   estado`/`   S/N serial` (01.., orden `asset_tag`, 5 líneas por activo, blank line entre bloques, categoría=`r.category.name` identifica mouse/monitor/etc, datos reales Snipe-IT sin conversión) + nota interna tabla ASCII `ACTIVOS SNIPE-IT (N)` + `+---+`/`| # | MODELO | CATEGORIA | TAG | ESTADO | S/N |`/`+---+`/`| 01 | modelo | categoría | tag | estado | serial |` (anchos dinámicos `max(header, celdas)` +2, `padEnd`, sanitizada, alineación perfecta) |
 | Usuario sin activos | `0` / vacíos + nota "Snipe-IT no reporta activos asignados…" |
 | Email sin match en Snipe-IT | `0` / vacíos + nota "Snipe-IT no tiene usuario con email …" |
 | Webhook sin email | `0` / vacíos + nota "Webhook sin email de cliente…" |
@@ -139,7 +140,7 @@ reinicio obligatorio de workers). Ver `docs/05-integracion-zammad-snipeit.md`.
 | Email duplicado en Snipe-IT | Gana el id menor (mismo criterio que `Bulk Save Users`, fix 2026-09-03) |
 | >100 activos por usuario | Truncado a 100 (`limit=100`); documentar si aparece el caso |
 
-> **Formato 2026-09-14 (UX 5 líneas, datos reales):** una línea por dato, sin etiquetas largas, valores originales Snipe-IT. Ejemplo con 4 activos reales (`r.model.name`, `r.category.name`, `r.asset_tag`, `r.status_label.name`, `r.serial`):
+> **Formato 2026-09-14 (UX 5 líneas, datos reales) — `snipe_asset_summary`:** una línea por dato, sin etiquetas largas, valores originales Snipe-IT. Ejemplo con 2 activos reales (`r.model.name`, `r.category.name`, `r.asset_tag`, `r.status_label.name`, `r.serial`):
 > ```
 > ACTIVOS SNIPE-IT (4)
 > --------------------
@@ -157,6 +158,20 @@ reinicio obligatorio de workers). Ver `docs/05-integracion-zammad-snipeit.md`.
 > ```
 > Categoría = `r.category.name` (ej. `MOUSE`, `MONITOR`, `TECLADO`, `SOFTWARE`, `CPU`, `EQUIPO DE PROYECCION`); identifica qué es el activo.
 > Estado y S/N son los registrados en Snipe-IT (no convertidos a `OK`/`MAL`); `s/n` si `serial` vacío. Ver `Build Enrichment` en snapshot. Fixture anterior `72006` con `OK`/`MAL` ficticio queda como histórica.
+
+> **Formato 2026-09-15 (tabla ASCII, `note_body`):** solo la nota interna usa tabla ASCII con alineación perfecta (`text/plain` monospace). Anchos = `max(header, celdas)` +2, bordes `+---+`, celdas sanitizadas sin `\r/\n/\t/|→/` y `padEnd`. `snipe_asset_summary` conserva el bloque 5 líneas anterior. Ejemplo 2 activos:
+> ```
+> ACTIVOS SNIPE-IT (2)
+> +----+---------------+----------------------+---------------+-------------+--------+
+> | #  | MODELO        | CATEGORIA            | TAG           | ESTADO      | S/N    |
+> +----+---------------+----------------------+---------------+-------------+--------+
+> | 01 | POWERLITE118  | EQUIPO DE PROYECCION | 1410107-000650| good: Bueno | s/n    |
+> | 02 | DELL-OPTIPLEX | CPU                  | 1410107-000651| good: Bueno | 12345  |
+> +----+---------------+----------------------+---------------+-------------+--------+
+> ```
+> Alineación garantizada en texto generado; el wrap visual de Zammad no rompe columnas si el panel es estrecho (monospace). Ver `buildAsciiTable` en snapshot.
+
+> **Fix 2026-09-15 (tabla ASCII nota):** `Build Enrichment` separa `summary` (bloque 5 líneas) de `note` (tabla ASCII); añadidos `TABLE_HEADERS`, `sanitizeCell`/`padCell`/`buildAsciiTable`; fallbacks y orden `asset_tag` intactos. Perfecta alineación por cálculo dinámico de anchos; sin columnas torcidas con textos largos/acentos/pipes/saltos.
 
 ### Reglas de expresiones (gotchas heredados)
 
